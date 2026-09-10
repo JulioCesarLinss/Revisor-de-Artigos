@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Merriweather:ital,wght@0,300;0,400;0,700;1,300&amp;family=Plus+Jakarta+Sans:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      "colors": {
+        "surface": "#f8f9ff",
+        "secondary": "#0058be",
+        "surface-dim": "#cbdbf5",
+        "outline": "#76777d",
+        "on-primary-fixed": "#131b2e",
+        "tertiary": "#000000",
+        "on-tertiary-fixed": "#002113",
+        "surface-container-high": "#dce9ff",
+        "on-secondary-fixed-variant": "#004395",
+        "outline-variant": "#c6c6cd",
+        "surface-container-highest": "#d3e4fe",
+        "on-secondary-fixed": "#001a42",
+        "surface-bright": "#f8f9ff",
+        "surface-container": "#e5eeff",
+        "primary-fixed": "#dae2fd",
+        "on-primary-fixed-variant": "#3f465c",
+        "on-tertiary-fixed-variant": "#005236",
+        "on-background": "#0b1c30",
+        "on-error-container": "#93000a",
+        "primary-container": "#131b2e",
+        "primary": "#000000",
+        "tertiary-fixed-dim": "#4edea3",
+        "error": "#ba1a1a",
+        "on-surface-variant": "#45464d",
+        "surface-container-low": "#eff4ff",
+        "inverse-primary": "#bec6e0",
+        "surface-variant": "#d3e4fe",
+        "on-secondary": "#ffffff",
+        "tertiary-fixed": "#6ffbbe",
+        "on-primary": "#ffffff",
+        "on-tertiary": "#ffffff",
+        "tertiary-container": "#002113",
+        "secondary-fixed-dim": "#adc6ff",
+        "on-surface": "#0b1c30",
+        "primary-fixed-dim": "#bec6e0",
+        "surface-tint": "#565e74",
+        "background": "#f8f9ff",
+        "on-primary-container": "#7c839b",
+        "secondary-container": "#2170e4",
+        "surface-container-lowest": "#ffffff",
+        "on-tertiary-container": "#009668",
+        "inverse-surface": "#213145",
+        "on-error": "#ffffff",
+        "error-container": "#ffdad6",
+        "on-secondary-container": "#fefcff",
+        "inverse-on-surface": "#eaf1ff",
+        "secondary-fixed": "#d8e2ff"
+      },
+      "borderRadius": {
+        "DEFAULT": "0.125rem",
+        "lg": "0.25rem",
+        "xl": "0.5rem",
+        "full": "0.75rem"
+      },
+      "spacing": {
+        "space-sm": "0.75rem",
+        "gutter-sidebar": "18rem",
+        "space-2xs": "0.25rem",
+        "space-lg": "1.5rem",
+        "canvas-max-width": "54rem",
+        "gutter-panel": "24rem",
+        "space-xl": "2rem",
+        "space-2xl": "3rem",
+        "space-xs": "0.5rem",
+        "space-md": "1rem"
+      },
+      "fontFamily": {
+        "body-lg": ["Inter"],
+        "code-sm": ["JetBrains Mono"],
+        "academic-preview": ["Merriweather"],
+        "headline-md": ["Plus Jakarta Sans"],
+        "label-md": ["Plus Jakarta Sans"],
+        "body-md": ["Inter"],
+        "headline-lg": ["Plus Jakarta Sans"],
+        "body-sm": ["Inter"],
+        "headline-sm": ["Plus Jakarta Sans"],
+        "display-lg": ["Plus Jakarta Sans"],
+        "label-sm": ["Plus Jakarta Sans"]
+      },
+      "fontSize": {
+        "body-lg": ["16px", {"lineHeight": "26px", "fontWeight": "400"}],
+        "code-sm": ["12px", {"lineHeight": "18px", "fontWeight": "500"}],
+        "academic-preview": ["14px", {"lineHeight": "24px", "fontWeight": "400"}],
+        "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+        "label-md": ["13px", {"lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "600"}],
+        "body-md": ["14px", {"lineHeight": "22px", "fontWeight": "400"}],
+        "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.015em", "fontWeight": "600"}],
+        "body-sm": ["12px", {"lineHeight": "18px", "fontWeight": "400"}],
+        "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+        "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+        "label-sm": ["11px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}]
+      }
+    }
+  }
+}</script></head><body class="bg-surface font-body-md text-body-md text-on-surface min-h-screen flex flex-col justify-between"><header class="w-full py-space-md px-space-lg flex items-center justify-between"><a class="flex items-center gap-space-sm" data-path="painel-artigos" href="#"><img alt="NormaReview AI Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1XLxb-RexFwFsb6EbmxmbPHPh_-qDBw4CM21p8H-JnNTzQYkm38zJALhj2oaxQ5qtoZoALJi1hLPiNx62Q0k2P4ifejQdQJKn8f6lVUmVUxf7QBr0nF9wrEDzZepBiXi92BQFTGe-L3gZ4RfxvWPw8J8wh1g8y74_MNjHvMMMRi0m8U94AijkcIyu_3TTcF0tWLV9DppgphsyCbXBaVSI1qDYmiV0aR57OiZrRmw20nsuUZM2r8IyJagAUp"/><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-on-surface leading-none tracking-tight">NormaReview</span><span class="font-label-sm text-label-sm text-secondary font-semibold uppercase tracking-wider">AI Academic Engine</span></div></a><a class="flex items-center gap-space-xs text-on-surface-variant hover:text-on-surface font-label-md text-label-md px-space-sm py-space-xs rounded-lg hover:bg-surface-container transition-colors" data-path="painel-artigos" href="#"><span class="material-symbols-outlined text-base">arrow_back</span><span>Voltar ao Início</span></a></header><main class="w-full flex-1 flex items-center justify-center p-space-lg"><div class="flex flex-col w-full max-w-6xl mx-auto py-space-xs">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-xl items-center">
+<!-- Coluna Institucional / Visual Storytelling -->
+<div class="lg:col-span-5 flex flex-col justify-center space-y-space-lg pr-0 lg:pr-space-md">
+<div class="inline-flex items-center gap-space-xs px-space-sm py-space-2xs rounded-full bg-surface-container text-secondary w-fit shadow-sm">
+<span class="material-symbols-outlined text-base">verified_user</span>
+<span class="font-label-sm text-label-sm uppercase tracking-wider">Padrão ABNT NBR • Validação Rápida</span>
+</div>
+<div class="space-y-space-xs">
+<h1 class="font-display-lg text-display-lg text-on-surface tracking-tight leading-tight">
+          Rigor acadêmico, velocidade de IA.
+        </h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-md">
+          Acesse a plataforma de formatação, checagem cruzada de citações e conformidade técnica para teses, dissertações e artigos científicos.
+        </p>
+</div>
+<!-- Card de Destaque Visual com Miniatura Fotográfica de Pesquisa -->
+<div class="relative overflow-hidden rounded-xl bg-surface-container-low p-space-md shadow-md flex items-center gap-space-md">
+<div class="relative w-24 h-24 rounded-lg overflow-hidden shrink-0">
+<img class="w-full h-full object-cover" data-alt="Close up photograph of a graduate scholar in a warm university library writing a research thesis with modern tablet and academic books, soft morning natural lighting, rich tones of navy blue and crisp white paper, fine art editorial style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBkG8P93Ofjta6MKIW59RCfGDadjrlNbRnH1XuBanOWv0iNL5tijeM-0_3Lsi8E5P-gCPNsqCSEftZJOPSZv611ZEs_ZKKszkmjRT2IG_QdindGLEQqpsIZV0I5trM9JUKxEJnZGG880lN_ikhqezSyMAJyV05VL6EITsOlupIuhKIV0sJ6DBmVONwqeNlTWFodIptJzQ7Hs1aeQTzHcOXOlFznJ_fIRfC56PURzTV3i89Iv_IXoo4AOw"/>
+</div>
+<div class="flex flex-col space-y-space-2xs min-w-0">
+<span class="font-label-sm text-label-sm text-secondary uppercase font-semibold">Ecossistema Conectado</span>
+<p class="font-headline-sm text-headline-sm text-on-surface truncate">Mais de 450 Universidades</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Conexão direta com autenticação CAFe / RNP para pesquisadores e docentes.</p>
+</div>
+</div>
+<!-- Selos de Integridade Científica -->
+<div class="grid grid-cols-2 gap-space-sm pt-space-2xs">
+<div class="bg-surface-container-lowest p-space-sm rounded-lg shadow-sm flex items-start gap-space-xs">
+<span class="material-symbols-outlined text-secondary shrink-0" style="font-variation-settings: 'FILL' 1;">lock</span>
+<div>
+<div class="font-label-md text-label-md text-on-surface">Criptografia Ponta a Ponta</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant">Seus inéditos protegidos</div>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-space-sm rounded-lg shadow-sm flex items-start gap-space-xs">
+<span class="material-symbols-outlined text-on-tertiary-container shrink-0" style="font-variation-settings: 'FILL' 1;">policy</span>
+<div>
+<div class="font-label-md text-label-md text-on-surface">100% LGPD Acadêmica</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant">Sem treino de modelos públicos</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Coluna Central: Card de Login & Criação de Conta -->
+<div class="lg:col-span-7">
+<div class="bg-surface-container-lowest rounded-xl shadow-xl p-space-lg md:p-space-xl relative overflow-hidden">
+<!-- Barra de Abas de Navegação -->
+<div class="flex items-center bg-surface-container-low p-space-2xs rounded-lg mb-space-lg">
+<button class="flex-1 py-space-xs px-space-md rounded text-center font-label-md text-label-md transition-all duration-200 bg-surface-container-lowest text-on-surface shadow-sm font-semibold flex items-center justify-center gap-space-xs" id="tab-login-btn" onclick="switchAuthTab('login')" type="button">
+<span class="material-symbols-outlined text-sm">login</span>
+<span>Entrar na Conta</span>
+</button>
+<button class="flex-1 py-space-xs px-space-md rounded text-center font-label-md text-label-md transition-all duration-200 text-on-surface-variant hover:text-on-surface flex items-center justify-center gap-space-xs" id="tab-register-btn" onclick="switchAuthTab('register')" type="button">
+<span class="material-symbols-outlined text-sm">person_add</span>
+<span>Criar Conta</span>
+</button>
+</div>
+<!-- Cabeçalho de Contexto da Autenticação -->
+<div class="mb-space-lg space-y-space-2xs">
+<div class="font-label-sm text-label-sm text-secondary uppercase font-semibold tracking-wider">Acesso Seguro • RF01</div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface tracking-tight" id="auth-title">Acesse sua conta ou crie um novo cadastro</h2>
+<p class="font-body-md text-body-md text-on-surface-variant" id="auth-subtitle">
+            Utilize seu e-mail institucional para sincronização automática com seu repositório de pesquisas.
+          </p>
+</div>
+<!-- FORMULÁRIO DE LOGIN -->
+<form class="space-y-space-md block" id="form-login" onsubmit="event.preventDefault(); handleLoginSubmit();">
+<!-- Campo E-mail -->
+<div class="space-y-space-2xs">
+<label class="block font-label-md text-label-md text-on-surface" for="login-email">
+              E-mail Institucional ou Pessoal
+            </label>
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-space-sm text-outline pointer-events-none text-base">school</span>
+<input class="w-full bg-surface-container-lowest text-on-surface font-body-md text-body-md pl-10 pr-space-md py-space-sm rounded-lg shadow-sm focus:outline-none focus:bg-surface-container-low transition-colors placeholder:text-outline-variant" id="login-email" placeholder="ex: marcelo.silva@ufrj.br" required="" type="email"/>
+</div>
+<div class="flex justify-between items-center text-on-surface-variant font-label-sm text-label-sm px-space-2xs">
+<span>Preferencialmente o domínio institucional (.edu, .br, etc)</span>
+<span class="font-code-sm text-code-sm text-secondary">NBR 14724</span>
+</div>
+</div>
+<!-- Campo Senha -->
+<div class="space-y-space-2xs">
+<div class="flex items-center justify-between">
+<label class="font-label-md text-label-md text-on-surface" for="login-password">
+                Senha de Acesso
+              </label>
+<a class="font-label-sm text-label-sm text-secondary hover:underline transition-all" href="#">
+                Esqueci minha senha
+              </a>
+</div>
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-space-sm text-outline pointer-events-none text-base">lock</span>
+<input class="w-full bg-surface-container-lowest text-on-surface font-body-md text-body-md pl-10 pr-10 py-space-sm rounded-lg shadow-sm focus:outline-none focus:bg-surface-container-low transition-colors placeholder:text-outline-variant" id="login-password" placeholder="Digite sua senha cadastrada" required="" type="password"/>
+<button class="absolute right-space-sm text-outline hover:text-on-surface p-space-2xs flex items-center justify-center transition-colors" onclick="togglePasswordVisibility('login-password', 'login-pwd-icon')" title="Mostrar/Ocultar senha" type="button">
+<span class="material-symbols-outlined text-base" id="login-pwd-icon">visibility</span>
+</button>
+</div>
+</div>
+<!-- Lembrar de mim e termos -->
+<div class="flex items-center justify-between pt-space-2xs">
+<label class="flex items-center gap-space-xs cursor-pointer select-none">
+<input class="w-4 h-4 rounded text-secondary bg-surface-container focus:ring-0 focus:outline-none cursor-pointer" id="remember-device" type="checkbox"/>
+<span class="font-body-sm text-body-sm text-on-surface">Lembrar de mim neste dispositivo</span>
+</label>
+<span class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-on-tertiary-container"></span>
+              Sessão protegida 128-bit
+            </span>
+</div>
+<!-- Botão Principal de Login -->
+<div class="pt-space-xs">
+<button class="w-full bg-primary hover:bg-primary-container text-on-primary font-headline-sm text-headline-sm py-space-sm px-space-md rounded-lg transition-all duration-200 flex items-center justify-center gap-space-xs shadow-md group" type="submit">
+<span>Entrar no NormaReview</span>
+<span class="material-symbols-outlined text-base group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</button>
+</div>
+</form>
+<!-- FORMULÁRIO DE CADASTRO (RF01 - Criar Conta) -->
+<form class="space-y-space-md hidden" id="form-register" onsubmit="event.preventDefault(); handleRegisterSubmit();">
+<!-- Nome Completo do Autor/Pesquisador -->
+<div class="space-y-space-2xs">
+<label class="block font-label-md text-label-md text-on-surface" for="reg-name">
+              Nome Completo do Autor(a) ou Revisor(a)
+            </label>
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-space-sm text-outline pointer-events-none text-base">badge</span>
+<input class="w-full bg-surface-container-lowest text-on-surface font-body-md text-body-md pl-10 pr-space-md py-space-sm rounded-lg shadow-sm focus:outline-none focus:bg-surface-container-low transition-colors placeholder:text-outline-variant" id="reg-name" placeholder="ex: Dr. Marcelo da Silva Junior" required="" type="text"/>
+</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">Usado na padronização ABNT de folhas de rosto e referências.</div>
+</div>
+<!-- E-mail para Cadastro -->
+<div class="space-y-space-2xs">
+<label class="block font-label-md text-label-md text-on-surface" for="reg-email">
+              E-mail Institucional ou Pessoal
+            </label>
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-space-sm text-outline pointer-events-none text-base">mail</span>
+<input class="w-full bg-surface-container-lowest text-on-surface font-body-md text-body-md pl-10 pr-space-md py-space-sm rounded-lg shadow-sm focus:outline-none focus:bg-surface-container-low transition-colors placeholder:text-outline-variant" id="reg-email" placeholder="ex: ana.costa@usp.br" required="" type="email"/>
+</div>
+</div>
+<!-- Grade de Senhas -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-sm">
+<div class="space-y-space-2xs">
+<label class="block font-label-md text-label-md text-on-surface" for="reg-password">
+                Criar Senha
+              </label>
+<div class="relative flex items-center">
+<input class="w-full bg-surface-container-lowest text-on-surface font-body-md text-body-md px-space-sm py-space-sm rounded-lg shadow-sm focus:outline-none focus:bg-surface-container-low transition-colors placeholder:text-outline-variant" id="reg-password" placeholder="Mínimo 8 caracteres" required="" type="password"/>
+</div>
+</div>
+<div class="space-y-space-2xs">
+<label class="block font-label-md text-label-md text-on-surface" for="reg-confirm-password">
+                Confirmar Senha
+              </label>
+<div class="relative flex items-center">
+<input class="w-full bg-surface-container-lowest text-on-surface font-body-md text-body-md px-space-sm py-space-sm rounded-lg shadow-sm focus:outline-none focus:bg-surface-container-low transition-colors placeholder:text-outline-variant" id="reg-confirm-password" placeholder="Repita a senha" required="" type="password"/>
+</div>
+</div>
+</div>
+<!-- Nível de Atuação -->
+<div class="space-y-space-2xs">
+<label class="block font-label-md text-label-md text-on-surface" for="reg-profile">
+              Perfil de Utilização Principal
+            </label>
+<div class="relative">
+<select class="w-full bg-surface-container-lowest text-on-surface font-body-md text-body-md px-space-sm py-space-sm rounded-lg shadow-sm focus:outline-none focus:bg-surface-container-low transition-colors cursor-pointer appearance-none" id="reg-profile">
+<option value="graduacao">Graduação / TCC e Monografia</option>
+<option value="pos">Mestrado / Doutorado / Pós-Graduação</option>
+<option value="docente">Docente / Orientador Acadêmico</option>
+<option value="revisor">Comitê Editorial / Revisor de Periódico</option>
+</select>
+<span class="material-symbols-outlined absolute right-space-sm top-1/2 -translate-y-1/2 text-outline pointer-events-none text-base">expand_more</span>
+</div>
+</div>
+<!-- Botão Principal de Criação de Conta -->
+<div class="pt-space-xs">
+<button class="w-full bg-secondary hover:bg-on-secondary-fixed-variant text-on-secondary font-headline-sm text-headline-sm py-space-sm px-space-md rounded-lg transition-all duration-200 flex items-center justify-center gap-space-xs shadow-md" type="submit">
+<span>Cadastrar Gratuitamente</span>
+<span class="material-symbols-outlined text-base">check_circle</span>
+</button>
+</div>
+</form>
+<!-- Divisor com Texto -->
+<div class="relative my-space-lg flex items-center justify-center">
+<div class="absolute inset-0 flex items-center">
+<div class="w-full bg-surface-container-high h-px"></div>
+</div>
+<div class="relative bg-surface-container-lowest px-space-sm text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
+            Ou acesse via
+          </div>
+</div>
+<!-- Opções de Autenticação Federada e Externa -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-sm">
+<!-- Botão CAFe / RNP -->
+<button class="flex items-center justify-center gap-space-xs bg-surface-container-low hover:bg-surface-container text-on-surface font-label-md text-label-md p-space-sm rounded-lg shadow-sm transition-all duration-200 text-left group" onclick="handleFederatedLogin('cafe')" type="button">
+<div class="w-8 h-8 rounded bg-surface-container-highest flex items-center justify-center shrink-0 text-secondary group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-lg">account_balance</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-headline-sm text-sm leading-tight truncate">Acesso CAFe / RNP</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant truncate">Comunidade Acadêmica Federada</span>
+</div>
+</button>
+<!-- Botão Google -->
+<button class="flex items-center justify-center gap-space-xs bg-surface-container-low hover:bg-surface-container text-on-surface font-label-md text-label-md p-space-sm rounded-lg shadow-sm transition-all duration-200 group" onclick="handleFederatedLogin('google')" type="button">
+<div class="w-8 h-8 rounded bg-surface-container-highest flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+<svg class="w-4 h-4" viewbox="0 0 24 24">
+<path d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z" fill="#4285F4"></path>
+<path d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z" fill="#34A853"></path>
+<path d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z" fill="#FBBC05"></path>
+<path d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z" fill="#EA4335"></path>
+</svg>
+</div>
+<div class="flex flex-col text-left">
+<span class="font-headline-sm text-headline-sm text-sm leading-tight">Entrar com Google</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Sincronização com Workspace</span>
+</div>
+</button>
+</div>
+<!-- Garantia de Privacidade e Segurança (RNF03 e RNF04) -->
+<div class="mt-space-lg p-space-sm bg-surface-container-low rounded-lg shadow-sm flex items-start gap-space-sm">
+<div class="p-space-2xs bg-surface-container-highest rounded text-on-surface-variant shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-base">gavel</span>
+</div>
+<div class="space-y-space-2xs">
+<div class="font-label-md text-label-md text-on-surface flex items-center gap-space-xs">
+<span>Compromisso Ético e Sigilo de Autoria (RNF03 / RNF04)</span>
+<span class="px-space-2xs py-0.5 text-xs bg-surface-container text-secondary rounded font-mono">LGPD Ok</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+              Ambiente seguro com criptografia e conformidade LGPD. Seus dados e manuscritos <strong>nunca</strong> são compartilhados ou usados para treinamento de modelos públicos de inteligência artificial.
+            </p>
+</div>
+</div>
+<!-- Link de Suporte Acadêmico -->
+<div class="mt-space-md pt-space-xs text-center">
+<a class="inline-flex items-center gap-space-xs text-secondary hover:text-on-secondary-fixed-variant font-label-md text-label-md transition-colors" href="#">
+<span class="material-symbols-outlined text-base">contact_support</span>
+<span>Precisa de ajuda para acessar? Fale com o suporte acadêmico</span>
+</a>
+</div>
+</div>
+</div>
+</div>
+<!-- Micro-Interações e Comportamento de Alternância de Abas -->
+<script>
+    function switchAuthTab(tab) {
+      const loginForm = document.getElementById('form-login');
+      const registerForm = document.getElementById('form-register');
+      const tabLoginBtn = document.getElementById('tab-login-btn');
+      const tabRegisterBtn = document.getElementById('tab-register-btn');
+      const authTitle = document.getElementById('auth-title');
+      const authSubtitle = document.getElementById('auth-subtitle');
+
+      if (tab === 'login') {
+        loginForm.classList.remove('hidden');
+        loginForm.classList.add('block');
+        registerForm.classList.add('hidden');
+        registerForm.classList.remove('block');
+
+        tabLoginBtn.classList.add('bg-surface-container-lowest', 'text-on-surface', 'shadow-sm', 'font-semibold');
+        tabLoginBtn.classList.remove('text-on-surface-variant');
+
+        tabRegisterBtn.classList.remove('bg-surface-container-lowest', 'text-on-surface', 'shadow-sm', 'font-semibold');
+        tabRegisterBtn.classList.add('text-on-surface-variant');
+
+        authTitle.textContent = 'Acesse sua conta ou crie um novo cadastro';
+        authSubtitle.textContent = 'Utilize seu e-mail institucional para sincronização automática com seu repositório de pesquisas.';
+      } else {
+        registerForm.classList.remove('hidden');
+        registerForm.classList.add('block');
+        loginForm.classList.add('hidden');
+        loginForm.classList.remove('block');
+
+        tabRegisterBtn.classList.add('bg-surface-container-lowest', 'text-on-surface', 'shadow-sm', 'font-semibold');
+        tabRegisterBtn.classList.remove('text-on-surface-variant');
+
+        tabLoginBtn.classList.remove('bg-surface-container-lowest', 'text-on-surface', 'shadow-sm', 'font-semibold');
+        tabLoginBtn.classList.add('text-on-surface-variant');
+
+        authTitle.textContent = 'Cadastre seu perfil de autor ou avaliador';
+        authSubtitle.textContent = 'Preencha seus dados para receber revisões precisas de normas e formatações ABNT.';
+      }
+    }
+
+    function togglePasswordVisibility(inputId, iconId) {
+      const passwordInput = document.getElementById(inputId);
+      const iconSpan = document.getElementById(iconId);
+
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        iconSpan.textContent = 'visibility_off';
+      } else {
+        passwordInput.type = 'password';
+        iconSpan.textContent = 'visibility';
+      }
+    }
+
+    function handleLoginSubmit() {
+      const email = document.getElementById('login-email').value;
+      if (!email) return;
+      
+      const btn = document.querySelector('#form-login button[type="submit"]');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-base">sync</span> Autenticando...';
+      btn.disabled = true;
+
+      setTimeout(() => {
+        window.location.hash = '#painel-artigos';
+      }, 900);
+    }
+
+    function handleRegisterSubmit() {
+      const name = document.getElementById('reg-name').value;
+      const email = document.getElementById('reg-email').value;
+      if (!name || !email) return;
+
+      const btn = document.querySelector('#form-register button[type="submit"]');
+      btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-base">sync</span> Criando credencial...';
+      btn.disabled = true;
+
+      setTimeout(() => {
+        switchAuthTab('login');
+        btn.disabled = false;
+        btn.innerHTML = '<span>Cadastrar Gratuitamente</span><span class="material-symbols-outlined text-base">check_circle</span>';
+      }, 1000);
+    }
+
+    function handleFederatedLogin(provider) {
+      const notification = document.createElement('div');
+      notification.className = 'fixed bottom-4 right-4 bg-primary-container text-on-primary py-3 px-4 rounded-lg shadow-xl flex items-center gap-2 z-50 transition-all font-body-sm';
+      notification.innerHTML = `<span class="material-symbols-outlined text-secondary">verified</span> Conectando com ${provider === 'cafe' ? 'Rede CAFe / RNP' : 'Google Identity'}...`;
+      document.body.appendChild(notification);
+      
+      setTimeout(() => {
+        notification.remove();
+      }, 2500);
+    }
+  </script>
+</div></main><footer class="w-full py-space-sm px-space-lg text-center font-label-sm text-label-sm text-on-surface-variant">© 2024 NormaReview AI • Plataforma Segura com Criptografia de Ponta a Ponta para Trabalhos Acadêmicos</footer></body></html>

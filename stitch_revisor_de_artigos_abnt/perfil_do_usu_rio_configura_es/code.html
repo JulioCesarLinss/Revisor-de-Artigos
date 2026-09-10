@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Merriweather:ital,wght@0,300;0,400;0,700;1,300&amp;family=Plus+Jakarta+Sans:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      "colors": {
+        "surface": "#f8f9ff",
+        "secondary": "#0058be",
+        "surface-dim": "#cbdbf5",
+        "outline": "#76777d",
+        "on-primary-fixed": "#131b2e",
+        "tertiary": "#000000",
+        "on-tertiary-fixed": "#002113",
+        "surface-container-high": "#dce9ff",
+        "on-secondary-fixed-variant": "#004395",
+        "outline-variant": "#c6c6cd",
+        "surface-container-highest": "#d3e4fe",
+        "on-secondary-fixed": "#001a42",
+        "surface-bright": "#f8f9ff",
+        "surface-container": "#e5eeff",
+        "primary-fixed": "#dae2fd",
+        "on-primary-fixed-variant": "#3f465c",
+        "on-tertiary-fixed-variant": "#005236",
+        "on-background": "#0b1c30",
+        "on-error-container": "#93000a",
+        "primary-container": "#131b2e",
+        "primary": "#000000",
+        "tertiary-fixed-dim": "#4edea3",
+        "error": "#ba1a1a",
+        "on-surface-variant": "#45464d",
+        "surface-container-low": "#eff4ff",
+        "inverse-primary": "#bec6e0",
+        "surface-variant": "#d3e4fe",
+        "on-secondary": "#ffffff",
+        "tertiary-fixed": "#6ffbbe",
+        "on-primary": "#ffffff",
+        "on-tertiary": "#ffffff",
+        "tertiary-container": "#002113",
+        "secondary-fixed-dim": "#adc6ff",
+        "on-surface": "#0b1c30",
+        "primary-fixed-dim": "#bec6e0",
+        "surface-tint": "#565e74",
+        "background": "#f8f9ff",
+        "on-primary-container": "#7c839b",
+        "secondary-container": "#2170e4",
+        "surface-container-lowest": "#ffffff",
+        "on-tertiary-container": "#009668",
+        "inverse-surface": "#213145",
+        "on-error": "#ffffff",
+        "error-container": "#ffdad6",
+        "on-secondary-container": "#fefcff",
+        "inverse-on-surface": "#eaf1ff",
+        "secondary-fixed": "#d8e2ff"
+      },
+      "borderRadius": {
+        "DEFAULT": "0.125rem",
+        "lg": "0.25rem",
+        "xl": "0.5rem",
+        "full": "0.75rem"
+      },
+      "spacing": {
+        "space-sm": "0.75rem",
+        "gutter-sidebar": "18rem",
+        "space-2xs": "0.25rem",
+        "space-lg": "1.5rem",
+        "canvas-max-width": "54rem",
+        "gutter-panel": "24rem",
+        "space-xl": "2rem",
+        "space-2xl": "3rem",
+        "space-xs": "0.5rem",
+        "space-md": "1rem"
+      },
+      "fontFamily": {
+        "body-lg": ["Inter"],
+        "code-sm": ["JetBrains Mono"],
+        "academic-preview": ["Merriweather"],
+        "headline-md": ["Plus Jakarta Sans"],
+        "label-md": ["Plus Jakarta Sans"],
+        "body-md": ["Inter"],
+        "headline-lg": ["Plus Jakarta Sans"],
+        "body-sm": ["Inter"],
+        "headline-sm": ["Plus Jakarta Sans"],
+        "display-lg": ["Plus Jakarta Sans"],
+        "label-sm": ["Plus Jakarta Sans"]
+      },
+      "fontSize": {
+        "body-lg": ["16px", {"lineHeight": "26px", "fontWeight": "400"}],
+        "code-sm": ["12px", {"lineHeight": "18px", "fontWeight": "500"}],
+        "academic-preview": ["14px", {"lineHeight": "24px", "fontWeight": "400"}],
+        "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+        "label-md": ["13px", {"lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "600"}],
+        "body-md": ["14px", {"lineHeight": "22px", "fontWeight": "400"}],
+        "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.015em", "fontWeight": "600"}],
+        "body-sm": ["12px", {"lineHeight": "18px", "fontWeight": "400"}],
+        "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+        "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+        "label-sm": ["11px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}]
+      }
+    }
+  }
+}</script></head><body class="bg-surface font-body-md text-body-md text-on-surface min-h-screen flex flex-col"><header class="fixed top-0 w-full z-50 bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 w-full px-space-lg flex items-center justify-between gap-space-md"><div class="flex items-center gap-space-lg"><a class="flex items-center gap-space-sm group" data-path="painel-artigos" href="#"><img alt="NormaReview AI Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1XLxb-RexFwFsb6EbmxmbPHPh_-qDBw4CM21p8H-JnNTzQYkm38zJALhj2oaxQ5qtoZoALJi1hLPiNx62Q0k2P4ifejQdQJKn8f6lVUmVUxf7QBr0nF9wrEDzZepBiXi92BQFTGe-L3gZ4RfxvWPw8J8wh1g8y74_MNjHvMMMRi0m8U94AijkcIyu_3TTcF0tWLV9DppgphsyCbXBaVSI1qDYmiV0aR57OiZrRmw20nsuUZM2r8IyJagAUp"/><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-on-surface leading-none tracking-tight group-hover:text-secondary transition-colors">NormaReview</span><span class="font-label-sm text-label-sm text-secondary font-semibold uppercase tracking-wider">AI Academic Engine</span></div></a><nav class="hidden xl:flex items-center gap-space-xs p-space-2xs bg-surface-container-low rounded-xl" data-active-classes="bg-surface-container-high text-on-surface font-semibold rounded-lg shadow-sm"><a class="px-space-md py-space-xs font-label-md text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors rounded-lg" data-path="painel-artigos" href="#">Painel &amp; Artigos</a><a class="px-space-md py-space-xs font-label-md text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors rounded-lg" data-path="editor-revisao-ia" href="#">Editor &amp; Revisão IA</a><a class="px-space-md py-space-xs font-label-md text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors rounded-lg" data-path="laudo-relatorio-abnt" href="#">Laudo &amp; Relatório ABNT</a><a class="px-space-md py-space-xs font-label-md text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors rounded-lg" data-path="historico-versoes" href="#">Histórico de Versões</a><a class="px-space-md py-space-xs font-label-md text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors rounded-lg" data-path="perfil-do-usuario" href="#">Perfil do Usuário</a></nav></div><div class="flex items-center gap-space-md"><div class="hidden md:flex items-center gap-space-xs px-space-sm py-space-2xs bg-surface-container rounded-full text-on-surface font-code-sm text-code-sm"><span class="w-2 h-2 rounded-full bg-tertiary-fixed-dim animate-pulse"></span><span class="font-label-sm text-label-sm text-on-surface-variant">Motor NBR Atualizado: <strong class="text-on-surface font-semibold">2023/2024</strong></span></div><button class="flex items-center gap-space-2xs px-space-sm py-space-xs rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors" title="Central de Suporte &amp; Normas" type="button"><span class="material-symbols-outlined text-lg">help</span><span class="font-label-md text-label-md hidden sm:inline">Suporte</span></button><a class="flex items-center gap-space-sm pl-space-xs bg-surface-container-low py-space-2xs pr-space-sm rounded-full hover:bg-surface-container transition-colors" data-path="perfil-do-usuario" href="#"><img alt="Dr. Marcelo Silva Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBb3NEtLEXr5jKtlQoZ0WR1kUxjzo5Ey_URP6Zvu8RLlsu2qReglh7KexUqIuyxKqTDb3rmnCMTfOVFguUi2OfHLK9tFBJ91onrNx3RcjNQyWhxTAgXZMxvLh68XLGqXzGlAvRdht_lO6S1JFa2B1eWb8xpV_OxndJEG50eDwKlHxHDEgrboVyI8ivOdADd3A4GbwNNljECuP3WeOcmCeJlC_aJtiXCDuNCyfhGBVbclF7GVAwhiqNLSQ"/><div class="hidden lg:flex flex-col text-left leading-none pr-space-xs"><span class="font-label-md text-label-md text-on-surface font-semibold">Dr. Marcelo Silva</span><span class="font-label-sm text-label-sm text-on-surface-variant">UFRJ</span></div></a></div></div></header><main class="w-full pt-16 bg-surface flex-1"><div class="flex flex-col w-full">
+<!-- Subtle Header Gradient Anchor -->
+<div class="w-full bg-gradient-to-b from-surface-container-high/40 to-transparent py-space-xl px-space-lg">
+<div class="max-w-6xl mx-auto flex flex-col gap-space-xl">
+<!-- Academic Profile Hero Card -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg md:p-space-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-space-lg relative overflow-hidden">
+<div class="flex flex-col sm:flex-row items-start sm:items-center gap-space-lg">
+<!-- Profile Avatar with Academic Verification Ring -->
+<div class="relative shrink-0">
+<img alt="Foto do perfil acadêmico de Dr. Marcelo Silva" class="w-24 h-24 md:w-28 md:h-28 rounded-full object-cover shadow-md ring-4 ring-surface-container-high" src="https://lh3.googleusercontent.com/aida/AEtjO1XzZCvXtt-5DZYZuyeAAmyUIIyeJfsraaukVHqZS_zmKfULq8MDtXknjgYLwCnkOke7OMOaRATBuL6EvBFux0lIaaIWC_XOkbRHz0D4qgdCplXiybkV972ZzKh-SoqKZpEn9ycAIj8s058ygCHjES8LHDZDJ-6wDhmcMITrXjuxh2yT2W5LrTO3uhu2FGKUEXotvoTQHrFLCLZ81xjCF06inLQav_XB3arwQg_G8JifckD8myfHSunPcsU"/>
+<span class="absolute bottom-0 right-0 w-7 h-7 bg-tertiary-container text-tertiary-fixed rounded-full flex items-center justify-center shadow-sm" title="Identidade Institucional Ativa">
+<span class="material-symbols-outlined text-sm font-bold">verified</span>
+</span>
+</div>
+<!-- Academic Identity & Meta -->
+<div class="flex flex-col gap-space-2xs min-w-0">
+<div class="flex flex-wrap items-center gap-space-xs">
+<h1 class="font-headline-lg text-headline-lg text-on-surface font-semibold tracking-tight">Dr. Marcelo Silva</h1>
+<span class="inline-flex items-center gap-space-2xs px-space-xs py-0.5 rounded-full bg-surface-container text-on-primary-fixed-variant font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-xs text-secondary font-bold">school</span>
+                Conta Docente Verificada
+              </span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-space-xs">
+<span class="font-semibold text-on-surface">Professor Adjunto &amp; Pesquisador</span>
+<span class="w-1 h-1 rounded-full bg-outline-variant"></span>
+<span>Universidade Federal do Rio de Janeiro (UFRJ)</span>
+</p>
+<div class="flex flex-wrap items-center gap-x-space-md gap-y-space-2xs pt-space-xs font-code-sm text-code-sm text-on-surface-variant">
+<span class="flex items-center gap-space-2xs">
+<span class="material-symbols-outlined text-base text-secondary">domain</span>
+                Centro de Ciências da Saúde (CCS)
+              </span>
+<span class="flex items-center gap-space-2xs">
+<span class="material-symbols-outlined text-base text-secondary">alternate_email</span>
+                marcelo.silva@ufrj.br
+              </span>
+</div>
+</div>
+</div>
+<!-- Primary Quick Actions -->
+<div class="flex items-center gap-space-xs self-stretch sm:self-auto shrink-0">
+<button class="flex-1 sm:flex-initial flex items-center justify-center gap-space-xs px-space-md py-space-xs bg-primary text-on-primary rounded-lg font-label-md text-label-md hover:bg-primary-container transition-colors shadow-sm" onclick="document.getElementById('edit-modal').classList.remove('hidden')" type="button">
+<span class="material-symbols-outlined text-base">edit</span>
+            Editar dados
+          </button>
+<button class="p-space-xs bg-surface-container-low text-on-surface hover:bg-surface-container rounded-lg transition-colors" title="Compartilhar Cartão de Pesquisador" type="button">
+<span class="material-symbols-outlined text-base">share</span>
+</button>
+</div>
+</div>
+<!-- Quick Metrics Ribbon (Estatísticas de Uso) -->
+<section aria-labelledby="stats-summary-title" class="w-full">
+<h2 class="sr-only" id="stats-summary-title">Estatísticas de Uso Acadêmico</h2>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
+<!-- Metric 1: Artigos Ativos -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Artigos Ativos</span>
+<span class="font-display-lg text-display-lg text-on-surface leading-none mt-space-2xs">4</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">2 em auditoria pré-banca</span>
+</div>
+<div class="w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-2xl">description</span>
+</div>
+</div>
+<!-- Metric 2: Revisões Realizadas -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Revisões Realizadas</span>
+<span class="font-display-lg text-display-lg text-on-surface leading-none mt-space-2xs">28</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">Total nos últimos 12 meses</span>
+</div>
+<div class="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-2xl">auto_fix_high</span>
+</div>
+</div>
+<!-- Metric 3: Média Conformidade ABNT -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Conformidade ABNT</span>
+<div class="flex items-baseline gap-space-2xs mt-space-2xs">
+<span class="font-display-lg text-display-lg text-on-surface leading-none">94%</span>
+<span class="font-label-sm text-label-sm text-on-tertiary-container font-semibold">Excelente</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">Índice médio de aprovação</span>
+</div>
+<div class="w-12 h-12 rounded-xl bg-tertiary-fixed/30 flex items-center justify-center text-tertiary-container">
+<span class="material-symbols-outlined text-2xl">verified_user</span>
+</div>
+</div>
+<!-- Metric 4: Produtividade Acadêmica -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Horas Economizadas</span>
+<span class="font-display-lg text-display-lg text-on-surface leading-none mt-space-2xs">76h</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">Em correções manuais</span>
+</div>
+<div class="w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-2xl">pace</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Main Layout: Navigation Tabs & Detail Sections -->
+<div class="flex flex-col gap-space-lg">
+<!-- Tab Navigation Bar -->
+<nav aria-label="Abas de Configuração" class="flex flex-wrap gap-space-2xs p-1.5 bg-surface-container-low rounded-xl shadow-sm">
+<button class="tab-trigger flex items-center gap-space-xs px-space-md py-space-xs rounded-lg font-label-md text-label-md bg-surface-container-lowest text-on-surface shadow-sm font-semibold transition-all" id="tab-btn-academic" onclick="switchTab('tab-academic')" type="button">
+<span class="material-symbols-outlined text-base">badge</span>
+            1. Dados Pessoais e Acadêmicos
+          </button>
+<button class="tab-trigger flex items-center gap-space-xs px-space-md py-space-xs rounded-lg font-label-md text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all" id="tab-btn-abnt" onclick="switchTab('tab-abnt')" type="button">
+<span class="material-symbols-outlined text-base">rule</span>
+            2. Preferências de Revisão ABNT
+          </button>
+<button class="tab-trigger flex items-center gap-space-xs px-space-md py-space-xs rounded-lg font-label-md text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all" id="tab-btn-security" onclick="switchTab('tab-security')" type="button">
+<span class="material-symbols-outlined text-base">lock</span>
+            3. Segurança &amp; LGPD (RNF03/RNF04)
+          </button>
+</nav>
+<!-- SEÇÃO 1: DADOS PESSOAIS E ACADÊMICOS -->
+<section class="tab-panel flex flex-col gap-space-lg" id="tab-academic">
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg md:p-space-xl">
+<div class="flex items-center justify-between mb-space-lg">
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Registro Docente &amp; Pessoal</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Informações utilizadas na formatação dos laudos periciais e identificação de autoria.</p>
+</div>
+<span class="px-space-sm py-1 rounded-full bg-surface-container-high text-on-secondary-fixed font-code-sm text-code-sm font-semibold">UFRJ #90218</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-lg">
+<!-- Campo: Nome Completo -->
+<div class="flex flex-col gap-space-2xs bg-surface-container-low p-space-md rounded-xl">
+<label class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Nome Completo</label>
+<span class="font-body-lg text-body-lg text-on-surface font-medium">Dr. Marcelo Silva</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Registrado de acordo com credenciais Lattes/MEC</span>
+</div>
+<!-- Campo: E-mail Institucional -->
+<div class="flex flex-col gap-space-2xs bg-surface-container-low p-space-md rounded-xl">
+<div class="flex items-center justify-between">
+<label class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">E-mail Institucional</label>
+<span class="inline-flex items-center gap-1 font-code-sm text-code-sm text-on-tertiary-container">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary-fixed-dim"></span>
+                    Validado via SSO UFRJ
+                  </span>
+</div>
+<span class="font-body-lg text-body-lg text-on-surface font-medium font-code-sm">marcelo.silva@ufrj.br</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Utilizado para recebimento de alertas e notificações formais</span>
+</div>
+<!-- Campo: Lattes / ORCID -->
+<div class="flex flex-col gap-space-2xs bg-surface-container-low p-space-md rounded-xl">
+<div class="flex items-center justify-between">
+<label class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">ORCID &amp; Currículo Lattes</label>
+<span class="text-secondary hover:underline cursor-pointer font-label-sm text-label-sm flex items-center gap-0.5">
+                    Sincronizar
+                    <span class="material-symbols-outlined text-xs">sync</span>
+</span>
+</div>
+<div class="flex items-center gap-space-xs mt-1">
+<span class="w-5 h-5 rounded-full bg-[#A6CE39] text-white flex items-center justify-center font-bold text-xs">iD</span>
+<a class="font-code-sm text-code-sm text-secondary hover:underline font-semibold" href="https://orcid.org/0000-0002-1825-0097" rel="noopener noreferrer" target="_blank">
+                    orcid.org/0000-0002-1825-0097
+                  </a>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant mt-1">Lattes ID: 8192038491823901 (Atualizado em 10/2024)</span>
+</div>
+<!-- Campo: Área de Atuação -->
+<div class="flex flex-col gap-space-2xs bg-surface-container-low p-space-md rounded-xl">
+<label class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Área de Atuação &amp; Pesquisa</label>
+<span class="font-body-md text-body-md text-on-surface font-semibold leading-snug">
+                  Bioética, Inteligência Artificial &amp; Saúde Coletiva
+                </span>
+<div class="flex flex-wrap gap-space-2xs mt-space-2xs">
+<span class="px-space-xs py-0.5 rounded bg-surface-container-high text-on-primary-fixed-variant font-label-sm text-label-sm">CNPq Grande Área: Saúde</span>
+<span class="px-space-xs py-0.5 rounded bg-surface-container-high text-on-primary-fixed-variant font-label-sm text-label-sm">Ética em Algoritmos</span>
+</div>
+</div>
+</div>
+<!-- Rodapé da seção de dados com auditoria -->
+<div class="mt-space-lg pt-space-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-space-xs text-on-surface-variant font-body-sm text-body-sm">
+<span class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-base text-secondary">history</span>
+                Última sincronização acadêmica via CAPES Sucupira: 14 de Novembro de 2024, 11:20
+              </span>
+<button class="text-secondary hover:text-on-surface font-label-md text-label-md font-semibold transition-colors" type="button">
+                Solicitar alteração cadastral institucional →
+              </button>
+</div>
+</div>
+</section>
+<!-- SEÇÃO 2: PREFERÊNCIAS DE REVISÃO ABNT -->
+<section class="tab-panel hidden flex flex-col gap-space-lg" id="tab-abnt">
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg md:p-space-xl">
+<div class="mb-space-lg">
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Parâmetros Padrão do Motor ABNT</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Configurações aplicadas automaticamente a todos os novos artigos e teses carregados para conferência.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-lg">
+<!-- Configuração: Norma Padrão -->
+<div class="bg-surface-container-low p-space-md rounded-xl flex flex-col justify-between gap-space-sm">
+<div class="flex flex-col gap-space-2xs">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-secondary">menu_book</span>
+<label class="font-label-md text-label-md text-on-surface font-semibold" for="select-norma">Norma Padrão de Estruturação</label>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Define os elementos pré-textuais, textuais e pós-textuais exigidos na auditoria do documento.</p>
+</div>
+<div class="relative">
+<select class="w-full bg-surface-container-lowest text-on-surface font-label-md text-label-md py-space-xs px-space-sm rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-secondary/30 appearance-none cursor-pointer" id="select-norma">
+<option selected="" value="14724">NBR 14724:2011 (Trabalhos Acadêmicos - Teses e Dissertações)</option>
+<option value="6022">NBR 6022:2018 (Artigos em Publicações Periódicas)</option>
+<option value="10719">NBR 10719:2015 (Relatórios Técnico-Científicos)</option>
+<option value="capes">Diretriz Específica CAPES / PPGICS UFRJ</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-base">expand_more</span>
+</div>
+</div>
+<!-- Configuração: Estilo de Citação -->
+<div class="bg-surface-container-low p-space-md rounded-xl flex flex-col justify-between gap-space-sm">
+<div class="flex flex-col gap-space-2xs">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-secondary">format_quote</span>
+<label class="font-label-md text-label-md text-on-surface font-semibold" for="select-citacao">Sistema de Citação Padrão</label>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Formato interpretado no corpo do texto para correspondência com a bibliografia final.</p>
+</div>
+<div class="relative">
+<select class="w-full bg-surface-container-lowest text-on-surface font-label-md text-label-md py-space-xs px-space-sm rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-secondary/30 appearance-none cursor-pointer" id="select-citacao">
+<option selected="" value="10520-autor-data">Autor-Data (NBR 10520:2023 - Versão Atualizada)</option>
+<option value="10520-numerico">Sistema Numérico [1] (NBR 10520:2023)</option>
+<option value="vancouver">Normas de Vancouver (Área Médica / Bioética)</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-base">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Toggles de Automação IA -->
+<div class="mt-space-lg flex flex-col gap-space-md">
+<h4 class="font-label-md text-label-md text-on-surface font-semibold uppercase tracking-wider">Gatilhos de Automação &amp; Inteligência</h4>
+<div class="space-y-space-xs">
+<!-- Toggle 1: Notificação de Análise Concluída -->
+<label class="bg-surface-container-low p-space-md rounded-xl flex items-center justify-between cursor-pointer hover:bg-surface-container transition-colors">
+<div class="flex items-start gap-space-md">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-secondary shrink-0 mt-0.5">
+<span class="material-symbols-outlined">mark_email_read</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-semibold">Notificações por e-mail quando a análise por IA for concluída</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Envia um resumo executivo com percentual de adequação e link direto para o laudo pericial.</span>
+</div>
+</div>
+<div class="relative inline-flex items-center shrink-0 ml-space-md">
+<input checked="" class="sr-only peer" id="toggle-notifications" type="checkbox"/>
+<div class="w-11 h-6 bg-outline-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-secondary"></div>
+</div>
+</label>
+<!-- Toggle 2: Cruzamento Automático de Referências -->
+<label class="bg-surface-container-low p-space-md rounded-xl flex items-center justify-between cursor-pointer hover:bg-surface-container transition-colors">
+<div class="flex items-start gap-space-md">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-secondary shrink-0 mt-0.5">
+<span class="material-symbols-outlined">link</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-semibold">Cruzamento automático de referências (NBR 6023 x NBR 10520)</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Aponta citações no corpo do texto que não constam nas Referências finais e vice-versa instantaneamente.</span>
+</div>
+</div>
+<div class="relative inline-flex items-center shrink-0 ml-space-md">
+<input checked="" class="sr-only peer" id="toggle-crossref" type="checkbox"/>
+<div class="w-11 h-6 bg-outline-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-secondary"></div>
+</div>
+</label>
+</div>
+</div>
+<!-- Botão Salvar Preferências -->
+<div class="mt-space-lg flex justify-end">
+<button class="px-space-md py-space-xs bg-primary text-on-primary rounded-lg font-label-md text-label-md hover:bg-primary-container transition-colors shadow-sm flex items-center gap-space-2xs" type="button">
+<span class="material-symbols-outlined text-base">check</span>
+                Salvar Preferências ABNT
+              </button>
+</div>
+</div>
+</section>
+<!-- SEÇÃO 3: SEGURANÇA E PRIVACIDADE (RNF03/RNF04) -->
+<section class="tab-panel hidden flex flex-col gap-space-lg" id="tab-security">
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg md:p-space-xl">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-space-xs mb-space-lg">
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Segurança da Informação e Privacidade LGPD</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Em estrito cumprimento aos requisitos de segurança institucional RNF03 (Criptografia &amp; 2FA) e RNF04 (Privacidade e Retenção LGPD).</p>
+</div>
+<span class="inline-flex items-center gap-space-2xs px-space-sm py-1 rounded-full bg-tertiary-fixed/30 text-on-tertiary-container font-label-sm text-label-sm font-semibold">
+<span class="material-symbols-outlined text-sm">security</span>
+                Conformidade RNF03/RNF04 Ativa
+              </span>
+</div>
+<div class="space-y-space-md">
+<!-- 2FA Box -->
+<div class="bg-surface-container-low p-space-md rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-space-md">
+<div class="flex items-start gap-space-md">
+<div class="w-10 h-10 rounded-lg bg-tertiary-container text-tertiary-fixed flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined">fingerprint</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs">
+<span class="font-label-md text-label-md text-on-surface font-semibold">Autenticação em Duas Etapas (2FA)</span>
+<span class="px-space-xs py-0.5 rounded bg-tertiary-fixed/40 text-on-tertiary-container font-label-sm text-label-sm font-semibold">Ativada</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">Protegido via App Autenticador (TOTP) vinculado ao smartphone pessoal.</span>
+</div>
+</div>
+<button class="px-space-sm py-space-xs bg-surface-container-lowest text-on-surface font-label-md text-label-md rounded-lg shadow-sm hover:bg-surface-container transition-colors shrink-0" type="button">
+                  Gerenciar chaves 2FA
+                </button>
+</div>
+<!-- Sessões Ativas -->
+<div class="bg-surface-container-low p-space-md rounded-xl flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-secondary">devices</span>
+<span class="font-label-md text-label-md text-on-surface font-semibold">Histórico de Sessões Ativas</span>
+</div>
+<button class="font-label-sm text-label-sm text-error hover:underline" type="button">
+                    Desconectar de todas as outras sessões
+                  </button>
+</div>
+<div class="space-y-space-xs mt-space-xs">
+<!-- Sessão Atual -->
+<div class="bg-surface-container-lowest p-space-sm rounded-lg flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-on-tertiary-container">laptop_mac</span>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-medium">Navegador Atual • Chrome no macOS</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant font-code-sm">Rio de Janeiro, RJ • IP: 146.164.***.*** (Rede UFRJ)</span>
+</div>
+</div>
+<span class="px-space-xs py-0.5 rounded bg-surface-container-high text-secondary font-label-sm text-label-sm font-semibold">Esta Sessão</span>
+</div>
+<!-- Outra Sessão -->
+<div class="bg-surface-container-lowest p-space-sm rounded-lg flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-on-surface-variant">smartphone</span>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-medium">Safari no iOS 17</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant font-code-sm">Rio de Janeiro, RJ • Ativo há 4 horas</span>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-error transition-colors p-1" title="Encerrar esta sessão" type="button">
+<span class="material-symbols-outlined text-base">close</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Ações Amigáveis de Segurança & LGPD -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-md pt-space-xs">
+<!-- Card Alterar Senha -->
+<div class="bg-surface-container-low p-space-md rounded-xl flex flex-col justify-between gap-space-md">
+<div class="flex items-start gap-space-sm">
+<div class="w-9 h-9 rounded-lg bg-surface-container-high flex items-center justify-center text-secondary shrink-0">
+<span class="material-symbols-outlined text-lg">password</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-semibold">Alterar Senha de Acesso</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Última troca realizada há 42 dias. Recomenda-se rotação periódica.</span>
+</div>
+</div>
+<button class="w-full py-space-xs px-space-md bg-surface-container-lowest hover:bg-surface-container text-on-surface font-label-md text-label-md rounded-lg shadow-sm transition-colors flex items-center justify-center gap-space-2xs" type="button">
+<span class="material-symbols-outlined text-base">lock_reset</span>
+                    Alterar Senha
+                  </button>
+</div>
+<!-- Card LGPD Exportação de Dados -->
+<div class="bg-surface-container-low p-space-md rounded-xl flex flex-col justify-between gap-space-md">
+<div class="flex items-start gap-space-sm">
+<div class="w-9 h-9 rounded-lg bg-surface-container-high flex items-center justify-center text-secondary shrink-0">
+<span class="material-symbols-outlined text-lg">download_for_offline</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-semibold">Exportar Todos os Meus Dados (LGPD)</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Baixe um arquivo criptografado contendo seus relatórios, laudos periciais e histórico de revisões.</span>
+</div>
+</div>
+<button class="w-full py-space-xs px-space-md bg-surface-container-lowest hover:bg-surface-container text-on-surface font-label-md text-label-md rounded-lg shadow-sm transition-colors flex items-center justify-center gap-space-2xs" type="button">
+<span class="material-symbols-outlined text-base">cloud_download</span>
+                    Solicitar Pacote de Dados (.zip)
+                  </button>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</div>
+</div>
+<!-- Modal Interativo: Editar Dados Rápidos -->
+<div class="hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-space-md" id="edit-modal">
+<div class="bg-surface-container-lowest rounded-xl max-w-lg w-full p-space-lg shadow-xl flex flex-col gap-space-md animate-fade-in">
+<div class="flex items-center justify-between pb-space-xs">
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Editar Dados Cadastrais</h3>
+<button class="text-on-surface-variant hover:text-on-surface p-1" onclick="document.getElementById('edit-modal').classList.add('hidden')" type="button">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<form class="flex flex-col gap-space-md" onsubmit="event.preventDefault(); document.getElementById('edit-modal').classList.add('hidden');">
+<div class="flex flex-col gap-space-2xs">
+<label class="font-label-md text-label-md text-on-surface">Nome de Exibição Acadêmico</label>
+<input class="bg-surface-container-low px-space-sm py-space-xs rounded-lg font-body-md text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/30" type="text" value="Dr. Marcelo Silva"/>
+</div>
+<div class="flex flex-col gap-space-2xs">
+<label class="font-label-md text-label-md text-on-surface">Vínculo Institucional / Cargo</label>
+<input class="bg-surface-container-low px-space-sm py-space-xs rounded-lg font-body-md text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/30" type="text" value="Professor Adjunto &amp; Pesquisador"/>
+</div>
+<div class="flex flex-col gap-space-2xs">
+<label class="font-label-md text-label-md text-on-surface">Instituição de Ensino Superior</label>
+<input class="bg-surface-container-low px-space-sm py-space-xs rounded-lg font-body-md text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/30" type="text" value="Universidade Federal do Rio de Janeiro (UFRJ)"/>
+</div>
+<div class="flex justify-end gap-space-xs pt-space-xs">
+<button class="px-space-md py-space-xs rounded-lg font-label-md text-label-md text-on-surface-variant hover:bg-surface-container" onclick="document.getElementById('edit-modal').classList.add('hidden')" type="button">
+            Cancelar
+          </button>
+<button class="px-space-md py-space-xs bg-primary text-on-primary rounded-lg font-label-md text-label-md hover:bg-primary-container transition-colors shadow-sm" type="submit">
+            Salvar Alterações
+          </button>
+</div>
+</form>
+</div>
+</div>
+<!-- JavaScript para controle simples e acessível das abas -->
+<script>
+    function switchTab(tabId) {
+      // Hide all panels
+      document.querySelectorAll('.tab-panel').forEach(function(panel) {
+        panel.classList.add('hidden');
+      });
+      // Show selected panel
+      const targetPanel = document.getElementById(tabId);
+      if (targetPanel) {
+        targetPanel.classList.remove('hidden');
+      }
+
+      // Reset all tab button styles
+      document.querySelectorAll('.tab-trigger').forEach(function(btn) {
+        btn.className = 'tab-trigger flex items-center gap-space-xs px-space-md py-space-xs rounded-lg font-label-md text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all';
+      });
+
+      // Activate clicked tab
+      let activeBtnId = 'tab-btn-academic';
+      if (tabId === 'tab-abnt') activeBtnId = 'tab-btn-abnt';
+      if (tabId === 'tab-security') activeBtnId = 'tab-btn-security';
+
+      const activeBtn = document.getElementById(activeBtnId);
+      if (activeBtn) {
+        activeBtn.className = 'tab-trigger flex items-center gap-space-xs px-space-md py-space-xs rounded-lg font-label-md text-label-md bg-surface-container-lowest text-on-surface shadow-sm font-semibold transition-all';
+      }
+    }
+  </script>
+</div></main><footer class="w-full bg-surface-container-lowest py-space-sm px-space-lg shadow-[0_-1px_6px_rgba(0,0,0,0.02)]"><div class="w-full flex flex-col md:flex-row items-center justify-between gap-space-xs text-on-surface-variant font-label-sm text-label-sm"><span>© 2024 NormaReview AI • Plataforma de Auditoria e Conformidade Acadêmica</span><div class="flex items-center gap-space-md font-code-sm text-code-sm text-on-surface-variant"><span class="flex items-center gap-space-2xs"><span class="w-1.5 h-1.5 rounded-full bg-tertiary-fixed-dim"></span>NBR 14724:2011 (Trabalhos Acadêmicos)</span><span class="flex items-center gap-space-2xs"><span class="w-1.5 h-1.5 rounded-full bg-tertiary-fixed-dim"></span>NBR 10520:2023 (Citações)</span><span class="flex items-center gap-space-2xs"><span class="w-1.5 h-1.5 rounded-full bg-tertiary-fixed-dim"></span>NBR 6023:2018 (Referências)</span></div></div></footer></body></html>
