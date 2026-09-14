@@ -1,52 +1,61 @@
 {
   "project": {
-    "title": "NormaReview AI - Sprints",
-    "description": "Sprints do NormaReview AI organizadas a partir do Cérebro do Projeto e dos planos em docs/06-sprint-*.md.\n\nRepositório: JulioCesarLinss/Revisor-de-Artigos\n\nStatus das sprints:\n- Sprint 0: concluída no plano\n- Sprint 1: concluída no plano\n- Sprint 2: planificada\n- Sprint 3: planificada\n\nPróximo passo: definir se avança pela Sprint 2 ou pela Sprint 3.\n\nSource: CEREBRO_PROJETO.md, docs/01-backlog.md, docs/06-sprint-*.md"
+    "url": "https://github.com/users/JulioCesarLinss/projects/1",
+    "owner": "JulioCesarLinss",
+    "number": 1,
+    "title": "NormaReview AI — Sprints",
+    "description": "Sprints do NormaReview AI (Revisor-de-Artigos ABNT) organizadas a partir do [[Cérebro do Projeto]] e dos planos em docs/06-sprint-*.md",
+    "repo": "JulioCesarLinss/Revisor-de-Artigos",
+    "layout": "kanban (board)",
+    "source_of_truth": "CEREBRO_PROJETO.md + docs/06-sprint-0-plan.md, docs/06-sprint-1-plan.md, docs/06-sprint-2-plan.md, docs/06-sprint-3-plan.md"
   },
-  "columns": [
+  "status_field": {
+    "name": "Status",
+    "options": [
+      { "column": "📋 Backlog", "meaning": "Sprints ainda sem plano próprio (só escopo sugerido no CEREBRO)" },
+      { "column": "🗓️ Planificada", "meaning": "Plano documental publicado em docs/06-sprint-N-plan.md; execução não iniciada" },
+      { "column": "🚧 Em execução", "meaning": "Sprint em andamento (código/doc sendo produzido)" },
+      { "column": "✅ Feito (plano)", "meaning": "Ciclo encerrado no nível documental, como já feito na Sprint 0 e na Sprint 1" }
+    ]
+  },
+  "cards": [
     {
-      "name": "Backlog do Projeto",
-      "items": [
-        {
-          "title": "Sprint 0 — Fundação e Alinhamento",
-          "body": "Objetivo: definir escopo mínimo, arquitetura inicial, convenções e capacidade básica de entrega.\n\nEntregáveis:\n- [[Cérebro do Projeto]]\n- [[Lean Canvas do Projeto]]\n- [[Backlog v1]] priorizado\n- [[Arquitetura por Módulos]]\n- [[Decisões Técnicas]]\n- [[Guia de Contribuição]]\n- [[Plan Sprint 0]]\n\nEstado: concluída no plano."
-        },
-        {
-          "title": "Sprint 4 — Fluxo de Revisão Guiada",
-          "body": "Objetivo: transformar a ferramenta em um processo, não apenas um relatório.\n\nEscopo sugerido:\n- Rascunho, revisão, versão final\n- Comparação lado a lado original × sugerido\n- Histórico de revisões e estados\n- Precisão e feedback do usuário\n\nCritérios de aceitação:\n- O usuário pode conduzir uma revisão do início ao fim\n- Alterações são versionadas internamente\n- O fluxo reduz a carga cognitiva em vez de aumentá-la"
-        },
-        {
-          "title": "Sprint 5 — Polimento, Qualidade e Entrega",
-          "body": "Objetivo: levantar a qualidade geral, usabilidade e confiabilidade antes de expansão.\n\nEscopo sugerido:\n- Testes de usabilidade com tarefas reais\n- Testes de qualidade automatizados\n- Tratamento de erros e estados vazios\n- Ajustes de UX, copy e acessibilidade\n- Documentação v1 para manutenção\n\nCritérios de aceitação:\n- A ferramenta funciona de modo previsível nos caminhos principais\n- Problemas críticos têm tratamento claro\n- Novas pessoas conseguem ler o Cérebro do Projeto e entender o sistema"
-        }
-      ]
+      "title": "Sprint 0 — Fundação e Alinhamento",
+      "status": "✅ Feito (plano)",
+      "body": "**Objetivo**: definir escopo mínimo, arquitetura inicial, convenções e capacidade básica de entrega.\n\n**Entregáveis**: Lean Canvas, Backlog v1, estrutura base de módulos, glossário, guia de contribuição, Plan Sprint 0.\n\n**Critérios**: equipe entende problema/usuário/MVP; esqueleto do projeto existe; decisões de módulos documentadas.\n\n**Estado**: concluída no plano. Fonte: `docs/06-sprint-0-plan.md`."
     },
     {
-      "name": "Próximas Sprints",
-      "items": [
-        {
-          "title": "Sprint 2 — Motor de Regras Normativas",
-          "body": "Objetivo: consolidar validações determinísticas e torná-las úteis para o usuário real.\n\nEscopo:\n- Separação entre [[Regras ABNT / Regra Normativa]] e assistência por IA\n- Catálogo inicial de regras\n- Relatório de conformidade por seção\n- Navegação até o trecho problemas\n\nCritérios de aceitação:\n- Cada regra tem mensagem, origem/norma de referência e severidade\n- O usuário entende o que está errado e onde\n- Correções manuais refletem na análise\n\nEstado: planificado em docs/06-sprint-2-plan.md. Não iniciada."
-        },
-        {
-          "title": "Sprint 3 — Assistência por IA",
-          "body": "Objetivo: introduzir sugestões inteligentes sem confundir o usuário com regras automáticas.\n\nEscopo:\n- Sugestões de reescrita pontual\n- Explicação contextual da regra infringida\n- Aplicação controlada de sugestões: aceitar / editar / ignorar\n\nCritérios de aceitação:\n- IA aparece como assistente, não como juiz normativo\n- O usuário pode rastrear o que foi alterado\n- O sistema permanece útil mesmo quando a IA não responde como esperado\n\nEstado: planificado em docs/06-sprint-3-plan.md. Não iniciada."
-        }
-      ]
+      "title": "Sprint 1 — MVP de Revisão Manual",
+      "status": "✅ Feito (plano)",
+      "body": "**Objetivo**: permitir que o usuário submeta um texto/Manuscrito, visualize problemas e faça correções manuais.\n\n**Escopo**: upload/colagem de conteúdo; renderização básica; primeira classe de verificações; lista de problemas com severidade; correção manual.\n\n**Critérios**: importar texto e ver análise preliminar; problemas legíveis e acionáveis; sem perda de conteúdo.\n\n**Estado**: concluída no plano, escopo restrito ao CEREBRO. Fonte: `docs/06-sprint-1-plan.md`."
     },
     {
-      "name": "Feito — Documentação/Plano",
-      "items": [
-        {
-          "title": "Sprint 1 — MVP de Revisão Manual",
-          "body": "Objetivo: permitir que o usuário submeta um texto/Manuscrito, visualize problemas identificados e faça correções manuais.\n\nEscopo:\n- Upload ou colagem de conteúdo acadêmico\n- Renderização básica do documento/Manuscrito\n- Primeira classe de verificações\n- Lista de problemas com severidade\n- Ações de correção manual\n\nCritérios de aceitação:\n- O usuário consegue importar um texto e ver uma análise preliminar\n- Problemas são apresentados de forma legível e ação\n- Não há perda de conteúdo durante o fluxo básico\n\nEstado: concluída no plano em docs/06-sprint-1-plan.md. Escopo restrito ao já definido no Cérebro do Projeto."
-        }
-      ]
+      "title": "Sprint 2 — Motor de Regras Normativas",
+      "status": "🗓️ Planificada",
+      "body": "**Objetivo**: consolidar validações determinísticas e torná-las úteis para o usuário real.\n\n**Escopo**: separação entre Regras ABNT e assistência IA; catálogo inicial de regras; relatório de conformidade por seção; navegação até o trecho com problema.\n\n**Critérios**: cada regra tem mensagem, origem/norma e severidade; usuário entende o que está errado e onde; correções manuais refletem na análise.\n\n**Estado**: planificada em `docs/06-sprint-2-plan.md`, não iniciada. Próximo ciclo em ordem."
+    },
+    {
+      "title": "Sprint 3 — Assistência por IA",
+      "status": "🗓️ Planificada",
+      "body": "**Objetivo**: introduzir sugestões inteligentes sem confundir o usuário com regras automáticas.\n\n**Escopo**: sugestões de reescrita pontual; explicação contextual da regra infringida; aplicação controlada (aceitar / editar / ignorar).\n\n**Critérios**: IA como assistente, não juiz normativo; alterações rastreáveis; sistema útil mesmo sem IA.\n\n**Estado**: planificada em `docs/06-sprint-3-plan.md`. Entra após a Sprint 2 (ver DC-12/DC-13 em docs/03-decisoes-tecnologias.md)."
+    },
+    {
+      "title": "Sprint 4 — Fluxo de Revisão Guiada",
+      "status": "📋 Backlog",
+      "body": "**Objetivo**: transformar a ferramenta em um processo, não apenas um relatório.\n\n**Escopo sugerido**: rascunho → revisão → versão final; comparação lado a lado; histórico de revisões; feedback do usuário.\n\n**Critérios**: revisão conduzida do início ao fim; alterações versionadas; fluxo reduz carga cognitiva.\n\n**Estado**: escopo sugerido no [[Cérebro do Projeto]]; sem plano próprio ainda."
+    },
+    {
+      "title": "Sprint 5 — Polimento, Qualidade e Entrega",
+      "status": "📋 Backlog",
+      "body": "**Objetivo**: levantar qualidade geral, usabilidade e confiabilidade antes de expansão.\n\n**Escopo sugerido**: testes de usabilidade com tarefas reais; testes de qualidade automatizados; tratamento de erros e estados vazios; ajustes de UX/copy/acessibilidade; documentação v1.\n\n**Critérios**: comportamento previsível nos caminhos principais; problemas críticos tratados; novas pessoas entendem o sistema pelo CEREBRO.\n\n**Estado**: escopo sugerido no [[Cérebro do Projeto]]; sem plano próprio ainda."
     }
   ],
-  "notes": [
-    "Essa estrutura deve ser importada no GitHub Projects pertencente à conta que possui o projeto https://github.com/users/JulioCesarLinss/projects/1/views/1.",
-    "Este workspace não conseguiu acessar o projeto pelo gh nas tentativas anteriores; por isso, não foi possível criar ou editar itens diretamente no projeto.",
-    "Cada item aqui representa uma sprint ou uma área de trabalho, não uma tarefa separada dentro do projeto."
-  ]
+  "import": {
+    "note": "O projeto GitHub não é visível pela credencial gerenciada do Freebuff (App escopado ao repositório), então a criação dos cards precisa ser feita por uma sessão gh autenticada como o dono do projeto. O script abaixo faz isso automaticamente.",
+    "script": "scripts/sync-github-project.sh",
+    "prerequisites": [
+      "gh autenticado como JulioCesarLinss (ou conta com acesso de admin ao project 1)",
+      "Escopo 'project' disponível na sessão gh (gh auth refresh -s project, se necessário)"
+    ]
+  }
 }
