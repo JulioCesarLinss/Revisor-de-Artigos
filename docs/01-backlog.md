@@ -80,6 +80,16 @@ Este backlogLista tarefas pendentes para a próxima versão do produto. Foi divi
 
 **Risco observado**: a IA pode parecer útil e ainda assim gerar confiança indevida. O sistema deve deixar claro que a decisão editorial continua com o usuário.
 
+### 5.1 Sprint 3 — Sugestões assistidas e rastro
+
+- [ ] **P1** — Entregar sugestão de reescrita pontual por assistência IA.
+- [ ] **P1** — Explicar o contexto da regra infringida quando a sugestão estiver associada a ela.
+- [ ] **P1** — Oferecer aceitar / editar / ignorar de forma controlada.
+- [ ] **P1** — Registrar o que foi alterado por sugestão IA, de forma distinguível da correção manual.
+- [ ] **P2** — Tratar indisponibilidade e qualidade variável sem quebrar o fluxo principal.
+
+**Nota de escopo**: este ciclo atende diretamente o objetivo da [[Sprint 3 — Assistência por IA]], sem adicionar nada além do que já está definido no [[Cérebro do Projeto]].
+
 ---
 
 ## 6. Interface e usabilidade
@@ -114,6 +124,15 @@ Para poder executar a Sprint 1 com clareza, espera-se que existam definidos:
 - Um glossário compartilhável: [[Glossário]].
 - Decisões básicas registradas: [[Decisões Técnicas]].
 - Um esqueleto de módulos aceito pela equipe: [[Arquitetura por Módulos]].
+
+## Critérios de prontidão para a Sprint 2
+
+Para poder executar a Sprint 2 com clareza, espera-se que existam definidos:
+
+- Um catálogo de regras com mensagem, severidade e referência.
+- Um motor de análise que aplique as regras ao documento.
+- Um relatório de conformidade por seção.
+- Navegação até o trecho problema.
 
 ---
 

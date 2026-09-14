@@ -104,3 +104,19 @@
 - Decisão: a Sprint 2 entrega motor de regras normativas, com separação clara entre regra e assistência IA, mas sem implementar a assistência IA ainda.
 - Por quê: o [[Cérebro do Projeto]] já define esse como o próximo passo de consolidação determinística e evita misturar comportamentos antes do necessário.
 - Consequência: a Sprint 2 foca em catálogo, relatório e navegação até o trecho problema, enquanto a IA permanece como assunto para Sprint 3.
+
+---
+
+## DC-12 — Ordem de execução das sprints
+
+- Decisão: o próximo ciclo deve seguir a ordem das sprints pendentes e não pular etapas sem motivo documentado.
+- Por quê: o repositório já tem Sprint 0 encerrada no plano, Sprint 1 como a próxima pendente e Sprint 2 com plano restrito ao já definido no [[Cérebro do Projeto]].
+- Consequência: a decisão de continuar pela Sprint 1 ou pela Sprint 2 deve ser tomada de forma explícita, e qualquer desvio deve ser registrado como decisão e não como avanço silencioso.
+
+---
+
+## DC-13 — Sprint 3 como assistência, não como substituto de regra
+
+- Decisão: a Sprint 3 introduz assistência por IA como sugestão controlada, com explicação e rastro, mas não confunde a IA com juiz normativo.
+- Por quê: o [[Cérebro do Projeto]] já deixa essa separação explícita e evita que a IA venha a substituir a base determinística no momento errado.
+- Consequência: mesmo quando a IA estiver presente, as regras continuam sendo a referência primária para o que é exigência normativa.

@@ -110,7 +110,49 @@
 - O usuário entende o que está errado e onde.
 - Correções manuais refletem na análise.
 
-**Estado**: planificado em `docs/06-sprint-2-plan.md` com escopo restrito ao já definido no [[Cérebro do Projeto]].
+**Estado**: planificado em `docs/06-sprint-2-plan.md` com escopo restrito ao já definido no [[Cérebro do Projeto]]. Não iniciada.
+
+---
+
+## 1. Sprint 1 — MVP de Revisão Manual
+
+**Objetivo**: permitir que o usuário submeta um texto/Manuscrito, visualize problemas identificados e faça correções manuais.
+
+**Escopo**:
+- Upload ou colagem de conteúdo acadêmico.
+- Renderização básica do documento/Manuscrito.
+- Primeira classe de verificações (ex.: estrutura básica, problemas óbvios de formatação).
+- Lista de problemas com severidade.
+- Ações de correção manual.
+
+**Critérios de aceitação**:
+- O usuário consegue importar um texto e ver uma análise preliminar.
+- Problemas são apresentados de forma legível e ação.
+- Não há perda de conteúdo durante o fluxo básico.
+
+**Estado**: próxima sprint pendente em ordem. Plano documental criado em `docs/06-sprint-1-plan.md` como preparação, sem assumir que o projeto já segue outra base.
+
+---
+
+## 0. Sprint 0 — Fundação e Alinhamento
+
+**Objetivo**: definir escopo mínimo, arquitetura inicial, convenções e capacidade básica de entrega.
+
+**Entregáveis**:
+- [[Lean Canvas do Projeto]] ou documento equivalente.
+- [[Backlog v1]] priorizado.
+- Definição de pasta/módulos base.
+- [[Configuração Inicial do Projeto]].
+- [[Glossário]].
+- [[Guia de Contribuição]].
+- [[Plan Sprint 0]].
+
+**Critérios de sucesso**:
+- Equipe entende o problema, o usuário e o MVP.
+- Existe um esqueleto do projeto que compila/executa conforme o planejamento.
+- As decisões de módulos estão documentadas em [[Decisões Técnicas]].
+
+**Estado**: concluída no plano. Entregáveis de documentação e estrutura já publicados.
 
 ---
 
@@ -127,6 +169,41 @@
 - IA aparece como assistente, não como juiz normativo.
 - O usuário pode rastrear o que foi alterado.
 - O sistema permanece útil mesmo quando a IA não responde como esperado.
+
+---
+
+## 4. Sprint 4 — Fluxo de Revisão Guiada
+
+**Objetivo**: transformar a ferramenta em um processo, não apenas um relatório.
+
+**Escopo sugerido**:
+- Rascunho, revisão, versão final.
+- Comparação lado a lado original × sugerido.
+- Histórico de revisões e estados.
+- Precisão e feedback do usuário ("isso ajudou?") para refinamento.
+
+**Critérios de aceitação**:
+- O usuário pode conduzir uma revisão do início ao fim.
+- Alterações são versionadas internamente.
+- O fluxo reduz a carga cognitiva em vez de aumentá-la.
+
+---
+
+## 5. Sprint 3 — Assistência por IA
+
+**Objetivo**: introduzir sugestões inteligentes sem confundir o usuário com regras automáticas.
+
+**Escopo**:
+- Sugestões de reescrita pontual.
+- Explicação contextual da regra infringida.
+- Aplicação controlada de sugestões (aceitar / editar / ignorar).
+
+**Critérios de aceitação**:
+- IA aparece como assistente, não como juiz normativo.
+- O usuário pode rastrear o que foi alterado.
+- O sistema permanece útil mesmo quando a IA não responde como esperado.
+
+**Estado**: planificado em `docs/06-sprint-3-plan.md` com escopo restrito ao já definido no [[Cérebro do Projeto]].
 
 ---
 
@@ -409,11 +486,15 @@ Responsáveis por verificar que o sistema é útil para o usuário real.
 
 > 📢 Sprint realizada: [[Plan Sprint 0]]
 
-## Status da Sprint 0
+> 📢 Sprint realizada: [[Plan Sprint 1]] e [[Plan Sprint 3]]
 
-- **Estado atual**: conduzida com condução própria — o usuário pediu continuar a Sprint 0 e, depois, deixou claro que eu devo tomar a iniciativa.
-- **Decisão tomada**: consolidar a documentação e o plano do projeto antes de entrar em código, mantendo a Sprint 0 focada em fundação e não em implementação dispersa.
-- **Próximo desfecho**: fechar a Sprint 0 com os entregáveis já existentes e mais a documentação de condução/manutenção do projeto (convenções, critério de qualidade e usabilidade, estrutura para acompanhar evolução).
+
+
+- **Sprint 0**: concluída no plano. Entregáveis de documentação e estrutura já publicados.
+- **Sprint 1**: concluída no plano com base no escopo já definido no [[Cérebro do Projeto]].
+- **Sprint 2**: planejada em `docs/06-sprint-2-plan.md`; o escopo permanece restrito ao já definido no [[Cérebro do Projeto]].
+- **Sprint 3**: planificada em `docs/06-sprint-3-plan.md`; o escopo permanece restrito ao já definido no [[Cérebro do Projeto]].
+- **Próximo desfecho**: avançar para a Sprint 2 se o objetivo for consolidar primeiro o motor de regras, ou ir direto para a Sprint 3 se a prioridade for introduzir a assistência por IA a partir do que já está definido.
 
 ---
 
