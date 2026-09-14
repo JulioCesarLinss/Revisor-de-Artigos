@@ -46,6 +46,17 @@ Este backlogLista tarefas pendentes para a próxima versão do produto. Foi divi
 
 **Risco observado**: regras muito específicas cedo podem gerar falsos problemas ou dívida de especialização. O catálogo inicial deve ser pequeno e útil.
 
+### 3.1 Sprint 2 — Catálogo inicial e relatório
+
+- [ ] **P0** — Entregar catálogo inicial de regras com id, título, severidade, mensagem e referência.
+- [ ] **P0** — Aplicar as regras ao documento e emitir lista de problemas estruturada.
+- [ ] **P0** — Relatório de conformidade por seção.
+- [ ] **P0** — Navegação até o trecho problema.
+- [ ] **P1** — Diferenciar visual/semânticamente problemas normativos de futuras sugestões IA.
+- [ ] **P1** — Garantir que correções manuais reflitam na análise.
+
+**Nota de escopo**: este ciclo atende diretamente o objetivo da [[Sprint 2 — Motor de Regras Normativas]], sem adicionar nada além do que já está definido no [[Cérebro do Projeto]].
+
 ---
 
 ## 4. Edição e fluxo de revisão

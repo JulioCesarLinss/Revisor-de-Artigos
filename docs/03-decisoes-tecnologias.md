@@ -91,8 +91,16 @@
 
 ---
 
-## DC-10 — Limitar dependências de 오늘
+## DC-10 — Limitar dependências de hoje
 
 - Decisão: não incorporar dependências pesadas só porque são modernas.
 - Por quê: o projeto ainda está buscando forma e o custo de troca pode ser alto.
 - Consequência: escolhas de ferramenta são preferidas por simplicidade de manutenção, não por modismo.
+
+---
+
+## DC-11 — Sprint 2: regra primeiro, IA depois
+
+- Decisão: a Sprint 2 entrega motor de regras normativas, com separação clara entre regra e assistência IA, mas sem implementar a assistência IA ainda.
+- Por quê: o [[Cérebro do Projeto]] já define esse como o próximo passo de consolidação determinística e evita misturar comportamentos antes do necessário.
+- Consequência: a Sprint 2 foca em catálogo, relatório e navegação até o trecho problema, enquanto a IA permanece como assunto para Sprint 3.

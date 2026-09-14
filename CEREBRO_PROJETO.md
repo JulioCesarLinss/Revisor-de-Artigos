@@ -99,7 +99,7 @@
 
 **Objetivo**: consolidar validações determinísticas e torná-las úteis para o usuário real.
 
-**Escopo sugerido**:
+**Escopo**:
 - Separação entre [[Regras ABNT / Regra Normativa]] e assistência por IA.
 - Catálogo inicial de regras.
 - Relatório de conformidade por seção.
@@ -109,6 +109,8 @@
 - Cada regra tem mensagem, origem/norma de referência e severidade.
 - O usuário entende o que está errado e onde.
 - Correções manuais refletem na análise.
+
+**Estado**: planificado em `docs/06-sprint-2-plan.md` com escopo restrito ao já definido no [[Cérebro do Projeto]].
 
 ---
 
