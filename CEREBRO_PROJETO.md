@@ -57,82 +57,7 @@
 
 > Esta seção organiza o desenvolvimento em ciclos curtos, entregáveis mensuráveis e critérios claros de aceitação.
 
-## 0. Sprint 0 — Fundação e Alinhamento
-
-**Objetivo**: definir escopo mínimo, arquitetura inicial, convenções e capacidade básica de entrega.
-
-**Entregáveis**:
-- [[Lean Canvas do Projeto]] ou documento equivalente.
-- [[Backlog v1]] priorizado.
-- Definição de pasta/módulos base.
-- [[Configuração Inicial do Projeto]].
-- [[Glossário]].
-- [[Guia de Contribuição]].
-- [[Plan Sprint 0]].
-
-**Critérios de sucesso**:
-- Equipe entende o problema, o usuário e o MVP.
-- Existe um esqueleto do projeto que compila/executa conforme o planejamento.
-- As decisões de módulos estão documentadas em [[Decisões Técnicas]].
-
----
-
-## 1. Sprint 1 — MVP de Revisão Manual
-
-**Objetivo**: permitir que o usuário submeta um texto/Manuscrito, visualize problemas identificados e faça correções manuais.
-
-**Escopo sugerido**:
-- Upload ou colagem de conteúdo acadêmico.
-- Renderização básica do documento/Manuscrito.
-- Primeira classe de verificações (ex.: estrutura básica, problemas óbvios de formatação).
-- Lista de problemas com severidade.
-- Ações de correção manual.
-
-**Critérios de aceitação**:
-- O usuário consegue importar um texto e ver uma análise preliminar.
-- Problemas são apresentados de forma legível e ação.
-- Não há perda de conteúdo durante o fluxo básico.
-
----
-
-## 2. Sprint 2 — Motor de Regras Normativas
-
-**Objetivo**: consolidar validações determinísticas e torná-las úteis para o usuário real.
-
-**Escopo**:
-- Separação entre [[Regras ABNT / Regra Normativa]] e assistência por IA.
-- Catálogo inicial de regras.
-- Relatório de conformidade por seção.
-- Navegação até o trecho problemas.
-
-**Critérios de aceitação**:
-- Cada regra tem mensagem, origem/norma de referência e severidade.
-- O usuário entende o que está errado e onde.
-- Correções manuais refletem na análise.
-
-**Estado**: planificado em `docs/06-sprint-2-plan.md` com escopo restrito ao já definido no [[Cérebro do Projeto]]. Não iniciada.
-
----
-
-## 1. Sprint 1 — MVP de Revisão Manual
-
-**Objetivo**: permitir que o usuário submeta um texto/Manuscrito, visualize problemas identificados e faça correções manuais.
-
-**Escopo**:
-- Upload ou colagem de conteúdo acadêmico.
-- Renderização básica do documento/Manuscrito.
-- Primeira classe de verificações (ex.: estrutura básica, problemas óbvios de formatação).
-- Lista de problemas com severidade.
-- Ações de correção manual.
-
-**Critérios de aceitação**:
-- O usuário consegue importar um texto e ver uma análise preliminar.
-- Problemas são apresentados de forma legível e ação.
-- Não há perda de conteúdo durante o fluxo básico.
-
-**Estado**: próxima sprint pendente em ordem. Plano documental criado em `docs/06-sprint-1-plan.md` como preparação, sem assumir que o projeto já segue outra base.
-
----
+> **Estado consolidado**: a fase documental está completa (0 → 5 encerradas no plano) e a execução em código começou pela Sprint 1. As demais seguem a ordem 2 → 5, conforme [[Decisões Técnicas]] (DC-12 e DC-14).
 
 ## 0. Sprint 0 — Fundação e Alinhamento
 
@@ -156,40 +81,46 @@
 
 ---
 
+## 1. Sprint 1 — MVP de Revisão Manual
+
+**Objetivo**: permitir que o usuário submeta um texto/Manuscrito, visualize problemas identificados e faça correções manuais.
+
+**Escopo**:
+- Upload ou colagem de conteúdo acadêmico.
+- Renderização básica do documento/Manuscrito.
+- Primeira classe de verificações (ex.: estrutura básica, problemas óbvios de formatação).
+- Lista de problemas com severidade.
+- Ações de correção manual.
+
+**Critérios de aceitação**:
+- O usuário consegue importar um texto e ver uma análise preliminar.
+- Problemas são apresentados de forma legível e ação.
+- Não há perda de conteúdo durante o fluxo básico.
+
+**Estado**: executada em código. Esqueleto do app (Vite + React + TypeScript) com módulos `document`, `rules`, `review` e `ui`, primeira classe de verificações (R001–R006), lista de problemas com severidade, correção manual com reanálise e 22 testes (`bun test`). Detalhes em `docs/06-sprint-1-plan.md`.
+
+---
+
+## 2. Sprint 2 — Motor de Regras Normativas
+
+**Objetivo**: consolidar validações determinísticas e torná-las úteis para o usuário real.
+
+**Escopo**:
+- Separação entre [[Regras ABNT / Regra Normativa]] e assistência por IA.
+- Catálogo inicial de regras.
+- Relatório de conformidade por seção.
+- Navegação até o trecho problemas.
+
+**Critérios de aceitação**:
+- Cada regra tem mensagem, origem/norma de referência e severidade.
+- O usuário entende o que está errado e onde.
+- Correções manuais refletem na análise.
+
+**Estado**: executada em código. Catálogo normativo R001–R010 com norma de referência por regra (NBR 10520:2023, NBR 6023:2018, NBR 14724:2011), relatório de conformidade por seção, navegação até o trecho problema e correções refletindo na análise; 33 testes. Detalhes em `docs/06-sprint-2-plan.md`.
+
+---
+
 ## 3. Sprint 3 — Assistência por IA
-
-**Objetivo**: introduzir sugestões inteligentes sem confundir o usuário com regras automáticas.
-
-**Escopo sugerido**:
-- Sugestões de reescrita pontual.
-- Explicação contextual da regra infringida.
-- Aplicação controlada de sugestões (aceitar / editar / ignorar).
-
-**Critérios de aceitação**:
-- IA aparece como assistente, não como juiz normativo.
-- O usuário pode rastrear o que foi alterado.
-- O sistema permanece útil mesmo quando a IA não responde como esperado.
-
----
-
-## 4. Sprint 4 — Fluxo de Revisão Guiada
-
-**Objetivo**: transformar a ferramenta em um processo, não apenas um relatório.
-
-**Escopo sugerido**:
-- Rascunho, revisão, versão final.
-- Comparação lado a lado original × sugerido.
-- Histórico de revisões e estados.
-- Precisão e feedback do usuário ("isso ajudou?") para refinamento.
-
-**Critérios de aceitação**:
-- O usuário pode conduzir uma revisão do início ao fim.
-- Alterações são versionadas internamente.
-- O fluxo reduz a carga cognitiva em vez de aumentá-la.
-
----
-
-## 5. Sprint 3 — Assistência por IA
 
 **Objetivo**: introduzir sugestões inteligentes sem confundir o usuário com regras automáticas.
 
@@ -203,7 +134,7 @@
 - O usuário pode rastrear o que foi alterado.
 - O sistema permanece útil mesmo quando a IA não responde como esperado.
 
-**Estado**: planificado em `docs/06-sprint-3-plan.md` com escopo restrito ao já definido no [[Cérebro do Projeto]].
+**Estado**: executada em código. Módulo `ai` com sugestão pontual de reescrita + explicação, aceitar/editar/ignorar, rastro manual vs IA e IA opcional tolerante a falhas (DC-02/03/13); 36 testes. Detalhes em `docs/06-sprint-3-plan.md`.
 
 ---
 
@@ -211,7 +142,7 @@
 
 **Objetivo**: transformar a ferramenta em um processo, não apenas um relatório.
 
-**Escopo sugerido**:
+**Escopo**:
 - Rascunho, revisão, versão final.
 - Comparação lado a lado original × sugerido.
 - Histórico de revisões e estados.
@@ -222,13 +153,15 @@
 - Alterações são versionadas internamente.
 - O fluxo reduz a carga cognitiva em vez de aumentá-la.
 
+**Estado**: concluída no plano, com escopo restrito ao já definido no [[Cérebro do Projeto]]. Plano em `docs/06-sprint-4-plan.md`.
+
 ---
 
 ## 5. Sprint 5 — Polimento, Qualidade e Entrega
 
 **Objetivo**: levantar a qualidade geral, usabilidade e confiabilidade antes de expansão.
 
-**Escopo sugerido**:
+**Escopo**:
 - [[Testes de Usabilidade]] com tarefas reais.
 - [[Testes de Qualidade]] automatizados.
 - Tratamento de erros e estados vazios.
@@ -239,6 +172,8 @@
 - A ferramenta funciona de modo previsível nos caminhos principais.
 - Problemas críticos têm tratamento claro.
 - Novas pessoas conseguem ler [[Cérebro do Projeto]] e ententer o sistema.
+
+**Estado**: concluída no plano, com escopo restrito ao já definido no [[Cérebro do Projeto]]. Plano em `docs/06-sprint-5-plan.md`.
 
 ---
 
@@ -372,6 +307,12 @@ Sugestões iniciais para discutir:
 
 ---
 
+# [[Infra e Dispositivos]]
+
+> Camada ainda em aberto, a definir quando a execução em código começar. Nada nesta sprint depende de decisões de infraestrutura.
+
+---
+
 # [[Estados e Persistência]]
 
 **Estados principais**:
@@ -473,6 +414,11 @@ Responsáveis por verificar que o sistema é útil para o usuário real.
 - [[Lean Canvas do Projeto]]
 - [[Contribuição e Colaboração]]
 - [[Plan Sprint 0]]
+- [[Plan Sprint 1]]
+- [[Plan Sprint 2]]
+- [[Plan Sprint 3]]
+- [[Plan Sprint 4]]
+- [[Plan Sprint 5]]
 - [[Convenções de Projeto]]
 - [[Critério de Pull Request]]
 - [[Qualidade e Usabilidade]]
@@ -483,18 +429,15 @@ Responsáveis por verificar que o sistema é útil para o usuário real.
 
 > **Como usar este arquivo**: mantenha-o como o "cérebro" do projeto. Quando uma decisão for tomada, quando um módulo for criado ou quando um teste for definido, adicione o link e o resumo aqui, em vez de dispersar informações em vários lugares.
 
-
-> 📢 Sprint realizada: [[Plan Sprint 0]]
-
-> 📢 Sprint realizada: [[Plan Sprint 1]] e [[Plan Sprint 3]]
-
-
+> 📢 Sprints realizadas (nível documental): [[Plan Sprint 0]] · [[Plan Sprint 1]] · [[Plan Sprint 2]] · [[Plan Sprint 3]] · [[Plan Sprint 4]] · [[Plan Sprint 5]]
 
 - **Sprint 0**: concluída no plano. Entregáveis de documentação e estrutura já publicados.
-- **Sprint 1**: concluída no plano com base no escopo já definido no [[Cérebro do Projeto]].
-- **Sprint 2**: planejada em `docs/06-sprint-2-plan.md`; o escopo permanece restrito ao já definido no [[Cérebro do Projeto]].
-- **Sprint 3**: planificada em `docs/06-sprint-3-plan.md`; o escopo permanece restrito ao já definido no [[Cérebro do Projeto]].
-- **Próximo desfecho**: avançar para a Sprint 2 se o objetivo for consolidar primeiro o motor de regras, ou ir direto para a Sprint 3 se a prioridade for introduzir a assistência por IA a partir do que já está definido.
+- **Sprint 1**: executada em código — esqueleto do app + primeira classe de verificações + fluxo de revisão manual testado (`docs/06-sprint-1-plan.md`).
+- **Sprint 2**: executada em código — catálogo normativo com referência ABNT, relatório por seção e navegação ao trecho (`docs/06-sprint-2-plan.md`).
+- **Sprint 3**: executada em código — assistência IA controlada com explicação e rastro (`docs/06-sprint-3-plan.md`).
+- **Sprint 4**: concluída no plano com base no escopo já definido no [[Cérebro do Projeto]] (`docs/06-sprint-4-plan.md`).
+- **Sprint 5**: concluída no plano com base no escopo já definido no [[Cérebro do Projeto]] (`docs/06-sprint-5-plan.md`).
+- **Próximo desfecho**: a Sprint 3 está em código; a próxima é a Sprint 4 — Fluxo de Revisão Guiada (rascunho → revisão → versão final, comparação lado a lado, histórico e feedback), seguindo a ordem conforme DC-12 e DC-14.
 
 ---
 
@@ -507,4 +450,3 @@ Estes tópicos ainda estavam como “a definir” e foram organizados com conte�
 - [[Qualidade e Usabilidade]] — como o projeto pensa qualidade, testes e avaliação de uso.
 - [[Primeiros Entregáveis Técnicos — Sprint 0]] — o que a Sprint 0 vai entregar do lado técnico, com prioridade.
 - [[Configuração Inicial do Projeto]] — o que precisamos montar agora para poder entregar os primeiros entregáveis com segurança.
-

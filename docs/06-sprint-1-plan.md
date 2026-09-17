@@ -44,6 +44,19 @@ Para poder seguir adiante, espera-se que:
 - a análise preliminar seja compreensível e não traga perda de conteúdo;
 - o [[Cérebro do Projeto]] e o [[Backlog v1]] reflitam o que foi entregue.
 
+## Estado
+
+**Executada em código.** O fluxo importar → analisar → corrigir → reanalisar está implementado e testado, com escopo restrito ao já definido no [[Cérebro do Projeto]].
+
+## Execução em código
+
+- **Stack** (DC-10, dependências mínimas): Vite + React + TypeScript; testes com o runner nativo do Bun.
+- **Módulos** (conforme [[Arquitetura por Módulos]]): `src/document` (importação, representação, correções), `src/rules` (catálogo + motor), `src/review` (orquestração), `src/ui` (canvas do manuscrito, resumo, cards de problema).
+- **Primeira classe de verificações**: catálogo R001–R006 determinístico — espaço antes da pontuação, parágrafo longo, aspas desbalanceadas, parágrafo sem pontuação final, caixa-alta em excesso, documento curto. Cada problema segue a estrutura do DC-08 (id, categoria, severidade, mensagem, referência, local, trecho, ação).
+- **Correção manual**: edição direta do texto (fonte de verdade) e correções rápidas determinísticas por parágrafo, com reanálise imediata; nenhum conteúdo é descartado.
+- **Testes**: 22 testes (`bun test`) cobrindo importação, ações, catálogo, ordenação por severidade, determinismo e o fluxo principal; `bun run typecheck` e `bun run build` limpos.
+- **Como rodar**: `bun install` · `bun run dev` (http://localhost:5173) · `bun test` · `bun run build`.
+
 ## Como usar este plano
 
 Este plano é uma tradução direta do objetivo e escopo já definidos no [[Cérebro do Projeto]] para a Sprint 1. Sempre que um detalhe novo for necessário, ele deve ser registrado em documento complementar e vinculado a partir do CEREBRO, em vez de adicionar comportamento fora do escopo.

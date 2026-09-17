@@ -120,3 +120,19 @@
 - Decisão: a Sprint 3 introduz assistência por IA como sugestão controlada, com explicação e rastro, mas não confunde a IA com juiz normativo.
 - Por quê: o [[Cérebro do Projeto]] já deixa essa separação explícita e evita que a IA venha a substituir a base determinística no momento errado.
 - Consequência: mesmo quando a IA estiver presente, as regras continuam sendo a referência primária para o que é exigência normativa.
+
+---
+
+## DC-14 — Sprints 0 a 5 encerradas no nível documental
+
+- Decisão: todas as sprints definidas no [[Cérebro do Projeto]] (0 a 5) estão concluídas no nível de plano, com objetivo, escopo, critérios de aceite e entregáveis consolidados em `docs/06-sprint-*-plan.md`, sem implementação em código.
+- Por quê: a realização das sprints restantes foi pedida em ordem e o projeto ainda está em fase documental — codar sem escopo fechado contraria os [[Princípios de Design]] (“só codar quando o escopo e o módulo estiverem claros”).
+- Consequência: a fase documental está completa; a execução em código começa pela Sprint 1 e segue a ordem 1 → 5, uma sprint por vez. Desvios dessa ordem continuam exigindo decisão explícita (DC-12).
+
+---
+
+## DC-15 — Stack inicial de execução
+
+- Decisão: a execução em código usa Vite + React + TypeScript, testes com o runner nativo do Bun (`bun test`) e CSS puro com tokens próprios; o tema visual deriva do material `stitch_revisor_de_artigos_abnt/normareview_ai/DESIGN.md` (Academic Modernist).
+- Por quê: atende ao DC-10 (dependências mínimas) e aos [[Princípios de Design]] — módulos pequenos e testáveis, regras próximas do domínio, estado local mínimo.
+- Consequência: os módulos da [[Arquitetura por Módulos]] nascem em `src/document`, `src/rules`, `src/review` e `src/ui`; a IA não é incluída neste ciclo (entra na Sprint 3 como serviço opcional, DC-03).

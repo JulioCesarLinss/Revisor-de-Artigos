@@ -49,7 +49,7 @@ if [ -z "$STATUS_FIELD_ID" ]; then
   STATUS_FIELD_ID=$(gh project field-create "$PROJECT_NUMBER" --owner "$PROJECT_OWNER" \
     --name "Status" \
     --data-type SINGLE_SELECT \
-    --single-select-options "📋 Backlog,🗓️ Planificada,🚧 Em execução,✅ Feito (plano)" \
+    --single-select-options "📋 Backlog,🗓️ Planificada,🚧 Em execução,✅ Feito (plano),✅ Feito (código)" \
     --format json | jq -r '.id')
   echo "    criado: $STATUS_FIELD_ID"
 else

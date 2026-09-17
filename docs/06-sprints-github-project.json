@@ -15,7 +15,8 @@
       { "column": "📋 Backlog", "meaning": "Sprints ainda sem plano próprio (só escopo sugerido no CEREBRO)" },
       { "column": "🗓️ Planificada", "meaning": "Plano documental publicado em docs/06-sprint-N-plan.md; execução não iniciada" },
       { "column": "🚧 Em execução", "meaning": "Sprint em andamento (código/doc sendo produzido)" },
-      { "column": "✅ Feito (plano)", "meaning": "Ciclo encerrado no nível documental, como já feito na Sprint 0 e na Sprint 1" }
+      { "column": "✅ Feito (plano)", "meaning": "Ciclo encerrado no nível documental, como as Sprints 0, 2, 3, 4 e 5" },
+      { "column": "✅ Feito (código)", "meaning": "Ciclo implementado e testado em código, como a Sprint 1" }
     ]
   },
   "cards": [
@@ -26,28 +27,28 @@
     },
     {
       "title": "Sprint 1 — MVP de Revisão Manual",
-      "status": "✅ Feito (plano)",
-      "body": "**Objetivo**: permitir que o usuário submeta um texto/Manuscrito, visualize problemas e faça correções manuais.\n\n**Escopo**: upload/colagem de conteúdo; renderização básica; primeira classe de verificações; lista de problemas com severidade; correção manual.\n\n**Critérios**: importar texto e ver análise preliminar; problemas legíveis e acionáveis; sem perda de conteúdo.\n\n**Estado**: concluída no plano, escopo restrito ao CEREBRO. Fonte: `docs/06-sprint-1-plan.md`."
+      "status": "✅ Feito (código)",
+      "body": "**Objetivo**: permitir que o usuário submeta um texto/Manuscrito, visualize problemas e faça correções manuais.\n\n**Escopo**: upload/colagem de conteúdo; renderização básica; primeira classe de verificações; lista de problemas com severidade; correção manual.\n\n**Critérios**: importar texto e ver análise preliminar; problemas legíveis e acionáveis; sem perda de conteúdo.\n\n**Estado**: executada em código — esqueleto do app (Vite + React + TS), catálogo R001–R006, fluxo importar → analisar → corrigir → reanalisar com 22 testes. Fonte: `docs/06-sprint-1-plan.md`."
     },
     {
       "title": "Sprint 2 — Motor de Regras Normativas",
-      "status": "🗓️ Planificada",
-      "body": "**Objetivo**: consolidar validações determinísticas e torná-las úteis para o usuário real.\n\n**Escopo**: separação entre Regras ABNT e assistência IA; catálogo inicial de regras; relatório de conformidade por seção; navegação até o trecho com problema.\n\n**Critérios**: cada regra tem mensagem, origem/norma e severidade; usuário entende o que está errado e onde; correções manuais refletem na análise.\n\n**Estado**: planificada em `docs/06-sprint-2-plan.md`, não iniciada. Próximo ciclo em ordem."
+      "status": "✅ Feito (código)",
+      "body": "**Objetivo**: consolidar validações determinísticas e torná-las úteis para o usuário real.\n\n**Escopo**: separação entre Regras ABNT e assistência IA; catálogo inicial de regras; relatório de conformidade por seção; navegação até o trecho com problema.\n\n**Critérios**: cada regra tem mensagem, origem/norma e severidade; usuário entende o que está errado e onde; correções manuais refletem na análise.\n\n**Estado**: executada em código — catálogo R001–R010 com NBR 10520/6023/14724, relatório por seção, modo revisar com realce do trecho, 33 testes. Fonte: `docs/06-sprint-2-plan.md`."
     },
     {
       "title": "Sprint 3 — Assistência por IA",
-      "status": "🗓️ Planificada",
-      "body": "**Objetivo**: introduzir sugestões inteligentes sem confundir o usuário com regras automáticas.\n\n**Escopo**: sugestões de reescrita pontual; explicação contextual da regra infringida; aplicação controlada (aceitar / editar / ignorar).\n\n**Critérios**: IA como assistente, não juiz normativo; alterações rastreáveis; sistema útil mesmo sem IA.\n\n**Estado**: planificada em `docs/06-sprint-3-plan.md`. Entra após a Sprint 2 (ver DC-12/DC-13 em docs/03-decisoes-tecnologias.md)."
+      "status": "✅ Feito (código)",
+      "body": "**Objetivo**: introduzir sugestões inteligentes sem confundir o usuário com regras automáticas.\n\n**Escopo**: sugestões de reescrita pontual; explicação contextual da regra infringida; aplicação controlada (aceitar / editar / ignorar).\n\n**Critérios**: IA como assistente, não juiz normativo; alterações rastreáveis; sistema útil mesmo sem IA.\n\n**Estado**: executada em código — módulo ai (endpoint compatível OpenAI, BYO-key), diff Atual × Sugerido, histórico com origem manual vs IA, 36 testes. Fonte: `docs/06-sprint-3-plan.md`."
     },
     {
       "title": "Sprint 4 — Fluxo de Revisão Guiada",
-      "status": "📋 Backlog",
-      "body": "**Objetivo**: transformar a ferramenta em um processo, não apenas um relatório.\n\n**Escopo sugerido**: rascunho → revisão → versão final; comparação lado a lado; histórico de revisões; feedback do usuário.\n\n**Critérios**: revisão conduzida do início ao fim; alterações versionadas; fluxo reduz carga cognitiva.\n\n**Estado**: escopo sugerido no [[Cérebro do Projeto]]; sem plano próprio ainda."
+      "status": "✅ Feito (plano)",
+      "body": "**Objetivo**: transformar a ferramenta em um processo, não apenas um relatório.\n\n**Escopo sugerido**: rascunho → revisão → versão final; comparação lado a lado; histórico de revisões; feedback do usuário.\n\n**Critérios**: revisão conduzida do início ao fim; alterações versionadas; fluxo reduz carga cognitiva.\n\n**Estado**: concluída no plano (`docs/06-sprint-4-plan.md`)."
     },
     {
       "title": "Sprint 5 — Polimento, Qualidade e Entrega",
-      "status": "📋 Backlog",
-      "body": "**Objetivo**: levantar qualidade geral, usabilidade e confiabilidade antes de expansão.\n\n**Escopo sugerido**: testes de usabilidade com tarefas reais; testes de qualidade automatizados; tratamento de erros e estados vazios; ajustes de UX/copy/acessibilidade; documentação v1.\n\n**Critérios**: comportamento previsível nos caminhos principais; problemas críticos tratados; novas pessoas entendem o sistema pelo CEREBRO.\n\n**Estado**: escopo sugerido no [[Cérebro do Projeto]]; sem plano próprio ainda."
+      "status": "✅ Feito (plano)",
+      "body": "**Objetivo**: levantar qualidade geral, usabilidade e confiabilidade antes de expansão.\n\n**Escopo sugerido**: testes de usabilidade com tarefas reais; testes de qualidade automatizados; tratamento de erros e estados vazios; ajustes de UX/copy/acessibilidade; documentação v1.\n\n**Critérios**: comportamento previsível nos caminhos principais; problemas críticos tratados; novas pessoas entendem o sistema pelo CEREBRO.\n\n**Estado**: concluída no plano (`docs/06-sprint-5-plan.md`). Fase documental do produto completa (0–5)."
     }
   ],
   "import": {
