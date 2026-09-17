@@ -71,10 +71,10 @@ Este backlogLista tarefas pendentes para a próxima versão do produto. Foi divi
 
 ### 4.1 Sprint 4 — Fluxo de revisão guiada
 
-- [ ] **P0** — Conduzir revisão do rascunho até a versão final.
-- [ ] **P0** — Comparação lado a lado original × sugerido.
-- [ ] **P1** — Histórico de revisões e estados versionado internamente.
-- [ ] **P2** — Feedback do usuário ("isso ajudou?") para refinamento do fluxo.
+- [x] **P0** — Conduzir revisão do rascunho até a versão final. *(barra de etapas com snapshots)*
+- [x] **P0** — Comparação lado a lado original × sugerido. *(ComparacaoView por parágrafo)*
+- [x] **P1** — Histórico de revisões e estados versionado internamente. *(VersaoSnapshot + retomada)*
+- [x] **P2** — Feedback do usuário ("isso ajudou?") para refinamento do fluxo. *(👍/👎 no histórico)*
 
 **Nota de escopo**: este ciclo atende diretamente o objetivo da [[Sprint 4 — Fluxo de Revisão Guiada]], sem adicionar nada além do que já está definido no [[Cérebro do Projeto]].
 
@@ -157,4 +157,4 @@ Para poder executar a Sprint 2 com clareza, espera-se que existam definidos:
 
 ## Próximo passo
 
-A Sprint 3 está executada em código (assistência IA controlada com explicação e rastro). A próxima sprint é a **Sprint 4 — Fluxo de Revisão Guiada**: rascunho → revisão → versão final, comparação lado a lado, histórico versionado e feedback do usuário (seção 4.1).
+A Sprint 4 está executada em código (fluxo guiado com comparação e feedback). A última sprint é a **Sprint 5 — Polimento, Qualidade e Entrega**: usabilidade, testes automatizados dos caminhos principais, tratamento de erros e documentação v1 (seção 7.1).

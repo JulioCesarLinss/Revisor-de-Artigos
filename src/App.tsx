@@ -11,7 +11,17 @@ import { PainelSugestao } from "./ui/PainelSugestao";
 import { ProblemaCard } from "./ui/ProblemaCard";
 import { RevisarView } from "./ui/RevisarView";
 import { Resumo } from "./ui/Resumo";
+import { BarraFluxo } from "./ui/BarraFluxo";
+import { ComparacaoView } from "./ui/ComparacaoView";
 import { registrar, type RegistroAlteracao } from "./workspace/historico";
+import {
+  estadoInicial,
+  proximoEstado,
+  registrarVersao,
+  ROTULO_ESTADO,
+  type EstadoFluxo,
+  type VersaoSnapshot,
+} from "./workspace/fluxo";
 
 const TEXTO_EXEMPLO = `INTRODUÇÃO
 
@@ -44,12 +54,40 @@ export default function App() {
   const [erroIA, setErroIA] = useState<string | null>(null);
   const [historico, setHistorico] = useState<RegistroAlteracao[]>([]);
 
+  // Sprint 4 — fluxo de revisão guiada
+  const [estadoFluxo, setEstadoFluxo] = useState<EstadoFluxo>(estadoInicial);
+  const [versoes, setVersoes] = useState<VersaoSnapshot[]>([]);
+  const [feedbacks, setFeedbacks] = useState<Record<number, boolean>>({});
+  const [mostrandoComparacao, setMostrandoComparacao] = useState(false);
+
   const estadoIA = statusIA(configIA);
 
   const analisar = useCallback(() => {
     setAnalise(iniciarRevisao(bruto));
     setRevisandoParagrafo(null);
   }, [bruto]);
+
+  const avancarFluxo = useCallback(() => {
+    const seguinte = proximoEstado(estadoFluxo);
+    if (!seguinte) return;
+    const analiseAtual = analise ?? iniciarRevisao(bruto);
+    setVersoes((v) => registrarVersao(v, { estado: estadoFluxo, bruto, totalProblemas: analiseAtual.resumo.total }));
+    setEstadoFluxo(seguinte);
+    setMostrandoComparacao(true);
+  }, [estadoFluxo, analise, bruto]);
+
+  const voltarFluxo = useCallback(() => {
+    const ordem: EstadoFluxo[] = ["rascunho", "revisao", "final"];
+    const i = ordem.indexOf(estadoFluxo);
+    if (i > 0) {
+      setEstadoFluxo(ordem[i - 1]);
+      setMostrandoComparacao(false);
+    }
+  }, [estadoFluxo]);
+
+  const darFeedback = useCallback((historicoId: number, ajudou: boolean) => {
+    setFeedbacks((f) => ({ ...f, [historicoId]: ajudou }));
+  }, []);
 
   const editar = useCallback((novo: string) => {
     setBruto(novo);
@@ -132,6 +170,24 @@ export default function App() {
 
       <main className="app-main">
         <section className="canvas-col" aria-label="Manuscrito em revisão">
+          <BarraFluxo
+            estado={estadoFluxo}
+            podeAvancar={bruto.trim().length > 0}
+            onAvancar={avancarFluxo}
+            onVoltar={voltarFluxo}
+          />
+
+          {mostrandoComparacao && estadoFluxo !== "rascunho" ? (
+            <div className="canvas-page">
+              <ComparacaoView versoes={versoes} estadoAtual={estadoFluxo} textoAtual={bruto} />
+              <div className="comparacao-acoes">
+                <button className="btn" type="button" onClick={() => setMostrandoComparacao(false)}>
+                  Continuar {ROTULO_ESTADO[estadoFluxo]}
+                </button>
+              </div>
+            </div>
+          ) : (
+          <>
           <div className="canvas-toolbar">
             <span className="stat">
               <strong>{analise?.manuscrito.paragrafos.length ?? 0}</strong> parágrafos
@@ -173,6 +229,8 @@ export default function App() {
               </>
             )}
           </div>
+          </>
+          )}
         </section>
 
         <aside className="inspector" aria-label="Resultado da análise">
@@ -256,14 +314,14 @@ export default function App() {
             />
           ))}
 
-          <PainelHistorico historico={historico} />
+          <PainelHistorico historico={historico} feedbacks={feedbacks} onFeedback={darFeedback} />
         </aside>
       </main>
 
       <footer className="app-footer">
-        <span>© 2026 NormaReview AI · Sprint 3 — Assistência por IA</span>
+        <span>© 2026 NormaReview AI · Sprint 4 — Fluxo de Revisão Guiada</span>
         <span className="sep" />
-        <span>A IA sugere e explica; as regras normativas continuam sendo a referência de conformidade.</span>
+        <span>Rascunho → revisão → versão final, com comparação lado a lado, histórico versionado e feedback.</span>
       </footer>
     </>
   );

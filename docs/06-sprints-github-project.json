@@ -42,8 +42,8 @@
     },
     {
       "title": "Sprint 4 — Fluxo de Revisão Guiada",
-      "status": "✅ Feito (plano)",
-      "body": "**Objetivo**: transformar a ferramenta em um processo, não apenas um relatório.\n\n**Escopo sugerido**: rascunho → revisão → versão final; comparação lado a lado; histórico de revisões; feedback do usuário.\n\n**Critérios**: revisão conduzida do início ao fim; alterações versionadas; fluxo reduz carga cognitiva.\n\n**Estado**: concluída no plano (`docs/06-sprint-4-plan.md`)."
+      "status": "✅ Feito (código)",
+      "body": "**Objetivo**: transformar a ferramenta em um processo, não apenas um relatório.\n\n**Escopo**: rascunho → revisão → versão final; comparação lado a lado; histórico de revisões; feedback do usuário.\n\n**Critérios**: revisão conduzida do início ao fim; alterações versionadas; fluxo reduz carga cognitiva.\n\n**Estado**: executada em código — barra de etapas com snapshots, ComparacaoView por parágrafo, feedback 👍/👎, 41 testes. Fonte: `docs/06-sprint-4-plan.md`."
     },
     {
       "title": "Sprint 5 — Polimento, Qualidade e Entrega",

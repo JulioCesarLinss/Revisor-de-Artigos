@@ -703,6 +703,180 @@ body {
   white-space: nowrap;
 }
 
+/* ---------- Sprint 4: fluxo guiado ---------- */
+.fluxo-barra {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: #fff;
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  box-shadow: var(--shadow-sm);
+}
+
+.fluxo-etapa {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--slate-400);
+}
+
+.fluxo-etapa.ativa {
+  color: var(--ink-soft);
+}
+
+.fluxo-etapa.atual {
+  color: var(--cobalt-dark);
+}
+
+.fluxo-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--slate-100);
+  border: 1px solid var(--slate-200);
+  font-size: 10.5px;
+}
+
+.fluxo-etapa.ativa .fluxo-num {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: var(--cobalt-dark);
+}
+
+.fluxo-etapa + .fluxo-etapa::before {
+  content: "→";
+  margin-right: 10px;
+  color: var(--slate-300);
+}
+
+.fluxo-acoes {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.fluxo-fim {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--emerald);
+}
+
+/* ---------- Comparação lado a lado ---------- */
+.comparacao-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.comparacao-cabecalho {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  color: var(--slate-600);
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.comparacao-cabecalho strong {
+  font-family: var(--font-ui);
+  color: var(--cobalt-dark);
+}
+
+.comparacao-quando {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--slate-500);
+}
+
+.comparacao-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.comparacao-par {
+  display: grid;
+  grid-template-columns: 32px 1fr 1fr;
+  gap: 10px;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.comparacao-par.mudou {
+  background: var(--amber-bg);
+}
+
+.comparacao-par.igual {
+  opacity: 0.72;
+}
+
+.comparacao-num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--slate-500);
+  padding-top: 14px;
+}
+
+.comparacao-col p {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+
+.comparacao-acoes {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ---------- Feedback no histórico ---------- */
+.historico-feedback {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  color: var(--slate-500);
+}
+
+.historico-feedback button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0 2px;
+  border-radius: 4px;
+}
+
+.historico-feedback button:hover {
+  background: var(--slate-100);
+}
+
+.historico-feedback.registrado.positivo {
+  color: var(--emerald);
+  font-weight: 600;
+}
+
+.historico-feedback.registrado.negativo {
+  color: var(--slate-500);
+  font-weight: 600;
+}
+
 /* ---------- Estado vazio ---------- */
 .empty-card {
   border: 1.5px dashed var(--slate-300);

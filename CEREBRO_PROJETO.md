@@ -153,7 +153,7 @@
 - Alterações são versionadas internamente.
 - O fluxo reduz a carga cognitiva em vez de aumentá-la.
 
-**Estado**: concluída no plano, com escopo restrito ao já definido no [[Cérebro do Projeto]]. Plano em `docs/06-sprint-4-plan.md`.
+**Estado**: executada em código. Fluxo rascunho → revisão → versão final com snapshots, comparação lado a lado por parágrafo, histórico versionado e feedback 👍/👎; 41 testes. Detalhes em `docs/06-sprint-4-plan.md`.
 
 ---
 
@@ -435,9 +435,9 @@ Responsáveis por verificar que o sistema é útil para o usuário real.
 - **Sprint 1**: executada em código — esqueleto do app + primeira classe de verificações + fluxo de revisão manual testado (`docs/06-sprint-1-plan.md`).
 - **Sprint 2**: executada em código — catálogo normativo com referência ABNT, relatório por seção e navegação ao trecho (`docs/06-sprint-2-plan.md`).
 - **Sprint 3**: executada em código — assistência IA controlada com explicação e rastro (`docs/06-sprint-3-plan.md`).
-- **Sprint 4**: concluída no plano com base no escopo já definido no [[Cérebro do Projeto]] (`docs/06-sprint-4-plan.md`).
+- **Sprint 4**: executada em código — fluxo guiado com comparação lado a lado e feedback (`docs/06-sprint-4-plan.md`).
 - **Sprint 5**: concluída no plano com base no escopo já definido no [[Cérebro do Projeto]] (`docs/06-sprint-5-plan.md`).
-- **Próximo desfecho**: a Sprint 3 está em código; a próxima é a Sprint 4 — Fluxo de Revisão Guiada (rascunho → revisão → versão final, comparação lado a lado, histórico e feedback), seguindo a ordem conforme DC-12 e DC-14.
+- **Próximo desfecho**: a Sprint 4 está em código; a última é a Sprint 5 — Polimento, Qualidade e Entrega (usabilidade, testes automatizados dos caminhos principais, tratamento de erros e documentação v1), conforme DC-12 e DC-14.
 
 ---
 

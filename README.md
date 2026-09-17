@@ -34,9 +34,10 @@ Ferramenta para ajudar na revisão de artigos e trabalhos acadêmicos, organizan
 - Sprints 0 a 5 estão encerradas no nível documental (planos em `docs/06-sprint-*-plan.md`).
 - **Sprint 1 executada em código**: app em `src/` (Vite + React + TypeScript) com importar → analisar → corrigir → reanalisar.
 - **Sprint 2 executada em código**: catálogo normativo R001–R010 com referência ABNT (NBR 10520/6023/14724), relatório de conformidade por seção e navegação até o trecho problema.
-- **Sprint 3 executada em código**: assistência IA opcional (endpoint compatível OpenAI, chave do usuário) com sugestão pontual, explicação, aceitar/editar/ignorar e histórico com rastro manual vs IA; 36 testes.
+- **Sprint 3 executada em código**: assistência IA opcional (endpoint compatível OpenAI, chave do usuário) com sugestão pontual, explicação, aceitar/editar/ignorar e histórico com rastro manual vs IA.
+- **Sprint 4 executada em código**: fluxo rascunho → revisão → versão final com snapshots, comparação lado a lado por parágrafo e feedback “isso ajudou?”; 41 testes.
 - Como rodar: `bun install` · `bun run dev` · `bun test` · `bun run build`.
-- A próxima sprint é a Sprint 4 — Fluxo de Revisão Guiada; a ordem 4 → 5 segue DC-12 e DC-14 em `docs/03-decisoes-tecnologias.md`.
+- A última sprint é a Sprint 5 — Polimento, Qualidade e Entrega (DC-12 e DC-14 em `docs/03-decisoes-tecnologias.md`).
 
 ## Como contribuir
 
