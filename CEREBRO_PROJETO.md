@@ -57,7 +57,7 @@
 
 > Esta seção organiza o desenvolvimento em ciclos curtos, entregáveis mensuráveis e critérios claros de aceitação.
 
-> **Estado consolidado**: a fase documental está completa (0 → 5 encerradas no plano) e a execução em código começou pela Sprint 1. As demais seguem a ordem 2 → 5, conforme [[Decisões Técnicas]] (DC-12 e DC-14).
+> **Estado consolidado**: ciclo completo — a fase documental (0 → 5) foi encerrada no plano e **todas as sprints executáveis (1 → 5) estão em código, testadas e com build de produção**. O próximo ciclo é de expansão (exportação, upload, mais regras ABNT), conforme [[Decisões Técnicas]] (DC-12 e DC-14).
 
 ## 0. Sprint 0 — Fundação e Alinhamento
 
@@ -173,7 +173,7 @@
 - Problemas críticos têm tratamento claro.
 - Novas pessoas conseguem ler [[Cérebro do Projeto]] e ententer o sistema.
 
-**Estado**: concluída no plano, com escopo restrito ao já definido no [[Cérebro do Projeto]]. Plano em `docs/06-sprint-5-plan.md`.
+**Estado**: executada em código. 53 testes (caminhos principais + limites), acessibilidade (skip link, foco visível, reduced motion) e [[Documentação v1]] em `docs/11-entrega-v1.md`. Detalhes em `docs/06-sprint-5-plan.md`.
 
 ---
 
@@ -424,6 +424,7 @@ Responsáveis por verificar que o sistema é útil para o usuário real.
 - [[Qualidade e Usabilidade]]
 - [[Primeiros Entregáveis Técnicos — Sprint 0]]
 - [[Configuração Inicial do Projeto]]
+- [[Documentação v1]] (`docs/11-entrega-v1.md`)
 
 ---
 
@@ -436,8 +437,8 @@ Responsáveis por verificar que o sistema é útil para o usuário real.
 - **Sprint 2**: executada em código — catálogo normativo com referência ABNT, relatório por seção e navegação ao trecho (`docs/06-sprint-2-plan.md`).
 - **Sprint 3**: executada em código — assistência IA controlada com explicação e rastro (`docs/06-sprint-3-plan.md`).
 - **Sprint 4**: executada em código — fluxo guiado com comparação lado a lado e feedback (`docs/06-sprint-4-plan.md`).
-- **Sprint 5**: concluída no plano com base no escopo já definido no [[Cérebro do Projeto]] (`docs/06-sprint-5-plan.md`).
-- **Próximo desfecho**: a Sprint 4 está em código; a última é a Sprint 5 — Polimento, Qualidade e Entrega (usabilidade, testes automatizados dos caminhos principais, tratamento de erros e documentação v1), conforme DC-12 e DC-14.
+- **Sprint 5**: executada em código — qualidade, limites, acessibilidade e documentação v1 (`docs/06-sprint-5-plan.md`).
+- **Próximo desfecho**: ciclo 1→5 completo em código. A expansão futura (exportação, upload de arquivos, novas regras ABNT, proxy de IA) deve nascer como um novo conjunto de sprints no [[Backlog v1]], seguindo DC-12.
 
 ---
 

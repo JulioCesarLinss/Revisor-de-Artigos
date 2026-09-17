@@ -152,6 +152,9 @@ export default function App() {
 
   return (
     <>
+      <a className="skip-link" href="#manuscrito">
+        Ir para o manuscrito
+      </a>
       <header className="app-header">
         <div className="app-header-inner">
           <div className="brand">
@@ -168,7 +171,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="app-main">
+      <main className="app-main" id="conteudo">
         <section className="canvas-col" aria-label="Manuscrito em revisão">
           <BarraFluxo
             estado={estadoFluxo}
@@ -215,13 +218,17 @@ export default function App() {
               <RevisarView manuscrito={analise.manuscrito} alvo={revisandoParagrafo} onVoltar={() => setRevisandoParagrafo(null)} />
             ) : (
               <>
-                <label htmlFor="manuscrito" style={{ position: "absolute", left: -9999 }}>
+                <label className="sr-only" htmlFor="manuscrito">
                   Texto do manuscrito
                 </label>
+                <p id="dica-manuscrito" className="sr-only">
+                  Cole o artigo acadêmico; parágrafos separados por linha em branco e títulos em caixa-alta.
+                </p>
                 <textarea
                   id="manuscrito"
                   className="manuscript-input"
                   placeholder="Cole aqui o texto do artigo acadêmico. Parágrafos separados por linha em branco; títulos em CAIXA-ALTA criam o relatório por seção."
+                aria-describedby="dica-manuscrito"
                   value={bruto}
                   onChange={(e) => editar(e.target.value)}
                   spellCheck={false}

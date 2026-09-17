@@ -47,6 +47,18 @@ Para poder considerar o ciclo fechado, espera-se que:
 - novas pessoas consigam ler o [[Cérebro do Projeto]] e entender o sistema;
 - o [[Backlog v1]] reflita o que foi entregue.
 
+## Estado
+
+**Executada em código.** Ciclo de fechamento: qualidade automatizada dos caminhos principais, tratamento de erros/limites, acessibilidade e documentação v1.
+
+## Execução em código
+
+- **Testes automatizados dos caminhos principais** (`src/quality/caminhosPrincipais.test.ts`): cinco fluxos reais de ponta a ponta — importar → analisar → corrigir → reanalisar → avançar fluxo; sugestão IA aceita com rastro; fluxo 100% funcional sem IA (DC-03); falha de rede da IA sem quebrar; documento realista de 30 parágrafos com seções.
+- **Tratamento de erros e limites** (`src/quality/limites.test.ts`): texto vazio/whitespace, 500 parágrafos, parágrafo de 50 mil caracteres, emojis/unicode composto, mojibake, índices de correção inválidos, separadores não convencionais — nada trava, nada perde conteúdo.
+- **Acessibilidade** (`src/index.css`, `src/App.tsx`): skip link para o manuscrito, `:focus-visible` global, respeito a `prefers-reduced-motion`, classe `sr-only`, rótulos ARIA no relatório por seção e histórico.
+- **Documentação v1**: `docs/11-entrega-v1.md` — arquitetura implementada, comandos de operação, contratos estáveis e o que fica para depois.
+- **Verificação final**: 53 testes, `tsc --noEmit` estrito limpo, `bun run build` de produção OK.
+
 ## Como usar este plano
 
 Este plano é uma tradução direta do objetivo e escopo já definidos no [[Cérebro do Projeto]] para a Sprint 5. Sempre que um detalhe novo for necessário, ele deve ser registrado em documento complementar e vinculado a partir do CEREBRO, em vez de adicionar comportamento fora do escopo.

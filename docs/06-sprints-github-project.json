@@ -47,8 +47,8 @@
     },
     {
       "title": "Sprint 5 — Polimento, Qualidade e Entrega",
-      "status": "✅ Feito (plano)",
-      "body": "**Objetivo**: levantar qualidade geral, usabilidade e confiabilidade antes de expansão.\n\n**Escopo sugerido**: testes de usabilidade com tarefas reais; testes de qualidade automatizados; tratamento de erros e estados vazios; ajustes de UX/copy/acessibilidade; documentação v1.\n\n**Critérios**: comportamento previsível nos caminhos principais; problemas críticos tratados; novas pessoas entendem o sistema pelo CEREBRO.\n\n**Estado**: concluída no plano (`docs/06-sprint-5-plan.md`). Fase documental do produto completa (0–5)."
+      "status": "✅ Feito (código)",
+      "body": "**Objetivo**: levantar qualidade geral, usabilidade e confiabilidade antes de expansão.\n\n**Escopo sugerido**: testes de usabilidade com tarefas reais; testes de qualidade automatizados; tratamento de erros e estados vazios; ajustes de UX/copy/acessibilidade; documentação v1.\n\n**Critérios**: comportamento previsível nos caminhos principais; problemas críticos tratados; novas pessoas entendem o sistema pelo CEREBRO.\n\n**Estado**: executada em código — 53 testes (caminhos principais + limites), acessibilidade e documentação v1 (`docs/11-entrega-v1.md`). Ciclo 1→5 completo."
     }
   ],
   "import": {

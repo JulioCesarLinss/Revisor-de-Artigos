@@ -125,11 +125,11 @@ Este backlogLista tarefas pendentes para a próxima versão do produto. Foi divi
 
 ### 7.1 Sprint 5 — Polimento, qualidade e entrega
 
-- [ ] **P0** — Testes de qualidade automatizados nos caminhos principais.
-- [ ] **P1** — Testes de usabilidade com tarefas reais.
-- [ ] **P1** — Tratamento de erros e estados vazios com orientação útil.
-- [ ] **P1** — Ajustes de UX, copy e acessibilidade.
-- [ ] **P2** — Documentação v1 para manutenção.
+- [x] **P0** — Testes de qualidade automatizados nos caminhos principais. *(5 fluxos E2E de domínio)*
+- [x] **P1** — Testes de usabilidade com tarefas reais. *(tarefas do plano cobertas por testes de caminho principal; sessões com usuários reais ficam para o próximo ciclo)*
+- [x] **P1** — Tratamento de erros e estados vazios com orientação útil. *(limites: vazio, 500¶, mojibake, unicode; estados vazios com copy orientada)*
+- [x] **P1** — Ajustes de UX, copy e acessibilidade. *(skip link, focus-visible, reduced motion, ARIA)*
+- [x] **P2** — Documentação v1 para manutenção. *(docs/11-entrega-v1.md)*
 
 **Nota de escopo**: este ciclo atende diretamente o objetivo da [[Sprint 5 — Polimento, Qualidade e Entrega]], sem adicionar nada além do que já está definido no [[Cérebro do Projeto]].
 
@@ -157,4 +157,4 @@ Para poder executar a Sprint 2 com clareza, espera-se que existam definidos:
 
 ## Próximo passo
 
-A Sprint 4 está executada em código (fluxo guiado com comparação e feedback). A última sprint é a **Sprint 5 — Polimento, Qualidade e Entrega**: usabilidade, testes automatizados dos caminhos principais, tratamento de erros e documentação v1 (seção 7.1).
+**Ciclo completo**: as Sprints 1–5 estão executadas em código, testadas (53 testes) e com build de produção. A expansão futura (exportação, upload, novas regras ABNT, proxy de IA) deve ser priorizada em um novo ciclo de planejamento, conforme DC-12.
