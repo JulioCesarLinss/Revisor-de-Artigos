@@ -55,3 +55,11 @@ Assistência IA (opcional): informe uma chave de API compatível OpenAI na próp
 ## Como contribuir
 
 Veja `docs/04-contributing.md` para orientações sobre issue, Pull Request e critérios de aceite.
+
+## Equipe
+
+- Júlio César Bizarria Lins
+- Matheus Felipe Lopes de Oliveira
+- Theo Vieira Marcelino
+- Daniel Silva Costa
+- Luciano Henrique Pereira Cordeiro
