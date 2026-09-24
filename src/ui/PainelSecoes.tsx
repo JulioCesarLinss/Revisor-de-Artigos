@@ -20,7 +20,11 @@ export function PainelSecoes({ secoes, onFocarSecao }: Props) {
   return (
     <div className="resumo-card">
       <h2>Conformidade por seção</h2>
-      <div className="secoes-lista" role="table" aria-label="Relatório de conformidade por seção">
+      {/* H6: legenda explica as abreviações da linha antes do primeiro uso. */}
+      <p className="resumo-legenda">
+        Cada linha mostra os parágrafos (¶) da seção e a quantidade de problemas (prob.). Clique para localizar no manuscrito.
+      </p>
+      <div className="secoes-lista" role="list" aria-label="Relatório de conformidade por seção">
         {secoes.map((l) => {
           const st = statusSecao(l);
           return (
@@ -31,7 +35,7 @@ export function PainelSecoes({ secoes, onFocarSecao }: Props) {
               onClick={() => onFocarSecao(l.indices)}
               title={`Seção ${l.secao}: ${st.rotulo}. Clique para localizar no manuscrito.`}
             >
-              <span className="secao-dot" style={{ background: st.cor }} aria-label={st.rotulo} />
+              <span className="secao-dot" style={{ background: st.cor }} role="img" aria-label={st.rotulo} />
               <span className="secao-nome">{l.secao}</span>
               <span className="secao-nums">
                 {l.totalParagrafos} ¶ · {l.problemas} prob.

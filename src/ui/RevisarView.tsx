@@ -5,6 +5,8 @@ interface Props {
   manuscrito: Manuscrito;
   /** Parágrafo alvo da navegação (1-based). */
   alvo: number;
+  /** H6: motivo da navegação (regra que disparou o salto), para reconhecimento. */
+  motivo?: string;
   onVoltar: () => void;
 }
 
@@ -13,7 +15,7 @@ interface Props {
  * parágrafos, com o alvo realçado e a rolagem posicionada nele. A edição
  * continua disponível clicando em "Voltar à edição".
  */
-export function RevisarView({ manuscrito, alvo, onVoltar }: Props) {
+export function RevisarView({ manuscrito, alvo, motivo, onVoltar }: Props) {
   useEffect(() => {
     document.getElementById(`par-${alvo}`)?.scrollIntoView({ block: "center", behavior: "smooth" });
   }, [alvo]);
@@ -31,6 +33,7 @@ export function RevisarView({ manuscrito, alvo, onVoltar }: Props) {
       <div className="revisar-barra">
         <span className="revisar-info">
           Modo revisar — parágrafo <strong>{alvo}</strong> realçado
+          {motivo && <span className="revisar-motivo"> · {motivo}</span>}
         </span>
         <button className="btn" type="button" onClick={onVoltar}>
           Voltar à edição (Esc)

@@ -13,6 +13,7 @@ import { RevisarView } from "./ui/RevisarView";
 import { Resumo } from "./ui/Resumo";
 import { BarraFluxo } from "./ui/BarraFluxo";
 import { ComparacaoView } from "./ui/ComparacaoView";
+import { tituloDaRegra } from "./ui/rotulos";
 import { registrar, type RegistroAlteracao } from "./workspace/historico";
 import {
   estadoInicial,
@@ -54,6 +55,10 @@ export default function App() {
   const [erroIA, setErroIA] = useState<string | null>(null);
   const [historico, setHistorico] = useState<RegistroAlteracao[]>([]);
 
+  // Heurística 1 (Nielsen) — visibilidade do status do sistema
+  const [ocupadoCom, setOcupadoCom] = useState<string | null>(null);
+  const [statusSistema, setStatusSistema] = useState<string | null>(null);
+
   // Sprint 4 — fluxo de revisão guiada
   const [estadoFluxo, setEstadoFluxo] = useState<EstadoFluxo>(estadoInicial);
   const [versoes, setVersoes] = useState<VersaoSnapshot[]>([]);
@@ -62,18 +67,32 @@ export default function App() {
 
   const estadoIA = statusIA(configIA);
 
+  // Ocupado quando há análise/versão em processamento ou sugestão IA pendente.
+  const processando = ocupadoCom !== null || carregandoSugestao !== null;
+
   const analisar = useCallback(() => {
-    setAnalise(iniciarRevisao(bruto));
+    setOcupadoCom("Analisando manuscrito…");
     setRevisandoParagrafo(null);
+    setTimeout(() => {
+      const resultado = iniciarRevisao(bruto);
+      setAnalise(resultado);
+      setOcupadoCom(null);
+      setStatusSistema(`Análise concluída — ${resultado.resumo.total} problema(s) encontrado(s).`);
+    }, 0);
   }, [bruto]);
 
   const avancarFluxo = useCallback(() => {
     const seguinte = proximoEstado(estadoFluxo);
     if (!seguinte) return;
-    const analiseAtual = analise ?? iniciarRevisao(bruto);
-    setVersoes((v) => registrarVersao(v, { estado: estadoFluxo, bruto, totalProblemas: analiseAtual.resumo.total }));
-    setEstadoFluxo(seguinte);
-    setMostrandoComparacao(true);
+    setOcupadoCom("Registrando versão…");
+    setTimeout(() => {
+      const analiseAtual = analise ?? iniciarRevisao(bruto);
+      setVersoes((v) => registrarVersao(v, { estado: estadoFluxo, bruto, totalProblemas: analiseAtual.resumo.total }));
+      setEstadoFluxo(seguinte);
+      setMostrandoComparacao(true);
+      setOcupadoCom(null);
+      setStatusSistema(`Versão "${ROTULO_ESTADO[estadoFluxo]}" registrada — comparando com "${ROTULO_ESTADO[seguinte]}".`);
+    }, 0);
   }, [estadoFluxo, analise, bruto]);
 
   const voltarFluxo = useCallback(() => {
@@ -104,6 +123,7 @@ export default function App() {
     setHistorico((h) =>
       registrar(h, { origem: "manual", descricao: "correção rápida aplicada", paragrafo: problema.paragrafo }),
     );
+    setStatusSistema(`Correção aplicada no parágrafo ${problema.paragrafo} — análise atualizada.`);
   }, []);
 
   const pedirSugestao = useCallback(
@@ -123,8 +143,10 @@ export default function App() {
 
       if (resultado.ok) {
         setSugestaoAtiva(resultado.sugestao);
+        setStatusSistema("Sugestão recebida da IA — revise antes de aceitar.");
       } else {
         setErroIA(resultado.motivo);
+        setStatusSistema(null);
       }
     },
     [configIA, analise],
@@ -145,6 +167,7 @@ export default function App() {
           paragrafo: sugestaoAtiva.paragrafo,
         }),
       );
+      setStatusSistema(`Sugestão aceita no parágrafo ${sugestaoAtiva.paragrafo} — análise atualizada.`);
       setSugestaoAtiva(null);
     },
     [sugestaoAtiva],
@@ -175,10 +198,27 @@ export default function App() {
         <section className="canvas-col" aria-label="Manuscrito em revisão">
           <BarraFluxo
             estado={estadoFluxo}
-            podeAvancar={bruto.trim().length > 0}
+            podeAvancar={bruto.trim().length > 0 && !processando}
             onAvancar={avancarFluxo}
             onVoltar={voltarFluxo}
+            processando={processando}
           />
+
+          <p className="status-sistema" role="status" aria-live="polite">
+            {carregandoSugestao !== null ? (
+              <>
+                <span className="status-spinner" aria-hidden="true" />
+                Pedindo sugestão à IA…
+              </>
+            ) : ocupadoCom !== null ? (
+              <>
+                <span className="status-spinner" aria-hidden="true" />
+                {ocupadoCom}
+              </>
+            ) : (
+              (statusSistema ?? "Pronto — cole o manuscrito e clique em Analisar.")
+            )}
+          </p>
 
           {mostrandoComparacao && estadoFluxo !== "rascunho" ? (
             <div className="canvas-page">
@@ -199,14 +239,16 @@ export default function App() {
               <strong>{analise?.manuscrito.totalPalavras ?? 0}</strong> palavras
             </span>
             <span style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-              <button className="btn" type="button" onClick={() => editar(TEXTO_EXEMPLO)} disabled={revisandoParagrafo !== null}>
+              <button className="btn" type="button" onClick={() => editar(TEXTO_EXEMPLO)} disabled={revisandoParagrafo !== null || processando} title="Substitui o conteúdo atual pelo texto de demonstração com problemas típicos">
                 Carregar exemplo
               </button>
               <button
                 className="btn btn-accent"
                 type="button"
                 onClick={analisar}
-                disabled={bruto.trim().length === 0 || revisandoParagrafo !== null}
+                disabled={bruto.trim().length === 0 || revisandoParagrafo !== null || processando}
+                aria-busy={processando || undefined}
+                title="Verifica o manuscrito contra o catálogo de regras normativas"
               >
                 Analisar
               </button>
@@ -215,7 +257,17 @@ export default function App() {
 
           <div className="canvas-page">
             {revisandoParagrafo !== null && analise ? (
-              <RevisarView manuscrito={analise.manuscrito} alvo={revisandoParagrafo} onVoltar={() => setRevisandoParagrafo(null)} />
+              <RevisarView
+                manuscrito={analise.manuscrito}
+                alvo={revisandoParagrafo}
+                motivo={
+                  /* H6: diz qual regra motivou o salto, sem exigir memorização. */
+                  analise.problemas.find((p) => p.paragrafo === revisandoParagrafo)
+                    ? `problema: ${tituloDaRegra(analise.problemas.find((p) => p.paragrafo === revisandoParagrafo)!.regraId) ?? "verificação normativa"}`
+                    : undefined
+                }
+                onVoltar={() => setRevisandoParagrafo(null)}
+              />
             ) : (
               <>
                 <label className="sr-only" htmlFor="manuscrito">
@@ -307,6 +359,7 @@ export default function App() {
               manuscrito={analise.manuscrito}
               onAceitar={aceitarSugestao}
               onIgnorar={() => setSugestaoAtiva(null)}
+              sugerindo={carregandoSugestao !== null}
             />
           )}
 

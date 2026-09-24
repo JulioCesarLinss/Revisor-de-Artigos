@@ -23,7 +23,7 @@ export function ComparacaoView({ versoes, estadoAtual, textoAtual }: Props) {
 
   if (!referencia) {
     return (
-      <div className="empty-card">
+      <div className="empty-card" aria-live="polite">
         <h3>Sem versão anterior para comparar</h3>
         <p>Avance no fluxo para registrar uma versão e poder comparar lado a lado.</p>
       </div>
@@ -35,13 +35,16 @@ export function ComparacaoView({ versoes, estadoAtual, textoAtual }: Props) {
 
   return (
     <div className="comparacao-wrap">
-      <div className="comparacao-cabecalho">
+      <div className="comparacao-cabecalho" role="status" aria-live="polite">
         <span>
-          Comparando <strong>{ROTULO_ESTADO[referencia.estado]}</strong> × <strong>{ROTULO_ESTADO[estadoAtual]}</strong>{" "}
-          — {mudados} parágrafo(s) alterado(s)
+          Comparando <strong>{ROTULO_ESTADO[referencia.estado]}</strong> × <strong>{ROTULO_ESTADO[estadoAtual]}</strong> — {mudados} parágrafo(s) alterado(s)
         </span>
         <span className="comparacao-quando">versão de {referencia.quando}</span>
       </div>
+      {/* H6: legenda explica a numeração e destaca o que mudou. */}
+      <p className="resumo-legenda">
+        A numeração ¶ identifica cada parágrafo comparado; fundo amarelo indica parágrafo alterado.
+      </p>
       <div className="comparacao-grid">
         {linhas.map((l) => (
           <div key={l.paragrafo} className={`comparacao-par ${l.mudou ? "mudou" : "igual"}`}>

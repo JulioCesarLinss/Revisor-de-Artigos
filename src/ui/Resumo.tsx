@@ -5,6 +5,10 @@ export function Resumo({ analise }: { analise: AnaliseRevisao | null }) {
   return (
     <div className="resumo-card">
       <h2>Resumo da análise</h2>
+      {/* H6: legenda que explica os números e o símbolo ¶ sem exigir memorização. */}
+      <p className="resumo-legenda">
+        ¶ = parágrafo no manuscrito. Críticos pedem atenção imediata; advertências e observações são melhorias.
+      </p>
       <div className="resumo-grid">
         <div className="resumo-item total">
           <strong>{r?.total ?? 0}</strong>
@@ -16,11 +20,11 @@ export function Resumo({ analise }: { analise: AnaliseRevisao | null }) {
         </div>
         <div className="resumo-item advertencia">
           <strong>{r?.advertencias ?? 0}</strong>
-          <span>Advert.</span>
+          <span>Advertências</span>
         </div>
         <div className="resumo-item observacao">
           <strong>{r?.observacoes ?? 0}</strong>
-          <span>Obs.</span>
+          <span>Observações</span>
         </div>
       </div>
     </div>

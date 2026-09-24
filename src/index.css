@@ -814,10 +814,18 @@ body {
   align-items: center;
 }
 
+/* H2 — linguagem do domínio: "✓ Documento pronto para exportação" como
+   chip de status, mesmo padrão dos badges de severidade. */
 .fluxo-fim {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 12px;
   font-weight: 600;
   color: var(--emerald);
+  background: var(--emerald-bg);
+  border-radius: 999px;
+  padding: 3px 12px;
 }
 
 /* ---------- Comparação lado a lado ---------- */
@@ -924,6 +932,98 @@ body {
 .historico-feedback.registrado.negativo {
   color: var(--slate-500);
   font-weight: 600;
+}
+
+/* ---------- Heurística 6 — reconhecimento em vez de memorização ---------- */
+.resumo-legenda {
+  margin: 0 0 10px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--slate-500);
+}
+
+.resumo-legenda + .secoes-lista {
+  margin-top: 0;
+}
+
+.revisar-motivo {
+  color: var(--amber);
+  font-weight: 600;
+}
+
+/* ---------- Heurística 5 — prevenção de erros ---------- */
+.problema-confirmacao {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  background: var(--amber-bg);
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 4px 8px;
+}
+
+.sugestao-aviso {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--crimson);
+}
+
+/* ---------- Heurística 1 — visibilidade do status do sistema ---------- */
+.status-sistema {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--slate-500);
+  background: var(--slate-50);
+  border: 1px dashed var(--slate-200);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+.status-spinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--slate-200);
+  border-top-color: var(--cobalt);
+  animation: status-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+.status-spinner-sm {
+  width: 10px;
+  height: 10px;
+  border-width: 1.5px;
+}
+
+@keyframes status-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-spinner {
+    animation: none;
+    border-top-color: var(--cobalt);
+  }
+}
+
+button[aria-busy="true"] {
+  opacity: 0.7;
+  cursor: progress;
 }
 
 /* ---------- Estado vazio ---------- */
