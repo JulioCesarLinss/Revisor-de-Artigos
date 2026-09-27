@@ -34,7 +34,8 @@ export function ProblemaCard({ problema, onCorrigir, onLocalizar, onSugerir, sug
         <span className="chip-regra" title={tituloDaRegra(problema.regraId) ?? problema.regraId}>
           {tituloDaRegra(problema.regraId) ?? problema.regraId}
         </span>
-        <span className="chip-origem">Regra normativa</span>
+        {/* H8: o chip "Regra normativa" repetido em todo card era ruído visual —
+            origem já é implícita (painel da análise normativa) e severidade fica. */}
         <span className={`badge-sev ${problema.severidade}`}>{ROTULO_SEVERIDADE[problema.severidade]}</span>
       </div>
 
@@ -86,9 +87,11 @@ export function ProblemaCard({ problema, onCorrigir, onLocalizar, onSugerir, sug
           {problema.acao && confirmar && (
             <span className="problema-confirmacao" role="group" aria-label={`Confirmar correção em ${local}`}>
               <span>Corrigir {local.toLowerCase()}?</span>
+              {/* H7: foco direto no Confirmar — Enter confirma; Tab alcança Cancelar. */}
               <button
                 className="btn btn-primary"
                 type="button"
+                autoFocus
                 onClick={() => {
                   onCorrigir(problema);
                   setConfirmar(false);

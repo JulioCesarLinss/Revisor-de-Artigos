@@ -8,6 +8,8 @@ interface Props {
   onVoltar: () => void;
   /** Verdadeiro quando uma etapa está sendo registrada (Heurística 1). */
   processando?: boolean;
+  /** H9: quando o avanço está bloqueado, explica por quê e como destravar. */
+  motivoBloqueio?: string;
 }
 
 /**
@@ -22,7 +24,9 @@ const DESCRICAO_ETAPA: Record<EstadoFluxo, string> = {
 };
 
 /** Condução do processo: rascunho → revisão → versão final (Sprint 4 + H1 + H2). */
-export function BarraFluxo({ estado, podeAvancar, onAvancar, onVoltar, processando = false }: Props) {
+export function BarraFluxo(
+  { estado, podeAvancar, onAvancar, onVoltar, processando = false, motivoBloqueio }: Props,
+) {
   const indiceAtual = ORDEM_FLUXO.indexOf(estado);
   const seguinte = indiceAtual < ORDEM_FLUXO.length - 1 ? ORDEM_FLUXO[indiceAtual + 1] : null;
 
@@ -63,6 +67,7 @@ export function BarraFluxo({ estado, podeAvancar, onAvancar, onVoltar, processan
             <button
               className="btn"
               type="button"
+              autoFocus
               onClick={() => {
                 onVoltar();
                 setConfirmarVoltar(false);
@@ -82,14 +87,24 @@ export function BarraFluxo({ estado, podeAvancar, onAvancar, onVoltar, processan
             onClick={onAvancar}
             disabled={!podeAvancar}
             aria-busy={processando || undefined}
-            title={`Registra a versão atual e avança para "${ROTULO_ESTADO[seguinte]}"`}
+            title={
+              motivoBloqueio
+                ? `${motivoBloqueio} (atalho: Ctrl+Shift+Enter)`
+                : `Registra a versão atual e avança para "${ROTULO_ESTADO[seguinte]}" (atalho: Ctrl+Shift+Enter)`
+            }
           >
             {processando ? (
               <>
                 <span className="status-spinner status-spinner-sm" aria-hidden="true" /> Registrando versão…
               </>
             ) : (
-              `Avançar para ${ROTULO_ESTADO[seguinte]}`
+              /* H7: o atalho fica documentado no próprio botão, sem memorização. */
+              <>
+                Avançar para {ROTULO_ESTADO[seguinte]}{" "}
+                <kbd className="atalho-tecla" aria-hidden="true">
+                  Ctrl+Shift+↵
+                </kbd>
+              </>
             )}
           </button>
         )}

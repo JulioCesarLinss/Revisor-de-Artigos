@@ -1,10 +1,11 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { statusIA, sugerirReescrita } from "./ai/assistente";
 import type { ConfiguracaoIA, SugestaoIA } from "./ai/types";
 import { aplicarCorrecao } from "./document/acoes";
 import { aplicarSugestao } from "./document/aplicarSugestao";
 import { iniciarRevisao, type AnaliseRevisao } from "./review/orquestrar";
 import type { Problema } from "./rules/types";
+import { PainelAjuda } from "./ui/PainelAjuda";
 import { PainelHistorico } from "./ui/PainelHistorico";
 import { PainelSecoes } from "./ui/PainelSecoes";
 import { PainelSugestao } from "./ui/PainelSugestao";
@@ -53,6 +54,16 @@ export default function App() {
   const [sugestaoAtiva, setSugestaoAtiva] = useState<SugestaoIA | null>(null);
   const [carregandoSugestao, setCarregandoSugestao] = useState<string | null>(null);
   const [erroIA, setErroIA] = useState<string | null>(null);
+
+  /**
+   * Heurística 9 (Nielsen) — reconhecer, diagnosticar e recuperar erros:
+   * guarda o problema que originou o último pedido, para que o relatório de
+   * erro mostre o que falhou e ofereça a recuperação ("Tentar novamente").
+   */
+  const [ultimoPedido, setUltimoPedido] = useState<Problema | null>(null);
+
+  /** H10: centro de ajuda acessível a qualquer momento pelo botão do cabeçalho. */
+  const [ajudaAberta, setAjudaAberta] = useState(false);
   const [historico, setHistorico] = useState<RegistroAlteracao[]>([]);
 
   // Heurística 1 (Nielsen) — visibilidade do status do sistema
@@ -104,6 +115,28 @@ export default function App() {
     }
   }, [estadoFluxo]);
 
+  /**
+   * Heurística 7 (Nielsen) — flexibilidade e eficiência de uso: aceleradores de
+   * teclado para as ações repetidas (analisar, avançar no fluxo), ignorados
+   * enquanto o app está ocupado ou no modo "revisar" (evita conflito com Esc).
+   */
+  const podeAnalisar = bruto.trim().length > 0 && revisandoParagrafo === null && !processando;
+
+  useEffect(() => {
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.key !== "Enter") return;
+      if (processando || revisandoParagrafo !== null) return;
+      e.preventDefault();
+      if (e.shiftKey) {
+        if (bruto.trim().length > 0 && estadoFluxo !== "final") avancarFluxo();
+      } else if (bruto.trim().length > 0) {
+        analisar();
+      }
+    };
+    window.addEventListener("keydown", aoTeclar);
+    return () => window.removeEventListener("keydown", aoTeclar);
+  }, [analisar, avancarFluxo, bruto, estadoFluxo, processando, revisandoParagrafo]);
+
   const darFeedback = useCallback((historicoId: number, ajudou: boolean) => {
     setFeedbacks((f) => ({ ...f, [historicoId]: ajudou }));
   }, []);
@@ -134,6 +167,7 @@ export default function App() {
 
       setCarregandoSugestao(problema.id);
       setErroIA(null);
+      setUltimoPedido(problema); // H9: contexto do pedido para diagnóstico/recuperação
       const resultado = await sugerirReescrita(configIA, par.texto, problema.paragrafo, {
         regraId: problema.regraId,
         mensagem: problema.mensagem,
@@ -173,6 +207,35 @@ export default function App() {
     [sugestaoAtiva],
   );
 
+  /**
+   * H9 — relatório de erro completo para a falha do assistente IA:
+   * o quê (Ocorreu um erro) → por quê (motivo legível) → como recuperar.
+   */
+  const renderErroIA = () => (
+    <div className="ia-erro" role="alert">
+      <strong className="ia-erro-titulo">Ocorreu um erro ao pedir a sugestão</strong>
+      <span>{erroIA}</span>
+      <span className="ia-erro-acoes">
+        {ultimoPedido && (
+          <button
+            className="btn"
+            type="button"
+            onClick={() => {
+              const problema = ultimoPedido;
+              setErroIA(null);
+              void pedirSugestao(problema);
+            }}
+          >
+            Tentar novamente
+          </button>
+          )}
+        <button className="btn" type="button" onClick={() => setErroIA(null)}>
+          Fechar
+        </button>
+      </span>
+    </div>
+  );
+
   return (
     <>
       <a className="skip-link" href="#manuscrito">
@@ -190,6 +253,15 @@ export default function App() {
             <span className="norm-chip">NBR 14724</span>
             <span className="norm-chip">NBR 10520</span>
             <span className="norm-chip">NBR 6023</span>
+            {/* H10: ponto de entrada sempre visível para a ajuda e documentação. */}
+            <button
+              className="btn norm-chip-acao"
+              type="button"
+              onClick={() => setAjudaAberta(true)}
+              title="Abrir o guia de uso, atalhos de teclado e significado das severidades"
+            >
+              Ajuda
+            </button>
           </div>
         </div>
       </header>
@@ -202,6 +274,14 @@ export default function App() {
             onAvancar={avancarFluxo}
             onVoltar={voltarFluxo}
             processando={processando}
+            motivoBloqueio={
+              /* H9: o botão bloqueado diz por quê e como destravar. */
+              bruto.trim().length === 0
+                ? "O manuscrito está vazio — cole o texto antes de registrar uma versão."
+                : processando
+                  ? "Aguarde: uma operação está em andamento."
+                  : undefined
+            }
           />
 
           <p className="status-sistema" role="status" aria-live="polite">
@@ -239,6 +319,7 @@ export default function App() {
               <strong>{analise?.manuscrito.totalPalavras ?? 0}</strong> palavras
             </span>
             <span style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+              {/* H7: os aceleradores ficam documentados junto dos botões que acionam. */}
               <button className="btn" type="button" onClick={() => editar(TEXTO_EXEMPLO)} disabled={revisandoParagrafo !== null || processando} title="Substitui o conteúdo atual pelo texto de demonstração com problemas típicos">
                 Carregar exemplo
               </button>
@@ -246,14 +327,26 @@ export default function App() {
                 className="btn btn-accent"
                 type="button"
                 onClick={analisar}
-                disabled={bruto.trim().length === 0 || revisandoParagrafo !== null || processando}
+                disabled={!podeAnalisar}
                 aria-busy={processando || undefined}
-                title="Verifica o manuscrito contra o catálogo de regras normativas"
+                title={
+                  /* H9: quando bloqueado, o botão explica por quê e como destravar. */
+                  revisandoParagrafo !== null
+                    ? "Volte à edição (botão \"Voltar à edição\" ou tecla Esc) para analisar novamente"
+                    : bruto.trim().length === 0
+                      ? "Cole ou digite o texto do manuscrito para habilitar a análise"
+                      : "Verifica o manuscrito contra o catálogo de regras normativas"
+                }
               >
-                Analisar
+                Analisar <kbd className="atalho-tecla" aria-hidden="true">Ctrl+↵</kbd>
               </button>
             </span>
           </div>
+
+          {/* H7: os atalhos de eficiência ficam documentados e sempre à vista. */}
+          <p className="atalhos-dica">
+            Aceleradores de teclado: <kbd className="atalho-tecla">Ctrl+↵</kbd> analisar · <kbd className="atalho-tecla">Ctrl+Shift+↵</kbd> avançar etapa · <kbd className="atalho-tecla">Esc</kbd> sair do modo revisar.
+          </p>
 
           <div className="canvas-page">
             {revisandoParagrafo !== null && analise ? (
@@ -328,7 +421,7 @@ export default function App() {
                 </button>
               </div>
             )}
-            {erroIA && <p className="ia-erro" role="alert">{erroIA}</p>}
+            {erroIA && renderErroIA()}
           </div>
 
           {analise && <PainelSecoes secoes={analise.secoes} onFocarSecao={(indices) => {
@@ -378,10 +471,13 @@ export default function App() {
         </aside>
       </main>
 
+      {/* H10: a ajuda sobreposta exige reconhecimento imediato e saída clara. */}
+      {ajudaAberta && <PainelAjuda onFechar={() => setAjudaAberta(false)} />}
+
+      {/* H8: o rodapé repete o que a barra de fluxo e o histórico já dizem;
+          uma linha mínima de identidade basta. */}
       <footer className="app-footer">
-        <span>© 2026 NormaReview AI · Sprint 4 — Fluxo de Revisão Guiada</span>
-        <span className="sep" />
-        <span>Rascunho → revisão → versão final, com comparação lado a lado, histórico versionado e feedback.</span>
+        <span>© 2026 NormaReview AI · Fluxo de revisão guiada</span>
       </footer>
     </>
   );

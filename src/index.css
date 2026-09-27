@@ -951,6 +951,185 @@ body {
   font-weight: 600;
 }
 
+/* ---------- Heurística 7 — flexibilidade e eficiência de uso ---------- */
+/* Dica sempre visível que documenta os aceleradores de teclado. */
+.atalhos-dica {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  color: var(--slate-500);
+}
+
+/* Kbd inline que aparece tanto na dica quanto dentro dos botões; cores via
+   currentColor para funcionar em botões claros (Analisar) e escuros. */
+.atalho-tecla {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 5px;
+  border: 1px solid currentColor;
+  background: transparent;
+  opacity: 0.85;
+}
+
+button .atalho-tecla {
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+/* ---------- Heurística 8 — design estético e minimalista ---------- */
+/* Alternador para revelar parágrafos idênticos na comparação; a difusão
+   padrão deixa a vista focada só no que mudou. */
+.comparacao-ocultos {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  color: var(--slate-500);
+}
+
+/* ---------- Heurística 9 — reconhecer, diagnosticar e recuperar erros ---------- */
+/* Estende o .ia-erro existente: estrutura de relatório (o quê → por quê →
+   como recuperar) sem remover as regras anteriores. */
+.ia-erro {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.ia-erro-titulo {
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+}
+
+.ia-erro-acoes {
+  display: inline-flex;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.ia-erro-acoes .btn {
+  padding: 4px 10px;
+  font-size: 11.5px;
+}
+
+/* ---------- Heurística 10 — ajuda e documentação ---------- */
+/* Botão "Ajuda" do cabeçalho, dentro da fileira de chips de normas. */
+.norm-chip-acao {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  padding: 3px 12px;
+  background: transparent;
+  border: 1px solid rgba(147, 197, 253, 0.55);
+  color: #bfdbfe;
+  cursor: pointer;
+}
+
+.norm-chip-acao:hover {
+  background: rgba(147, 197, 253, 0.15);
+}
+
+/* Overlay + diálogo centralizado, herda o kbd da H7 para os atalhos. */
+.ajuda-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 50;
+}
+
+.ajuda-painel {
+  background: #fff;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--slate-200);
+  max-width: 640px;
+  width: 100%;
+  max-height: min(80vh, 720px);
+  display: flex;
+  flex-direction: column;
+}
+
+.ajuda-cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--slate-200);
+}
+
+.ajuda-cabecalho h2 {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 16px;
+  color: var(--ink);
+}
+
+.ajuda-corpo {
+  overflow-y: auto;
+  padding: 6px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ajuda-secao h3 {
+  margin: 12px 0 6px;
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--slate-500);
+}
+
+.ajuda-secao p,
+.ajuda-secao ul,
+.ajuda-secao ol {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  padding-left: 18px;
+}
+
+.ajuda-secao p {
+  padding-left: 0;
+}
+
+.ajuda-lista-atalhos {
+  list-style: none;
+}
+
+.ajuda-lista-atalhos li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ajuda-lista-sev {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ajuda-lista-sev li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
 /* ---------- Heurística 5 — prevenção de erros ---------- */
 .problema-confirmacao {
   display: inline-flex;

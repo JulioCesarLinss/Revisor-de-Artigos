@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { compararManuscritos, resumoDiff } from "../workspace/diff";
 import { ROTULO_ESTADO, type VersaoSnapshot } from "../workspace/fluxo";
 
@@ -33,6 +33,14 @@ export function ComparacaoView({ versoes, estadoAtual, textoAtual }: Props) {
   const linhas = compararManuscritos(referencia.bruto, textoAtual);
   const { mudados } = resumoDiff(linhas);
 
+  /**
+   * Heurística 8 (Nielsen) — design estético e minimalista: a comparação existe
+   * para mostrar o que mudou, então os parágrafos idênticos começam ocultos;
+   * o alternador "Ver tudo" atende quem quer reler o documento inteiro.
+   */
+  const [mostrarIguais, setMostrarIguais] = useState(false);
+  const visiveis = mostrarIguais ? linhas : linhas.filter((l) => l.mudou);
+
   return (
     <div className="comparacao-wrap">
       <div className="comparacao-cabecalho" role="status" aria-live="polite">
@@ -46,7 +54,7 @@ export function ComparacaoView({ versoes, estadoAtual, textoAtual }: Props) {
         A numeração ¶ identifica cada parágrafo comparado; fundo amarelo indica parágrafo alterado.
       </p>
       <div className="comparacao-grid">
-        {linhas.map((l) => (
+        {visiveis.map((l) => (
           <div key={l.paragrafo} className={`comparacao-par ${l.mudou ? "mudou" : "igual"}`}>
             <span className="comparacao-num">¶{l.paragrafo}</span>
             <div className="comparacao-col">
@@ -60,6 +68,16 @@ export function ComparacaoView({ versoes, estadoAtual, textoAtual }: Props) {
           </div>
         ))}
       </div>
+      {linhas.length > mudados && (
+        <div className="comparacao-ocultos">
+          <button className="btn" type="button" onClick={() => setMostrarIguais((v) => !v)}>
+            {mostrarIguais
+              ? "Ocultar parágrafos sem alteração"
+              : `Ver os ${linhas.length - mudados} parágrafo(s) sem alteração`}
+          </button>
+          {!mostrarIguais && <span>Somente os {mudados} parágrafo(s) alterado(s) estão listados.</span>}
+        </div>
+      )}
     </div>
   );
 }

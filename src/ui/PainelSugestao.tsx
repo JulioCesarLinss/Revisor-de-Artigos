@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type KeyboardEvent } from "react";
 import type { SugestaoIA } from "../ai/types";
 import type { Manuscrito } from "../document/types";
 import { tituloDaRegra } from "./rotulos";
@@ -38,6 +38,18 @@ export function PainelSugestao({ sugestao, manuscrito, onAceitar, onIgnorar, sug
     setEditando(false);
   };
 
+  /**
+   * Heurística 7 (Nielsen) — flexibilidade e eficiência de uso: Ctrl+Enter no
+   * editor aceita a versão editada sem tirar as mãos do teclado. Respeita as
+   * proteções da H5 (não dispara com parágrafo vazio; quando desabilitado,
+   * o clique real também seria bloqueado).
+   */
+  const aceitarComTeclado = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!(e.ctrlKey || e.metaKey) || e.key !== "Enter") return;
+    e.preventDefault();
+    if (!vazio) onAceitar(texto);
+  };
+
   return (
     <article className="problema-card sugestao-card" aria-busy={sugerindo || undefined}>
       <div className="problema-topo">
@@ -62,6 +74,7 @@ export function PainelSugestao({ sugestao, manuscrito, onAceitar, onIgnorar, sug
                 className="sugestao-editor"
                 value={texto}
                 onChange={(e) => setTexto(e.target.value)}
+                onKeyDown={aceitarComTeclado}
                 rows={4}
                 autoFocus
               />
@@ -104,9 +117,10 @@ export function PainelSugestao({ sugestao, manuscrito, onAceitar, onIgnorar, sug
               type="button"
               onClick={() => onAceitar(texto)}
               disabled={vazio}
-              title={vazio ? "O parágrafo não pode ficar vazio" : "Substitui o parágrafo no manuscrito"}
+              title={vazio ? "O parágrafo não pode ficar vazio" : "Substitui o parágrafo no manuscrito (atalho: Ctrl+Enter)"}
             >
-              Aceitar versão editada
+              {/* H7: Ctrl+Enter no editor aceita direto, sem alcançar o botão. */}
+              Aceitar versão editada <kbd className="atalho-tecla" aria-hidden="true">Ctrl+↵</kbd>
             </button>
           </>
         ) : (
