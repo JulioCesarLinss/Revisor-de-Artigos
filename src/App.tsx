@@ -1,12 +1,12 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Navigate, Route, Routes, Link, useLocation } from "react-router-dom";
 import { PainelAjuda } from "./ui/PainelAjuda";
+import { encerrarSessao, sessaoAtiva } from "./sessao";
 import LoginPage from "./pages/LoginPage";
 import RevisarPage from "./pages/RevisarPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
 
 const CADEIA = [
-  { para: "/login", rotulo: "Login" },
   { para: "/upload", rotulo: "Upload" },
   { para: "/revisar", rotulo: "Revisar" },
   { para: "/historico", rotulo: "Histórico" },
@@ -14,10 +14,21 @@ const CADEIA = [
   { para: "/perfil", rotulo: "Perfil" },
 ];
 
-/** Layout compartilhado: cabeçalho e rodapé presentes em todas as rotas. */
+/** Portão do sistema: sem sessão, qualquer rota protegida volta para /login. */
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  if (!sessaoAtiva()) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
+
 export default function App() {
   const location = useLocation();
   const [ajudaAberta, setAjudaAberta] = useState(false);
+  const autenticado = sessaoAtiva();
+
+  const sair = () => {
+    encerrarSessao();
+    window.location.assign("/login");
+  };
 
   return (
     <>
@@ -32,79 +43,124 @@ export default function App() {
             </h1>
             <p>Regras normativas como base confiável; IA como assistente opcional.</p>
           </Link>
-          <div className="norm-chips" aria-label="Normas de referência e navegação">
-            <span className="norm-chip">NBR 14724</span>
-            <span className="norm-chip">NBR 10520</span>
-            <span className="norm-chip">NBR 6023</span>
-            {CADEIA.map((e) => (
-              <Link
-                key={e.para}
-                to={e.para}
-                className={location.pathname === e.para ? "norm-chip nav-chip atual" : "norm-chip nav-chip"}
-                aria-current={location.pathname === e.para ? "page" : undefined}
-                title={`Ir para ${e.rotulo}`}
+          {autenticado ? (
+            <nav className="app-nav" aria-label="Navegação do sistema">
+              {CADEIA.map((e, i) => (
+                <Fragment key={e.para}>
+                  {/* H8: barra dupla separa visualmente cada item da navegação. */}
+                  {i > 0 && (
+                    <span className="nav-sep" aria-hidden="true">
+                      //
+                    </span>
+                  )}
+                  <Link
+                    to={e.para}
+                    className={location.pathname === e.para ? "nav-item atual" : "nav-item"}
+                    aria-current={location.pathname === e.para ? "page" : undefined}
+                    title={`Ir para ${e.rotulo}`}
+                  >
+                    {e.rotulo}
+                  </Link>
+                </Fragment>
+              ))}
+              <button className="nav-item nav-item-acao" type="button" onClick={sair} title="Encerrar a sessão">
+                Sair
+              </button>
+              {/* H10: ponto de entrada sempre visível para a ajuda e documentação. */}
+              <button
+                className="btn norm-chip-acao"
+                type="button"
+                onClick={() => setAjudaAberta(true)}
+                title="Abrir o guia de uso, atalhos de teclado e significado das severidades"
               >
-                {e.rotulo}
-              </Link>
-            ))}
-            {/* H10: ponto de entrada sempre visível para a ajuda e documentação. */}
-            <button
-              className="btn norm-chip-acao"
-              type="button"
-              onClick={() => setAjudaAberta(true)}
-              title="Abrir o guia de uso, atalhos de teclado e significado das severidades"
-            >
-              Ajuda
-            </button>
-          </div>
+                Ajuda
+              </button>
+            </nav>
+          ) : (
+            <div className="norm-chips" aria-label="Estado do acesso">
+              <span className="norm-chip">Acesso restrito — faça login</span>
+            </div>
+          )}
         </div>
       </header>
 
       <Routes>
-        <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/login"
+          element={autenticado ? <Navigate to="/revisar" replace /> : <LoginPage />}
+        />
+        <Route
+          path="/"
+          element={
+            <RequireAuth>
+              <Navigate to="/revisar" replace />
+            </RequireAuth>
+          }
+        />
         <Route
           path="/upload"
           element={
-            <PlaceholderPage
-              titulo="Upload de artigos"
-              rotaAnterior={{ para: "/login", rotulo: "Login" }}
-              rotaSeguinte={{ para: "/revisar", rotulo: "Revisar" }}
-            />
+            <RequireAuth>
+              <PlaceholderPage
+                titulo="Upload de artigos"
+                rotaAnterior={{ para: "/revisar", rotulo: "Revisar" }}
+                rotaSeguinte={{ para: "/revisar", rotulo: "Revisar" }}
+              />
+            </RequireAuth>
           }
         />
-        <Route path="/revisar" element={<RevisarPage />} />
+        <Route
+          path="/revisar"
+          element={
+            <RequireAuth>
+              <RevisarPage />
+            </RequireAuth>
+          }
+        />
         <Route
           path="/historico"
           element={
-            <PlaceholderPage
-              titulo="Histórico de versões"
-              rotaAnterior={{ para: "/revisar", rotulo: "Revisar" }}
-              rotaSeguinte={{ para: "/laudo", rotulo: "Laudo" }}
-            />
+            <RequireAuth>
+              <PlaceholderPage
+                titulo="Histórico de versões"
+                rotaAnterior={{ para: "/revisar", rotulo: "Revisar" }}
+                rotaSeguinte={{ para: "/laudo", rotulo: "Laudo" }}
+              />
+            </RequireAuth>
           }
         />
         <Route
           path="/laudo"
           element={
-            <PlaceholderPage
-              titulo="Laudo ABNT"
-              rotaAnterior={{ para: "/historico", rotulo: "Histórico" }}
-              rotaSeguinte={{ para: "/perfil", rotulo: "Perfil" }}
-            />
+            <RequireAuth>
+              <PlaceholderPage
+                titulo="Laudo ABNT"
+                rotaAnterior={{ para: "/historico", rotulo: "Histórico" }}
+                rotaSeguinte={{ para: "/perfil", rotulo: "Perfil" }}
+              />
+            </RequireAuth>
           }
         />
         <Route
           path="/perfil"
           element={
-            <PlaceholderPage
-              titulo="Perfil e configurações"
-              rotaAnterior={{ para: "/laudo", rotulo: "Laudo" }}
-              rotaSeguinte={{ para: "/revisar", rotulo: "Revisar" }}
-            />
+            <RequireAuth>
+              <PlaceholderPage
+                titulo="Perfil e configurações"
+                rotaAnterior={{ para: "/laudo", rotulo: "Laudo" }}
+                rotaSeguinte={{ para: "/revisar", rotulo: "Revisar" }}
+              />
+            </RequireAuth>
           }
         />
-        <Route path="/" element={<Navigate to="/revisar" replace />} />
-        <Route path="*" element={<Navigate to="/revisar" replace />} />
+        <Route
+          path="*"
+          element={
+            <RequireAuth>
+              <Navigate to="/revisar" replace />
+            </RequireAuth>
+          }
+        />
       </Routes>
 
       {/* H10: a ajuda sobreposta exige reconhecimento imediato e saída clara. */}

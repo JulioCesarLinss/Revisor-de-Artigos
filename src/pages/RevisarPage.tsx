@@ -6,6 +6,7 @@ import { aplicarSugestao } from "../document/aplicarSugestao";
 import { iniciarRevisao, type AnaliseRevisao } from "../review/orquestrar";
 import type { Problema } from "../rules/types";
 import { PainelHistorico } from "../ui/PainelHistorico";
+import { ManuscritoPaginado } from "../ui/ManuscritoPaginado";
 import { PainelSecoes } from "../ui/PainelSecoes";
 import { PainelSugestao } from "../ui/PainelSugestao";
 import { ProblemaCard } from "../ui/ProblemaCard";
@@ -328,24 +329,10 @@ export default function RevisarPage() {
                   : undefined
               }
               onVoltar={() => setRevisandoParagrafo(null)}
-            />
-          ) : (
+            />          ) : (
             <>
-              <label className="sr-only" htmlFor="manuscrito">
-                Texto do manuscrito
-              </label>
-              <p id="dica-manuscrito" className="sr-only">
-                Cole o artigo acadêmico; parágrafos separados por linha em branco e títulos em caixa-alta.
-              </p>
-              <textarea
-                id="manuscrito"
-                className="manuscript-input"
-                placeholder="Cole aqui o texto do artigo acadêmico. Parágrafos separados por linha em branco; títulos em CAIXA-ALTA criam o relatório por seção."
-              aria-describedby="dica-manuscrito"
-                value={bruto}
-                onChange={(e) => editar(e.target.value)}
-                spellCheck={false}
-              />
+              {/* Rascunho paginado em folhas A4 (edição inline por parágrafo). */}
+              <ManuscritoPaginado valor={bruto} onChange={editar} />
             </>
           )}
         </div>

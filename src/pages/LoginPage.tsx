@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { iniciarSessao } from "../sessao";
 
 type Aba = "login" | "cadastro";
 
@@ -40,11 +41,13 @@ export default function LoginPage() {
 
   const entrar = (e: FormEvent) => {
     e.preventDefault();
+    iniciarSessao(lembrar); // "Lembrar de mim" persiste no dispositivo
     navegar("/upload");
   };
 
   const cadastrar = (e: FormEvent) => {
     e.preventDefault();
+    iniciarSessao(false);
     navegar("/upload");
   };
 
