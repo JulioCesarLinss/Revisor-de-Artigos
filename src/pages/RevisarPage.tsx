@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { statusIA, sugerirReescrita } from "../ai/assistente";
+import { carregarConfigIA, salvarConfigIA } from "../perfil/perfil";
 import type { ConfiguracaoIA, SugestaoIA } from "../ai/types";
 import { aplicarCorrecao } from "../document/acoes";
 import { aplicarSugestao } from "../document/aplicarSugestao";
@@ -49,8 +50,9 @@ export default function RevisarPage() {
   const [analise, setAnalise] = useState<AnaliseRevisao | null>(null);
   const [revisandoParagrafo, setRevisandoParagrafo] = useState<number | null>(null);
 
-  // Sprint 3 — assistência IA (opcional; DC-03)
-  const [configIA, setConfigIA] = useState<ConfiguracaoIA | null>(null);
+  // Sprint 3 — assistência IA (opcional; DC-03). A chave salva em /perfil
+  // é carregada aqui, para não precisar ser digitada duas vezes.
+  const [configIA, setConfigIA] = useState<ConfiguracaoIA | null>(() => carregarConfigIA());
   const [chaveInput, setChaveInput] = useState("");
   const [sugestaoAtiva, setSugestaoAtiva] = useState<SugestaoIA | null>(null);
   const [carregandoSugestao, setCarregandoSugestao] = useState<string | null>(null);
@@ -368,7 +370,9 @@ export default function RevisarPage() {
                 type="button"
                 disabled={chaveInput.trim().length === 0}
                 onClick={() => {
-                  setConfigIA({ apiKey: chaveInput.trim() });
+                  const config = { apiKey: chaveInput.trim() };
+                  setConfigIA(config);
+                  salvarConfigIA(config); // disponível também em /perfil
                   setChaveInput("");
                 }}
               >

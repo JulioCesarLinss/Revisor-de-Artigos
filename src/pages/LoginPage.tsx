@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { iniciarSessao } from "../sessao";
+import { PERFIS } from "../perfil/perfil";
 
 type Aba = "login" | "cadastro";
 
@@ -8,13 +9,6 @@ type Aba = "login" | "cadastro";
 const SELOS = [
   { titulo: "Criptografia ponta a ponta", texto: "Seus inéditos protegidos" },
   { titulo: "100% LGPD acadêmica", texto: "Sem treino de modelos públicos" },
-];
-
-const PERFIS = [
-  { valor: "graduacao", rotulo: "Graduação / TCC e Monografia" },
-  { valor: "pos", rotulo: "Mestrado / Doutorado / Pós-Graduação" },
-  { valor: "docente", rotulo: "Docente / Orientador Acadêmico" },
-  { valor: "revisor", rotulo: "Comitê Editorial / Revisor de Periódico" },
 ];
 
 /**
@@ -70,8 +64,7 @@ export default function LoginPage() {
             <div>
               <strong>Universidades conectadas</strong>
               <p>
-                Preparado para a comunidade acadêmica federada (CAFe / RNP) e para acesso individual com e-mail
-                institucional.
+                Preparado para acesso individual com o e-mail institucional de qualquer universidade.
               </p>
             </div>
           </div>
@@ -254,15 +247,6 @@ export default function LoginPage() {
           </div>
 
           <div className="login-federados">
-            <button type="button" className="login-federado" title="Autenticação federada CAFe / RNP (em breve)">
-              <span className="login-federado-icone" aria-hidden="true">
-                CAFe
-              </span>
-              <span className="login-federado-texto">
-                <strong>Acesso CAFe / RNP</strong>
-                <small>Comunidade acadêmica federada</small>
-              </span>
-            </button>
             <button type="button" className="login-federado" title="Entrar com Google (em breve)">
               <span className="login-federado-icone" aria-hidden="true">
                 G

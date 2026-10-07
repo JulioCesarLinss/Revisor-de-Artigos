@@ -1,9 +1,10 @@
 import { Fragment, useState } from "react";
-import { Navigate, Route, Routes, Link, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, Link, useLocation, useNavigate } from "react-router-dom";
 import { PainelAjuda } from "./ui/PainelAjuda";
 import { encerrarSessao, sessaoAtiva } from "./sessao";
 import LoginPage from "./pages/LoginPage";
 import RevisarPage from "./pages/RevisarPage";
+import PerfilPage from "./pages/PerfilPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
 
 const CADEIA = [
@@ -22,12 +23,14 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const location = useLocation();
+  const navegar = useNavigate();
   const [ajudaAberta, setAjudaAberta] = useState(false);
   const autenticado = sessaoAtiva();
 
+  // Sair encerra a sessão e volta à tela de login sem recarregar a página.
   const sair = () => {
     encerrarSessao();
-    window.location.assign("/login");
+    navegar("/login", { replace: true });
   };
 
   return (
@@ -145,11 +148,7 @@ export default function App() {
           path="/perfil"
           element={
             <RequireAuth>
-              <PlaceholderPage
-                titulo="Perfil e configurações"
-                rotaAnterior={{ para: "/laudo", rotulo: "Laudo" }}
-                rotaSeguinte={{ para: "/revisar", rotulo: "Revisar" }}
-              />
+              <PerfilPage />
             </RequireAuth>
           }
         />

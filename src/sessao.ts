@@ -14,6 +14,19 @@ export function sessaoAtiva(): boolean {
   }
 }
 
+/** Tipo da sessão ativa: "lembrada" (localStorage) ou "aba" (sessionStorage). */
+export type TipoSessao = "lembrada" | "aba";
+
+export function tipoSessao(): TipoSessao | null {
+  try {
+    if (localStorage.getItem(CHAVE) === "1") return "lembrada";
+    if (sessionStorage.getItem(CHAVE) === "1") return "aba";
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export function iniciarSessao(lembrar: boolean): void {
   try {
     if (lembrar) localStorage.setItem(CHAVE, "1");
