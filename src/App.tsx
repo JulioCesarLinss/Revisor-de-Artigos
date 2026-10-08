@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { useState } from "react";
 import { Navigate, Route, Routes, Link, useLocation, useNavigate } from "react-router-dom";
 import { PainelAjuda } from "./ui/PainelAjuda";
 import { encerrarSessao, sessaoAtiva } from "./sessao";
@@ -50,23 +50,16 @@ export default function App() {
           </Link>
           {autenticado && (
             <nav className="app-nav" aria-label="Navegação do sistema">
-              {CADEIA.map((e, i) => (
-                <Fragment key={e.para}>
-                  {/* H8: barra dupla separa visualmente cada item da navegação. */}
-                  {i > 0 && (
-                    <span className="nav-sep" aria-hidden="true">
-                      //
-                    </span>
-                  )}
-                  <Link
-                    to={e.para}
-                    className={location.pathname === e.para ? "nav-item atual" : "nav-item"}
-                    aria-current={location.pathname === e.para ? "page" : undefined}
-                    title={`Ir para ${e.rotulo}`}
-                  >
-                    {e.rotulo}
-                  </Link>
-                </Fragment>
+              {CADEIA.map((e) => (
+                <Link
+                  key={e.para}
+                  to={e.para}
+                  className={location.pathname === e.para ? "nav-item atual" : "nav-item"}
+                  aria-current={location.pathname === e.para ? "page" : undefined}
+                  title={`Ir para ${e.rotulo}`}
+                >
+                  {e.rotulo}
+                </Link>
               ))}
               <button className="nav-item nav-item-acao" type="button" onClick={sair} title="Encerrar a sessão">
                 Sair

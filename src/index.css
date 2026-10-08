@@ -1221,55 +1221,19 @@ body {
   background: #fff;
 }
 
-/* Caixa de upload no inspector: símbolo + clique/arrastar para enviar. */
-.upload-caixa {
-  display: flex;
-  flex-direction: column;
+/* Botão compacto de anexar arquivo, ao lado do Analisar. */
+.btn-anexar {
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  width: 100%;
-  padding: 18px 12px;
-  background: var(--slate-50);
-  border: 1.5px dashed var(--slate-300);
-  border-radius: var(--radius);
-  color: var(--slate-600);
-  cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+  gap: 6px;
+  padding: 5px 10px;
+  font-size: 12.5px;
 }
 
-.upload-caixa:hover,
-.upload-caixa:focus-visible {
-  border-color: var(--cobalt);
-  background: #f8fbff;
-  color: var(--cobalt-dark);
-}
-
-.upload-caixa.arrastando {
-  border-color: var(--cobalt);
-  background: #eef6ff;
-  color: var(--cobalt-dark);
-}
-
-.upload-caixa:disabled {
-  opacity: 0.6;
-  cursor: progress;
-}
-
-.upload-caixa-icone {
-  color: var(--cobalt);
-}
-
-.upload-caixa-titulo {
-  font-family: var(--font-ui);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.upload-caixa-formatos {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.04em;
-  color: var(--slate-400);
+.btn-anexar-icone {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
 }
 
 /* Kbd inline dentro dos botões (atalho junto do botão que o aciona — H7);
@@ -1423,8 +1387,8 @@ button .atalho-tecla {
 /* Botão "Ajuda" do cabeçalho, dentro da fileira de chips de normas. */
 .norm-chip-acao {
   font-family: var(--font-mono);
-  font-size: 10.5px;
-  padding: 3px 12px;
+  font-size: 12.5px;
+  padding: 5px 12px;
   background: transparent;
   border: 1px solid rgba(147, 197, 253, 0.55);
   color: #bfdbfe;
@@ -1535,28 +1499,20 @@ button .atalho-tecla {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0 2px;
+  gap: 4px 12px;
 }
 
-/* Cada item da navegação é separado do vizinho por uma barra dupla (//). */
 .nav-item {
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: 13.5px;
   font-weight: 600;
   color: #bfdbfe;
   text-decoration: none;
-  padding: 4px 8px;
+  padding: 5px 10px;
   border-radius: 6px;
   border: none;
   background: transparent;
   cursor: pointer;
-}
-
-.nav-sep {
-  color: rgba(147, 197, 253, 0.45);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  user-select: none;
 }
 
 .nav-item:hover {

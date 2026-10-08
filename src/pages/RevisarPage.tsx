@@ -29,24 +29,6 @@ import {
 } from "../workspace/fluxo";
 import { carregarWorkspace, salvarWorkspace } from "../workspace/armazenamento";
 
-const TEXTO_EXEMPLO = `INTRODUÇÃO
-
-A inteligência artificial vem transformando a produção científica em diversas áreas do conhecimento .
-
-Neste trabalho , discutimos os limites éticos dessa transformação com base na literatura recente  da área.
-
-Este parágrafo exemplifica um problema comum em manuscritos acadêmicos: o autor abre uma citação direta "sem realizar o fechamento adequado das aspas, o que compromete a leitura e a conformidade normativa do texto.
-
-Segundo a literatura , a citabilidade depende de clareza e de rastreabilidade das fontes (Silva 2021).
-
-METODOLOGIA
-
-Realizamos uma revisão narrativa da produção recente  sobre o tema, priorizando trabalhos com evidência empírica.
-
-CONSIDERAÇÕES FINAIS
-
-O trabalho encerra sem ponto final no fim`;
-
 /** Tela /revisar — editor de revisão interativa (conteúdo original do App). */
 export default function RevisarPage() {
   // Workspace restaurado do dispositivo (uma única leitura, no primeiro render):
@@ -368,8 +350,39 @@ export default function RevisarPage() {
             <strong>{analise?.manuscrito.totalPalavras ?? 0}</strong> palavras
           </span>
           <span style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-            <button className="btn" type="button" onClick={() => editar(TEXTO_EXEMPLO)} disabled={revisandoParagrafo !== null || processando} title="Substitui o conteúdo atual pelo texto de demonstração com problemas típicos">
-              Carregar exemplo
+            {/* Anexar: pequeno botão ao lado de Analisar (substitui "Carregar exemplo"). */}
+            <input
+              ref={inputFileRef}
+              type="file"
+              accept=".docx,.txt,.md,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              style={{ display: "none" }}
+              onChange={(e) => {
+                void receberArquivo(e.target.files?.[0]);
+                e.target.value = ""; // permite reenviar o mesmo arquivo
+              }}
+            />
+            <button
+              className="btn btn-anexar"
+              type="button"
+              disabled={processando}
+              onClick={() => inputFileRef.current?.click()}
+              title="Anexar manuscrito (.docx, .txt ou .md) — ou arraste o arquivo direto para a folha"
+            >
+              <svg
+                className="btn-anexar-icone"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+              Anexar
             </button>
             <button
               className="btn btn-accent"
@@ -390,6 +403,17 @@ export default function RevisarPage() {
             </button>
           </span>
         </div>
+
+        {/* Upload: erro legível com recuperação (H9). */}
+        {erroUpload && (
+          <div className="upload-erro" role="alert">
+            <strong>Não foi possível carregar o arquivo</strong>
+            <span>{erroUpload}</span>
+            <button className="btn" type="button" onClick={() => setErroUpload(null)}>
+              Fechar
+            </button>
+          </div>
+        )}
 
         {/* Arrastar-e-soltar: só reage a arquivos, preserva o drag interno. */}
         <div
@@ -477,80 +501,6 @@ export default function RevisarPage() {
           const primeiro = indices[0];
           if (primeiro) setRevisandoParagrafo(primeiro);
         }} />}
-
-        {!analise && (
-          <div className="empty-card">
-            <h3>Nenhuma análise ainda</h3>
-            <p>
-              Envie um arquivo ou cole o texto e clique em <strong>Analisar</strong>. Problemas normativos aparecem
-              com referência e, se você ativar o assistente IA, cada problema pode gerar uma sugestão de reescrita.
-            </p>
-          </div>
-        )}
-
-        {/* Upload: caixa com símbolo — seletor de arquivo e alvo de arrastar. */}
-        <input
-          ref={inputFileRef}
-          type="file"
-          accept=".docx,.txt,.md,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          style={{ display: "none" }}
-          onChange={(e) => {
-            void receberArquivo(e.target.files?.[0]);
-            e.target.value = ""; // permite reenviar o mesmo arquivo
-          }}
-        />
-        <button
-          type="button"
-          className={`upload-caixa ${arrastando ? "arrastando" : ""}`}
-          disabled={processando}
-          onClick={() => inputFileRef.current?.click()}
-          onDragOver={(e) => {
-            if (!e.dataTransfer.types.includes("Files")) return;
-            e.preventDefault();
-            setArrastando(true);
-          }}
-          onDragLeave={(e) => {
-            if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
-            setArrastando(false);
-          }}
-          onDrop={(e) => {
-            if (!e.dataTransfer.types.includes("Files")) return;
-            e.preventDefault();
-            setArrastando(false);
-            void receberArquivo(e.dataTransfer.files?.[0]);
-          }}
-          title="Envie um manuscrito .docx, .txt ou .md — clique ou arraste o arquivo para cá"
-        >
-          <svg
-            className="upload-caixa-icone"
-            viewBox="0 0 24 24"
-            width="28"
-            height="28"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="17 8 12 3 7 8" />
-            <line x1="12" y1="3" x2="12" y2="15" />
-          </svg>
-          <span className="upload-caixa-titulo">Enviar arquivo</span>
-          <span className="upload-caixa-formatos">.docx · .txt · .md</span>
-        </button>
-
-        {/* Upload: erro legível com recuperação (H9). */}
-        {erroUpload && (
-          <div className="upload-erro" role="alert">
-            <strong>Não foi possível carregar o arquivo</strong>
-            <span>{erroUpload}</span>
-            <button className="btn" type="button" onClick={() => setErroUpload(null)}>
-              Fechar
-            </button>
-          </div>
-        )}
 
         {analise && analise.problemas.length === 0 && (
           <div className="empty-card">
