@@ -48,7 +48,7 @@ export default function App() {
             </h1>
             <p>Regras normativas como base confiável; IA como assistente opcional.</p>
           </Link>
-          {autenticado ? (
+          {autenticado && (
             <nav className="app-nav" aria-label="Navegação do sistema">
               {CADEIA.map((e, i) => (
                 <Fragment key={e.para}>
@@ -81,10 +81,6 @@ export default function App() {
                 Ajuda
               </button>
             </nav>
-          ) : (
-            <div className="norm-chips" aria-label="Estado do acesso">
-              <span className="norm-chip">Acesso restrito — faça login</span>
-            </div>
           )}
         </div>
       </header>

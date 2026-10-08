@@ -113,6 +113,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  text-decoration: none; /* sem sublinhado no wordmark da marca */
 }
 
 .brand h1 {
@@ -131,33 +132,6 @@ body {
   margin: 0;
   font-size: 12.5px;
   color: var(--slate-300);
-}
-
-.norm-chips {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-left: auto;
-}
-
-.norm-chip {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  color: #bfdbfe;
-  border: 1px solid rgba(147, 197, 253, 0.35);
-  border-radius: 999px;
-  padding: 4px 10px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.norm-chip::before {
-  content: "";
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--emerald);
 }
 
 /* ---------- Layout ---------- */
@@ -1689,37 +1663,6 @@ button .atalho-tecla {
   line-height: 1.6;
   color: var(--slate-600);
   max-width: 44ch;
-}
-
-.login-hero-card {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-  background: #fff;
-  border: 1px solid var(--slate-200);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-sm);
-  padding: 14px 16px;
-  margin-bottom: 14px;
-}
-
-.login-hero-card-num {
-  font-family: var(--font-ui);
-  font-size: 26px;
-  font-weight: 700;
-  color: var(--cobalt-dark);
-}
-
-.login-hero-card strong {
-  font-family: var(--font-ui);
-  font-size: 13px;
-}
-
-.login-hero-card p {
-  margin: 2px 0 0;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--slate-500);
 }
 
 .login-selos {

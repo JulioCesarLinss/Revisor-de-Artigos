@@ -59,16 +59,6 @@ export default function LoginPage() {
             dissertações e artigos científicos.
           </p>
 
-          <div className="login-hero-card">
-            <span className="login-hero-card-num">+450</span>
-            <div>
-              <strong>Universidades conectadas</strong>
-              <p>
-                Preparado para acesso individual com o e-mail institucional de qualquer universidade.
-              </p>
-            </div>
-          </div>
-
           <div className="login-selos">
             {SELOS.map((s) => (
               <div key={s.titulo} className="login-selo">
