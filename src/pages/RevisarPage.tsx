@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { statusIA, sugerirReescrita } from "../ai/assistente";
 import { carregarConfigIA, salvarConfigIA } from "../perfil/perfil";
 import type { ConfiguracaoIA, SugestaoIA } from "../ai/types";
 import { aplicarCorrecao } from "../document/acoes";
 import { aplicarSugestao } from "../document/aplicarSugestao";
+import { lerArquivo, type ResultadoUpload } from "../document/arquivo";
 import { iniciarRevisao, type AnaliseRevisao } from "../review/orquestrar";
 import type { Problema } from "../rules/types";
 import { PainelHistorico } from "../ui/PainelHistorico";
@@ -25,6 +27,7 @@ import {
   type EstadoFluxo,
   type VersaoSnapshot,
 } from "../workspace/fluxo";
+import { carregarWorkspace, salvarWorkspace } from "../workspace/armazenamento";
 
 const TEXTO_EXEMPLO = `INTRODUÇÃO
 
@@ -46,7 +49,22 @@ O trabalho encerra sem ponto final no fim`;
 
 /** Tela /revisar — editor de revisão interativa (conteúdo original do App). */
 export default function RevisarPage() {
-  const [bruto, setBruto] = useState("");
+  // Workspace restaurado do dispositivo (uma única leitura, no primeiro render):
+  // o rascunho/versões sobrevivem à troca de rotas e alimentam /historico.
+  const [salvo] = useState(carregarWorkspace);
+  const location = useLocation();
+
+  /** Alvo vindo do /historico ("Localizar"): aplicado após a 1ª análise. */
+  const alvoPendente = useRef<number | null>(
+    (location.state as { alvo?: number } | null)?.alvo ?? null,
+  );
+
+  // Upload de arquivo (aba Revisar): seletor + arrastar-e-soltar na folha.
+  const inputFileRef = useRef<HTMLInputElement | null>(null);
+  const [arrastando, setArrastando] = useState(false);
+  const [erroUpload, setErroUpload] = useState<string | null>(null);
+
+  const [bruto, setBruto] = useState(salvo?.bruto ?? "");
   const [analise, setAnalise] = useState<AnaliseRevisao | null>(null);
   const [revisandoParagrafo, setRevisandoParagrafo] = useState<number | null>(null);
 
@@ -64,16 +82,16 @@ export default function RevisarPage() {
    * erro mostre o que falhou e ofereça a recuperação ("Tentar novamente").
    */
   const [ultimoPedido, setUltimoPedido] = useState<Problema | null>(null);
-  const [historico, setHistorico] = useState<RegistroAlteracao[]>([]);
+  const [historico, setHistorico] = useState<RegistroAlteracao[]>(salvo?.historico ?? []);
 
   // Heurística 1 (Nielsen) — visibilidade do status do sistema
   const [ocupadoCom, setOcupadoCom] = useState<string | null>(null);
   const [statusSistema, setStatusSistema] = useState<string | null>(null);
 
-  // Sprint 4 — fluxo de revisão guiada
-  const [estadoFluxo, setEstadoFluxo] = useState<EstadoFluxo>(estadoInicial);
-  const [versoes, setVersoes] = useState<VersaoSnapshot[]>([]);
-  const [feedbacks, setFeedbacks] = useState<Record<number, boolean>>({});
+  // Sprint 4 — fluxo de revisão guiada (restaurado do storage quando houver)
+  const [estadoFluxo, setEstadoFluxo] = useState<EstadoFluxo>(salvo?.estadoFluxo ?? estadoInicial());
+  const [versoes, setVersoes] = useState<VersaoSnapshot[]>(salvo?.versoes ?? []);
+  const [feedbacks, setFeedbacks] = useState<Record<number, boolean>>(salvo?.feedbacks ?? {});
   const [mostrandoComparacao, setMostrandoComparacao] = useState(false);
 
   const estadoIA = statusIA(configIA);
@@ -89,8 +107,28 @@ export default function RevisarPage() {
       setAnalise(resultado);
       setOcupadoCom(null);
       setStatusSistema(`Análise concluída — ${resultado.resumo.total} problema(s) encontrado(s).`);
+      // "Localizar" vindo do /historico: abre o modo revisar no parágrafo alvo.
+      const alvo = alvoPendente.current;
+      if (alvo !== null) {
+        alvoPendente.current = null;
+        if (alvo > 0 && alvo <= resultado.manuscrito.paragrafos.length) setRevisandoParagrafo(alvo);
+      }
     }, 0);
   }, [bruto]);
+
+  // Persiste o workspace a cada mudança: /historico lê daqui e o rascunho
+  // sobrevive à navegação entre rotas.
+  useEffect(() => {
+    salvarWorkspace({ bruto, historico, versoes, estadoFluxo, feedbacks });
+  }, [bruto, historico, versoes, estadoFluxo, feedbacks]);
+
+  // Ao montar com texto restaurado, analisa uma vez (e aplica um alvo pendente).
+  const iniciado = useRef(false);
+  useEffect(() => {
+    if (iniciado.current) return;
+    iniciado.current = true;
+    if (bruto.trim().length > 0) analisar();
+  }, [analisar, bruto]);
 
   const avancarFluxo = useCallback(() => {
     const seguinte = proximoEstado(estadoFluxo);
@@ -144,6 +182,43 @@ export default function RevisarPage() {
   const editar = useCallback((novo: string) => {
     setBruto(novo);
     setRevisandoParagrafo(null);
+  }, []);
+
+  /** Lê o arquivo no cliente, carrega o texto como novo rascunho e analisa. */
+  const receberArquivo = useCallback(async (file: File | null | undefined) => {
+    if (!file) return;
+    setErroUpload(null);
+    setArrastando(false);
+    setOcupadoCom(`Lendo "${file.name}"…`);
+
+    let resultado: ResultadoUpload;
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      resultado = await lerArquivo({ nome: file.name, bytes });
+    } catch {
+      resultado = { ok: false, motivo: `Não foi possível ler "${file.name}" — o arquivo pode estar corrompido.` };
+    }
+
+    if (!resultado.ok) {
+      // H9: o erro diz o quê, por quê e o que fazer (recuperação).
+      setErroUpload(resultado.motivo);
+      setOcupadoCom(null);
+      setStatusSistema(null);
+      return;
+    }
+
+    setBruto(resultado.texto);
+    setRevisandoParagrafo(null);
+    alvoPendente.current = null; // o texto novo invalida um alvo antigo
+    setOcupadoCom("Analisando manuscrito…");
+    setTimeout(() => {
+      const analiseNova = iniciarRevisao(resultado.texto);
+      setAnalise(analiseNova);
+      setOcupadoCom(null);
+      setStatusSistema(
+        `Arquivo "${file.name}" carregado — ${analiseNova.resumo.total} problema(s) encontrado(s).`,
+      );
+    }, 0);
   }, []);
 
   const corrigir = useCallback((problema: Problema) => {
@@ -255,21 +330,24 @@ export default function RevisarPage() {
           }
         />
 
-        <p className="status-sistema" role="status" aria-live="polite">
-          {carregandoSugestao !== null ? (
-            <>
-              <span className="status-spinner" aria-hidden="true" />
-              Pedindo sugestão à IA…
-            </>
-          ) : ocupadoCom !== null ? (
-            <>
-              <span className="status-spinner" aria-hidden="true" />
-              {ocupadoCom}
-            </>
-          ) : (
-            (statusSistema ?? "Pronto — cole o manuscrito e clique em Analisar.")
-          )}
-        </p>
+        {/* H1: a linha de status só existe quando há status a mostrar. */}
+        {(carregandoSugestao !== null || ocupadoCom !== null || statusSistema) && (
+          <p className="status-sistema" role="status" aria-live="polite">
+            {carregandoSugestao !== null ? (
+              <>
+                <span className="status-spinner" aria-hidden="true" />
+                Pedindo sugestão à IA…
+              </>
+            ) : ocupadoCom !== null ? (
+              <>
+                <span className="status-spinner" aria-hidden="true" />
+                {ocupadoCom}
+              </>
+            ) : (
+              statusSistema
+            )}
+          </p>
+        )}
 
         {mostrandoComparacao && estadoFluxo !== "rascunho" ? (
           <div className="canvas-page">
@@ -290,7 +368,6 @@ export default function RevisarPage() {
             <strong>{analise?.manuscrito.totalPalavras ?? 0}</strong> palavras
           </span>
           <span style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-            {/* H7: os aceleradores ficam documentados junto dos botões que acionam. */}
             <button className="btn" type="button" onClick={() => editar(TEXTO_EXEMPLO)} disabled={revisandoParagrafo !== null || processando} title="Substitui o conteúdo atual pelo texto de demonstração com problemas típicos">
               Carregar exemplo
             </button>
@@ -314,12 +391,25 @@ export default function RevisarPage() {
           </span>
         </div>
 
-        {/* H7: os atalhos de eficiência ficam documentados e sempre à vista. */}
-        <p className="atalhos-dica">
-          Aceleradores de teclado: <kbd className="atalho-tecla">Ctrl+↵</kbd> analisar · <kbd className="atalho-tecla">Ctrl+Shift+↵</kbd> avançar etapa · <kbd className="atalho-tecla">Esc</kbd> sair do modo revisar.
-        </p>
-
-        <div className="canvas-page">
+        {/* Arrastar-e-soltar: só reage a arquivos, preserva o drag interno. */}
+        <div
+          className={`canvas-page ${arrastando ? "arrastando" : ""}`}
+          onDragOver={(e) => {
+            if (!e.dataTransfer.types.includes("Files")) return;
+            e.preventDefault();
+            setArrastando(true);
+          }}
+          onDragLeave={(e) => {
+            if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+            setArrastando(false);
+          }}
+          onDrop={(e) => {
+            if (!e.dataTransfer.types.includes("Files")) return;
+            e.preventDefault();
+            setArrastando(false);
+            void receberArquivo(e.dataTransfer.files?.[0]);
+          }}
+        >
           {revisandoParagrafo !== null && analise ? (
             <RevisarView
               manuscrito={analise.manuscrito}
@@ -392,9 +482,73 @@ export default function RevisarPage() {
           <div className="empty-card">
             <h3>Nenhuma análise ainda</h3>
             <p>
-              Cole o texto e clique em <strong>Analisar</strong>. Problemas normativos aparecem com referência e, se
-              você ativar o assistente IA, cada problema pode gerar uma sugestão de reescrita.
+              Envie um arquivo ou cole o texto e clique em <strong>Analisar</strong>. Problemas normativos aparecem
+              com referência e, se você ativar o assistente IA, cada problema pode gerar uma sugestão de reescrita.
             </p>
+          </div>
+        )}
+
+        {/* Upload: caixa com símbolo — seletor de arquivo e alvo de arrastar. */}
+        <input
+          ref={inputFileRef}
+          type="file"
+          accept=".docx,.txt,.md,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          style={{ display: "none" }}
+          onChange={(e) => {
+            void receberArquivo(e.target.files?.[0]);
+            e.target.value = ""; // permite reenviar o mesmo arquivo
+          }}
+        />
+        <button
+          type="button"
+          className={`upload-caixa ${arrastando ? "arrastando" : ""}`}
+          disabled={processando}
+          onClick={() => inputFileRef.current?.click()}
+          onDragOver={(e) => {
+            if (!e.dataTransfer.types.includes("Files")) return;
+            e.preventDefault();
+            setArrastando(true);
+          }}
+          onDragLeave={(e) => {
+            if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+            setArrastando(false);
+          }}
+          onDrop={(e) => {
+            if (!e.dataTransfer.types.includes("Files")) return;
+            e.preventDefault();
+            setArrastando(false);
+            void receberArquivo(e.dataTransfer.files?.[0]);
+          }}
+          title="Envie um manuscrito .docx, .txt ou .md — clique ou arraste o arquivo para cá"
+        >
+          <svg
+            className="upload-caixa-icone"
+            viewBox="0 0 24 24"
+            width="28"
+            height="28"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+          <span className="upload-caixa-titulo">Enviar arquivo</span>
+          <span className="upload-caixa-formatos">.docx · .txt · .md</span>
+        </button>
+
+        {/* Upload: erro legível com recuperação (H9). */}
+        {erroUpload && (
+          <div className="upload-erro" role="alert">
+            <strong>Não foi possível carregar o arquivo</strong>
+            <span>{erroUpload}</span>
+            <button className="btn" type="button" onClick={() => setErroUpload(null)}>
+              Fechar
+            </button>
           </div>
         )}
 

@@ -5,10 +5,11 @@ import { encerrarSessao, sessaoAtiva } from "./sessao";
 import LoginPage from "./pages/LoginPage";
 import RevisarPage from "./pages/RevisarPage";
 import PerfilPage from "./pages/PerfilPage";
+import HistoricoPage from "./pages/HistoricoPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
+import { limparWorkspace } from "./workspace/armazenamento";
 
 const CADEIA = [
-  { para: "/upload", rotulo: "Upload" },
   { para: "/revisar", rotulo: "Revisar" },
   { para: "/historico", rotulo: "Histórico" },
   { para: "/laudo", rotulo: "Laudo" },
@@ -27,9 +28,10 @@ export default function App() {
   const [ajudaAberta, setAjudaAberta] = useState(false);
   const autenticado = sessaoAtiva();
 
-  // Sair encerra a sessão e volta à tela de login sem recarregar a página.
+  // Sair encerra a sessão, descarta o workspace do dispositivo e volta ao login.
   const sair = () => {
     encerrarSessao();
+    limparWorkspace();
     navegar("/login", { replace: true });
   };
 
@@ -101,18 +103,6 @@ export default function App() {
           }
         />
         <Route
-          path="/upload"
-          element={
-            <RequireAuth>
-              <PlaceholderPage
-                titulo="Upload de artigos"
-                rotaAnterior={{ para: "/revisar", rotulo: "Revisar" }}
-                rotaSeguinte={{ para: "/revisar", rotulo: "Revisar" }}
-              />
-            </RequireAuth>
-          }
-        />
-        <Route
           path="/revisar"
           element={
             <RequireAuth>
@@ -124,11 +114,7 @@ export default function App() {
           path="/historico"
           element={
             <RequireAuth>
-              <PlaceholderPage
-                titulo="Histórico de versões"
-                rotaAnterior={{ para: "/revisar", rotulo: "Revisar" }}
-                rotaSeguinte={{ para: "/laudo", rotulo: "Laudo" }}
-              />
+              <HistoricoPage />
             </RequireAuth>
           }
         />

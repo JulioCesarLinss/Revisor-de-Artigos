@@ -221,6 +221,13 @@ body {
   }
 }
 
+/* Alvo de arrastar-e-soltar: contorno cobalto enquanto o arquivo está sobre a folha. */
+.canvas-page.arrastando {
+  outline: 2px dashed var(--cobalt);
+  outline-offset: -8px;
+  background: #f8fbff;
+}
+
 .manuscript-input {
   width: 100%;
   min-height: 460px;
@@ -752,6 +759,272 @@ body {
   white-space: nowrap;
 }
 
+/* ---------- Tela /historico (Sprint 4 — versões e rastro) ---------- */
+.historico-main {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 24px 48px;
+}
+
+.historico-cabecalho {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.historico-cabecalho h2 {
+  font-family: var(--font-ui);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  margin: 0 0 4px;
+  color: var(--ink);
+}
+
+.historico-cabecalho p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--slate-600);
+  max-width: 60ch;
+}
+
+.historico-acoes {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.historico-btn-perigo {
+  color: var(--crimson);
+  background: var(--crimson-bg);
+  border-color: var(--crimson-bg);
+}
+
+.historico-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 14px 0;
+}
+
+@media (max-width: 640px) {
+  .historico-stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+.historico-stat {
+  background: #fff;
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 12px 14px;
+}
+
+.historico-stat strong {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.historico-stat span {
+  font-size: 11.5px;
+  color: var(--slate-500);
+}
+
+.historico-secao {
+  background: #fff;
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.historico-secao h3 {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--slate-500);
+  margin: 0 0 12px;
+}
+
+.historico-secao-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.historico-secao-topo h3 {
+  margin: 0;
+}
+
+.historico-nota {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--slate-500);
+}
+
+/* Linha do tempo de versões */
+.historico-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.historico-timeline li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 0 10px 22px;
+  border-bottom: 1px dashed var(--slate-200);
+  font-size: 12.5px;
+}
+
+.historico-timeline li:last-child {
+  border-bottom: none;
+}
+
+.historico-timeline li::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--slate-200);
+}
+
+.historico-timeline li:first-child::before {
+  top: 50%;
+}
+
+.historico-timeline li:last-child::before {
+  bottom: 50%;
+}
+
+.historico-timeline-marca {
+  position: absolute;
+  left: 0;
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  background: var(--cobalt);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px var(--slate-300);
+}
+
+.historico-timeline-estado {
+  font-family: var(--font-ui);
+  font-weight: 700;
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.historico-timeline-atual {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--cobalt-dark);
+  background: #eff6ff;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.historico-timeline-dados {
+  color: var(--slate-600);
+}
+
+.historico-timeline .historico-quando {
+  margin-left: auto;
+}
+
+/* Filtros por origem */
+.historico-filtros {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.historico-filtro {
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  font-weight: 600;
+  border: 1px solid var(--slate-300);
+  background: #fff;
+  color: var(--slate-600);
+  border-radius: 999px;
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.historico-filtro:hover {
+  background: var(--slate-50);
+}
+
+.historico-filtro.ativo {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+
+/* Lista de alterações na página (variação da lista do painel) */
+.historico-lista-pagina li {
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--slate-200);
+  font-size: 12.5px;
+}
+
+.historico-lista-pagina li:last-child {
+  border-bottom: none;
+}
+
+.historico-lista-pagina .historico-desc {
+  flex: 1 1 240px;
+}
+
+.historico-localizar {
+  font-size: 11.5px;
+  padding: 4px 10px;
+  margin-left: auto;
+}
+
+.historico-vazio {
+  text-align: center;
+}
+
+.historico-vazio .btn {
+  margin-top: 8px;
+}
+
+.historico-navegacao {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
 /* ---------- Sprint 4: fluxo guiado ---------- */
 .fluxo-barra {
   display: flex;
@@ -951,17 +1224,82 @@ body {
   font-weight: 600;
 }
 
-/* ---------- Heurística 7 — flexibilidade e eficiência de uso ---------- */
-/* Dica sempre visível que documenta os aceleradores de teclado. */
-.atalhos-dica {
-  margin: 0;
-  font-family: var(--font-ui);
-  font-size: 11.5px;
-  color: var(--slate-500);
+/* ---------- Upload de arquivo (aba Revisar) ---------- */
+.upload-erro {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--crimson);
+  background: var(--crimson-bg);
+  border-radius: 8px;
+  padding: 10px 12px;
 }
 
-/* Kbd inline que aparece tanto na dica quanto dentro dos botões; cores via
-   currentColor para funcionar em botões claros (Analisar) e escuros. */
+.upload-erro strong {
+  font-family: var(--font-ui);
+}
+
+.upload-erro .btn {
+  margin-left: auto;
+  background: #fff;
+}
+
+/* Caixa de upload no inspector: símbolo + clique/arrastar para enviar. */
+.upload-caixa {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 18px 12px;
+  background: var(--slate-50);
+  border: 1.5px dashed var(--slate-300);
+  border-radius: var(--radius);
+  color: var(--slate-600);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.upload-caixa:hover,
+.upload-caixa:focus-visible {
+  border-color: var(--cobalt);
+  background: #f8fbff;
+  color: var(--cobalt-dark);
+}
+
+.upload-caixa.arrastando {
+  border-color: var(--cobalt);
+  background: #eef6ff;
+  color: var(--cobalt-dark);
+}
+
+.upload-caixa:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.upload-caixa-icone {
+  color: var(--cobalt);
+}
+
+.upload-caixa-titulo {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.upload-caixa-formatos {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--slate-400);
+}
+
+/* Kbd inline dentro dos botões (atalho junto do botão que o aciona — H7);
+   cores via currentColor para funcionar em botões claros e escuros. */
 .atalho-tecla {
   display: inline-block;
   font-family: var(--font-mono);

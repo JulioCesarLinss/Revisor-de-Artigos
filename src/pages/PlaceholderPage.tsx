@@ -30,7 +30,7 @@ export default function PlaceholderPage({ titulo, rotaAnterior, rotaSeguinte, ch
           </Link>
         </div>
       </div>
-      <p className="placeholder-cadeia">Fluxo: Login → Upload → Revisar → Histórico → Laudo → Perfil</p>
+      <p className="placeholder-cadeia">Fluxo: Login → Revisar → Histórico → Laudo → Perfil</p>
     </main>
   );
 }

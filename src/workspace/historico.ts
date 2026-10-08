@@ -24,10 +24,14 @@ export function registrar(
   historico: RegistroAlteracao[],
   entrada: { origem: OrigemAlteracao; descricao: string; paragrafo: number },
 ): RegistroAlteracao[] {
+  // Id auto-recuperável: mesmo que o histórico restaurado venha de outro
+  // processo (ou em qualquer ordem), o próximo id nunca colide com os existentes.
+  const id = Math.max(proximoId, historico.reduce((maior, e) => Math.max(maior, e.id), 0) + 1);
+  proximoId = id + 1;
   return [
     ...historico,
     {
-      id: proximoId++,
+      id,
       ...entrada,
       quando: new Date().toLocaleTimeString("pt-BR"),
     },

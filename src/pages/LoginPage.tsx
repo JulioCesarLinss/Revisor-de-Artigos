@@ -14,7 +14,7 @@ const SELOS = [
 /**
  * Tela /login — RF01 (login/cadastro), guiada pelo mockup de referência e pelo
  * design system Academic Modernist. Sem autenticação real: qualquer envio
- * válido navega para /upload.
+ * válido navega para /revisar.
  */
 export default function LoginPage() {
   const navegar = useNavigate();
@@ -36,13 +36,13 @@ export default function LoginPage() {
   const entrar = (e: FormEvent) => {
     e.preventDefault();
     iniciarSessao(lembrar); // "Lembrar de mim" persiste no dispositivo
-    navegar("/upload");
+    navegar("/revisar");
   };
 
   const cadastrar = (e: FormEvent) => {
     e.preventDefault();
     iniciarSessao(false);
-    navegar("/upload");
+    navegar("/revisar");
   };
 
   return (

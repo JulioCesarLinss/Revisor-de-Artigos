@@ -49,10 +49,14 @@ export function registrarVersao(
   versoes: VersaoSnapshot[],
   entrada: { estado: EstadoFluxo; bruto: string; totalProblemas: number },
 ): VersaoSnapshot[] {
+  // Id auto-recuperável: não colide com snapshots restaurados do storage,
+  // em qualquer ordem.
+  const id = Math.max(proximoIdVersao, versoes.reduce((maior, s) => Math.max(maior, s.id), 0) + 1);
+  proximoIdVersao = id + 1;
   return [
     ...versoes,
     {
-      id: proximoIdVersao++,
+      id,
       ...entrada,
       quando: new Date().toLocaleTimeString("pt-BR"),
     },
