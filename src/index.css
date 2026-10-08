@@ -1346,12 +1346,13 @@ button .atalho-tecla {
   color: var(--slate-500);
 }
 
-/* Espelho oculto: mede cada parágrafo com a tipografia do miolo da folha. */
+/* Espelho oculto: mede o texto contínuo com a tipografia do miolo da folha.
+   A largura é igualada à do textarea real em tempo de execução (paginar()). */
 .folha-medidor {
   position: absolute;
   left: -9999px;
   top: 0;
-  width: 682px; /* 794 − 2 × 56 de margem interna da folha */
+  width: 680px; /* 794 − 2 × 56 de margem − 2 × 1px de borda */
   visibility: hidden;
 }
 
@@ -1375,66 +1376,38 @@ button .atalho-tecla {
   }
 }
 
-.folha-paragrafo {
-  margin: 0 0 18px;
+/* Tipografia única do miolo da folha: vale para o texto, o editor e o espelho
+   (mesmas métricas em todos ⇒ medição idêntica ao renderizado). */
+.folha-texto {
   font-family: var(--font-serif);
   font-size: 15px;
   line-height: 1.9;
   color: #1f2937;
-  cursor: text;
   white-space: pre-wrap;
   overflow-wrap: break-word;
-  transition: background 0.15s ease;
 }
 
-.folha-paragrafo:hover {
-  background: #fffbeb;
-}
-
-.folha-paragrafo.vazio {
-  min-height: 1.9em;
-}
-
-.folha-vazio {
-  color: var(--slate-400);
-  font-style: italic;
-  font-size: 13px;
-}
-
-.folha-editor {
+/* Editor contínuo: um textarea por folha, sem moldura — só o texto aparece.
+   Altura = limite útil da folha; a repaginação é síncrona antes do paint. */
+.folha-texto-area {
   display: block;
   width: 100%;
-  border: 1px solid var(--cobalt);
-  border-radius: 4px;
-  padding: 2px 6px;
-  font-family: var(--font-serif);
-  font-size: 15px;
-  line-height: 1.9;
-  color: #1f2937;
-  background: #fff;
-  resize: vertical;
-}
-
-.folha-editor:focus-visible {
-  outline: 2px solid var(--cobalt);
-  outline-offset: 2px;
-}
-
-.folha-adicionar {
-  margin-top: 6px;
-  border: 1px dashed var(--slate-300);
+  height: 950px; /* ALTURA_UTIL_PX */
+  margin: 0;
+  padding: 0;
+  border: none;
+  outline: none;
   background: transparent;
-  border-radius: 6px;
-  padding: 6px 12px;
-  font-family: var(--font-ui);
-  font-size: 11.5px;
-  color: var(--slate-500);
-  cursor: pointer;
+  resize: none;
+  overflow-x: hidden;
+  overflow-y: auto; /* só apareceria se as métricas fugissem da medição */
+  box-sizing: border-box;
 }
 
-.folha-adicionar:hover {
-  border-color: var(--cobalt);
-  color: var(--cobalt-dark);
+/* Dentro da folha, o cursor de texto já indica o foco (estilo Word): o
+   anel global de :focus-visible desenharia um retângulo de 950px. */
+.folha-a4 .folha-texto-area:focus-visible {
+  outline: none;
 }
 
 .folha-num {
