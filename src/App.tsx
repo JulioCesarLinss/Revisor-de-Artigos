@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Navigate, Route, Routes, Link, useLocation, useNavigate } from "react-router-dom";
 import { PainelAjuda } from "./ui/PainelAjuda";
-import { encerrarSessao, sessaoAtiva } from "./sessao";
+import { encerrarSessao } from "./sessao";
+import { sair as sairFirebase, useAutorizacao } from "./firebase/auth";
 import LoginPage from "./pages/LoginPage";
 import RevisarPage from "./pages/RevisarPage";
 import PerfilPage from "./pages/PerfilPage";
@@ -17,8 +18,10 @@ const CADEIA = [
 ];
 
 /** Portão do sistema: sem sessão, qualquer rota protegida volta para /login. */
-function RequireAuth({ children }: { children: React.ReactNode }) {
-  if (!sessaoAtiva()) return <Navigate to="/login" replace />;
+function RequireAuth({ pronto, autenticado, children }: { pronto: boolean; autenticado: boolean; children: React.ReactNode }) {
+  // Com Firebase, aguarda a primeira verificação de sessão antes de decidir.
+  if (!pronto) return null;
+  if (!autenticado) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 
@@ -26,10 +29,12 @@ export default function App() {
   const location = useLocation();
   const navegar = useNavigate();
   const [ajudaAberta, setAjudaAberta] = useState(false);
-  const autenticado = sessaoAtiva();
+  // Estado de sessão unificado: Firebase Auth quando configurado, senão local.
+  const { pronto, autenticado } = useAutorizacao();
 
-  // Sair encerra a sessão, descarta o workspace do dispositivo e volta ao login.
+  // Sair encerra a sessão (Firebase + local), descarta o workspace e volta ao login.
   const sair = () => {
+    void sairFirebase();
     encerrarSessao();
     limparWorkspace();
     navegar("/login", { replace: true });
@@ -86,7 +91,7 @@ export default function App() {
         <Route
           path="/"
           element={
-            <RequireAuth>
+            <RequireAuth pronto={pronto} autenticado={autenticado}>
               <Navigate to="/revisar" replace />
             </RequireAuth>
           }
@@ -94,7 +99,7 @@ export default function App() {
         <Route
           path="/revisar"
           element={
-            <RequireAuth>
+            <RequireAuth pronto={pronto} autenticado={autenticado}>
               <RevisarPage />
             </RequireAuth>
           }
@@ -102,7 +107,7 @@ export default function App() {
         <Route
           path="/historico"
           element={
-            <RequireAuth>
+            <RequireAuth pronto={pronto} autenticado={autenticado}>
               <HistoricoPage />
             </RequireAuth>
           }
@@ -110,7 +115,7 @@ export default function App() {
         <Route
           path="/laudo"
           element={
-            <RequireAuth>
+            <RequireAuth pronto={pronto} autenticado={autenticado}>
               <LaudoPage />
             </RequireAuth>
           }
@@ -118,7 +123,7 @@ export default function App() {
         <Route
           path="/perfil"
           element={
-            <RequireAuth>
+            <RequireAuth pronto={pronto} autenticado={autenticado}>
               <PerfilPage />
             </RequireAuth>
           }
@@ -126,7 +131,7 @@ export default function App() {
         <Route
           path="*"
           element={
-            <RequireAuth>
+            <RequireAuth pronto={pronto} autenticado={autenticado}>
               <Navigate to="/revisar" replace />
             </RequireAuth>
           }

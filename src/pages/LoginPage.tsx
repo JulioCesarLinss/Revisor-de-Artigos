@@ -2,6 +2,8 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { iniciarSessao } from "../sessao";
 import { PERFIS } from "../perfil/perfil";
+import { cadastrar as cadastrarFirebase, entrar as entrarFirebase } from "../firebase/auth";
+import { configurado as firebaseConfigurado } from "../firebase/config";
 
 type Aba = "login" | "cadastro";
 
@@ -33,16 +35,51 @@ export default function LoginPage() {
   const [confirmarSenha, setConfirmarSenha] = useState("");
   const [perfil, setPerfil] = useState("graduacao");
 
-  const entrar = (e: FormEvent) => {
+  // Erro de autenticação legível (H9) e estado de processamento.
+  const [erroAuth, setErroAuth] = useState<string | null>(null);
+  const [processando, setProcessando] = useState(false);
+
+  const entrar = async (e: FormEvent) => {
     e.preventDefault();
-    iniciarSessao(lembrar); // "Lembrar de mim" persiste no dispositivo
-    navegar("/revisar");
+    setErroAuth(null);
+    // Sem Firebase configurado: mantém a sessão local simulada (nada quebra).
+    if (!firebaseConfigurado) {
+      iniciarSessao(lembrar);
+      navegar("/revisar");
+      return;
+    }
+    setProcessando(true);
+    const r = await entrarFirebase(email, senha);
+    setProcessando(false);
+    if (r.ok) {
+      iniciarSessao(lembrar);
+      navegar("/revisar");
+    } else {
+      setErroAuth(r.motivo);
+    }
   };
 
-  const cadastrar = (e: FormEvent) => {
+  const cadastrar = async (e: FormEvent) => {
     e.preventDefault();
-    iniciarSessao(false);
-    navegar("/revisar");
+    setErroAuth(null);
+    if (!firebaseConfigurado) {
+      iniciarSessao(false);
+      navegar("/revisar");
+      return;
+    }
+    if (senhaCadastro !== confirmarSenha) {
+      setErroAuth("As senhas não conferem.");
+      return;
+    }
+    setProcessando(true);
+    const r = await cadastrarFirebase(emailCadastro, senhaCadastro, nome);
+    setProcessando(false);
+    if (r.ok) {
+      iniciarSessao(false);
+      navegar("/revisar");
+    } else {
+      setErroAuth(r.motivo);
+    }
   };
 
   return (
@@ -154,8 +191,15 @@ export default function LoginPage() {
                 </span>
               </div>
 
-              <button className="btn-login btn-login-primario" type="submit">
-                Entrar no NormaReview
+              {erroAuth && (
+                <p className="upload-erro" role="alert">
+                  <strong>Não foi possível entrar</strong>
+                  <span>{erroAuth}</span>
+                </p>
+              )}
+
+              <button className="btn-login btn-login-primario" type="submit" disabled={processando}>
+                {processando ? "Entrando…" : "Entrar no NormaReview"}
               </button>
             </form>
           ) : (
@@ -226,8 +270,15 @@ export default function LoginPage() {
                 </select>
               </div>
 
-              <button className="btn-login btn-login-secundario" type="submit">
-                Cadastrar gratuitamente
+              {erroAuth && (
+                <p className="upload-erro" role="alert">
+                  <strong>Não foi possível criar a conta</strong>
+                  <span>{erroAuth}</span>
+                </p>
+              )}
+
+              <button className="btn-login btn-login-secundario" type="submit" disabled={processando}>
+                {processando ? "Criando conta…" : "Cadastrar gratuitamente"}
               </button>
             </form>
           )}

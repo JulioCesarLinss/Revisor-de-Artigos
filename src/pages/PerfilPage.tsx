@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { encerrarSessao, tipoSessao } from "../sessao";
 import {
@@ -12,6 +12,9 @@ import {
   salvarPerfil,
 } from "../perfil/perfil";
 import type { ConfiguracaoIA } from "../ai/types";
+import { sair as sairFirebase, useAutorizacao } from "../firebase/auth";
+import { configurado as firebaseConfigurado } from "../firebase/config";
+import { carregarPerfilNuvem, salvarPerfilNuvem } from "../firebase/persistencia";
 
 /**
  * Tela /perfil — dados do autor/revisor, configuração do assistente IA
@@ -23,11 +26,30 @@ export default function PerfilPage() {
   // Heurística 1 (Nielsen): toda ação dá retorno imediato e legível.
   const [status, setStatus] = useState<string | null>(null);
 
+  // uid do Firebase (quando configurado) — chave da persistência na nuvem.
+  const { uid } = useAutorizacao();
+
   const salvo = carregarPerfil();
   const [nome, setNome] = useState(salvo?.nome ?? "");
   const [email, setEmail] = useState(salvo?.email ?? "");
   const [instituicao, setInstituicao] = useState(salvo?.instituicao ?? "");
   const [perfil, setPerfil] = useState(salvo?.perfil ?? "graduacao");
+
+  // Com Firebase, pré-carrega o perfil salvo na nuvem (sobrescreve o local vazio).
+  useEffect(() => {
+    if (!firebaseConfigurado || !uid) return;
+    let cancelado = false;
+    void carregarPerfilNuvem(uid).then((nuvem) => {
+      if (cancelado || !nuvem) return;
+      setNome(nuvem.nome);
+      setEmail(nuvem.email);
+      setInstituicao(nuvem.instituicao);
+      setPerfil(nuvem.perfil);
+    });
+    return () => {
+      cancelado = true;
+    };
+  }, [uid]);
 
   // Assistente IA — a chave salva aqui é reutilizada pela tela Revisar.
   const [configIA, setConfigIA] = useState<ConfiguracaoIA | null>(() => carregarConfigIA());
@@ -42,7 +64,13 @@ export default function PerfilPage() {
       return;
     }
     salvarPerfil({ nome, email, instituicao, perfil });
-    setStatus("Perfil salvo neste dispositivo.");
+    // Com Firebase, espelha o perfil na nuvem (uid → usuarios/{uid}/dados/perfil).
+    if (firebaseConfigurado && uid) {
+      void salvarPerfilNuvem(uid, { nome, email, instituicao, perfil });
+      setStatus("Perfil salvo na nuvem e neste dispositivo.");
+    } else {
+      setStatus("Perfil salvo neste dispositivo.");
+    }
   };
 
   const salvarChave = () => {
@@ -66,6 +94,7 @@ export default function PerfilPage() {
   };
 
   const sair = () => {
+    void sairFirebase(); // Firebase Auth, quando configurado
     encerrarSessao();
     navegar("/login", { replace: true });
   };
@@ -86,7 +115,10 @@ export default function PerfilPage() {
       </div>
 
       <p className="status-sistema" role="status" aria-live="polite">
-        {status ?? "Alterações ficam salvas apenas neste dispositivo (sem backend)."}
+        {status ??
+          (firebaseConfigurado
+            ? "Perfil sincronizado com a nuvem (Firebase) e salvo neste dispositivo."
+            : "Alterações ficam salvas apenas neste dispositivo (sem backend).")}
       </p>
 
       <div className="perfil-grid">

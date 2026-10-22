@@ -28,9 +28,13 @@ import {
   type VersaoSnapshot,
 } from "../workspace/fluxo";
 import { carregarWorkspace, salvarWorkspace } from "../workspace/armazenamento";
+import { useAutorizacao } from "../firebase/auth";
+import { carregarWorkspaceNuvem, salvarWorkspaceNuvem } from "../firebase/persistencia";
 
 /** Tela /revisar — editor de revisão interativa (conteúdo original do App). */
 export default function RevisarPage() {
+  // uid do Firebase (quando configurado) — chave da persistência na nuvem.
+  const { uid } = useAutorizacao();
   // Workspace restaurado do dispositivo (uma única leitura, no primeiro render):
   // o rascunho/versões sobrevivem à troca de rotas e alimentam /historico.
   const [salvo] = useState(carregarWorkspace);
@@ -103,6 +107,33 @@ export default function RevisarPage() {
   useEffect(() => {
     salvarWorkspace({ bruto, historico, versoes, estadoFluxo, feedbacks });
   }, [bruto, historico, versoes, estadoFluxo, feedbacks]);
+
+  // Com Firebase, carrega da nuvem quando o dispositivo local está vazio
+  // (primeiro acesso deste dispositivo à conta).
+  const nuvemCarregada = useRef(false);
+  useEffect(() => {
+    if (!uid || nuvemCarregada.current) return;
+    nuvemCarregada.current = true;
+    void carregarWorkspaceNuvem(uid).then((nuvem) => {
+      if (!nuvem || bruto.trim().length > 0) return; // só preenche vazio
+      setBruto(nuvem.bruto);
+      setHistorico(nuvem.historico ?? []);
+      setVersoes(nuvem.versoes ?? []);
+      setEstadoFluxo(nuvem.estadoFluxo ?? estadoInicial());
+      setFeedbacks(nuvem.feedbacks ?? {});
+    });
+  }, [uid, bruto]);
+
+  // Com Firebase, espelha o workspace na nuvem com debounce (evita gravar a
+  // cada tecla). O localStorage continua sendo a fonte imediata/offline.
+  useEffect(() => {
+    if (!uid) return;
+    const estado = { bruto, historico, versoes, estadoFluxo, feedbacks };
+    const t = setTimeout(() => {
+      void salvarWorkspaceNuvem(uid, estado);
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [uid, bruto, historico, versoes, estadoFluxo, feedbacks]);
 
   // Ao montar com texto restaurado, analisa uma vez (e aplica um alvo pendente).
   const iniciado = useRef(false);
