@@ -6,7 +6,7 @@ import LoginPage from "./pages/LoginPage";
 import RevisarPage from "./pages/RevisarPage";
 import PerfilPage from "./pages/PerfilPage";
 import HistoricoPage from "./pages/HistoricoPage";
-import PlaceholderPage from "./pages/PlaceholderPage";
+import LaudoPage from "./pages/LaudoPage";
 import { limparWorkspace } from "./workspace/armazenamento";
 
 const CADEIA = [
@@ -111,11 +111,7 @@ export default function App() {
           path="/laudo"
           element={
             <RequireAuth>
-              <PlaceholderPage
-                titulo="Laudo ABNT"
-                rotaAnterior={{ para: "/historico", rotulo: "Histórico" }}
-                rotaSeguinte={{ para: "/perfil", rotulo: "Perfil" }}
-              />
+              <LaudoPage />
             </RequireAuth>
           }
         />
