@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { VERSAO_API, responderErro, responderJson, responderPreflight } from "./http";
+import { tratarRevisar } from "./revisar";
 
 /**
  * Etapa 1 — roteador mínimo por tarefa (não por tela), conforme o CEREBRO.
@@ -31,6 +32,7 @@ export function tratarHealth({ res }: Contexto): void {
 /** Registro de rotas — os próximos módulos (auth, ia, workspace) entram aqui. */
 export const rotas: Rota[] = [
   { metodo: "GET", caminho: "health", tratar: tratarHealth },
+  { metodo: "POST", caminho: "revisar", tratar: tratarRevisar },
 ];
 
 /** Serve uma requisição pelo roteador (não cria servidor — só despacha). */

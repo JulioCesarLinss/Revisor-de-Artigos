@@ -70,3 +70,81 @@ describe("api — Etapa 1 (fundação)", () => {
     expect(() => JSON.parse(texto)).not.toThrow();
   });
 });
+
+describe("api — POST /api/revisar (Etapa 2)", () => {
+  test("200: devolve os problemas do motor de regras para o texto", async () => {
+    const r = await fetch(`${base}/api/revisar`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ texto: "Texto com espaço antes da pontuação .\n\nSegundo parágrafo razoável e completo." }),
+    });
+    expect(r.status).toBe(200);
+
+    const corpo = (await r.json()) as {
+      resumo: { total: number; criticos: number; advertencias: number; observacoes: number };
+      problemas: { id: string; regraId: string; severidade: string; mensagem: string }[];
+      secoes: unknown[];
+    };
+    expect(Array.isArray(corpo.problemas)).toBe(true);
+    expect(corpo.problemas.length).toBeGreaterThan(0);
+    expect(corpo.resumo.total).toBe(corpo.problemas.length);
+    for (const p of corpo.problemas) {
+      expect(p.id).toBeTruthy();
+      expect(p.regraId).toBeTruthy();
+      expect(["critico", "advertencia", "observacao"]).toContain(p.severidade);
+      expect(p.mensagem.length).toBeGreaterThan(0);
+    }
+    expect(Array.isArray(corpo.secoes)).toBe(true);
+  });
+
+  test("200: resumo sempre concorda com a lista de problemas", async () => {
+    const r = await fetch(`${base}/api/revisar`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ texto: "Parágrafo simples e adequado." }),
+    });
+    expect(r.status).toBe(200);
+    const corpo = (await r.json()) as { resumo: { total: number; criticos: number; advertencias: number; observacoes: number }; problemas: unknown[] };
+    expect(corpo.resumo.total).toBe(corpo.problemas.length);
+    expect(corpo.resumo.total).toBe(corpo.resumo.criticos + corpo.resumo.advertencias + corpo.resumo.observacoes);
+  });
+
+  test("400: texto não-string responde no envelope de erro em português", async () => {
+    const casos = [12345, null, ["texto"], { texto: "o próprio objeto" }];
+    for (const texto of casos) {
+      const r = await fetch(`${base}/api/revisar`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ texto }),
+      });
+      expect(r.status).toBe(400);
+      const corpo = (await r.json()) as { erro: { codigo: string; motivo: string } };
+      expect(corpo.erro.codigo).toBe("corpo_invalido");
+      expect(corpo.erro.motivo).toContain("texto");
+    }
+  });
+
+  test("400: corpo sem o campo texto", async () => {
+    const r = await fetch(`${base}/api/revisar`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ outro: "campo" }),
+    });
+    expect(r.status).toBe(400);
+    const corpo = (await r.json()) as { erro: { codigo: string; motivo: string } };
+    expect(corpo.erro.codigo).toBe("corpo_invalido");
+    expect(corpo.erro.motivo).toContain("texto");
+  });
+
+  test("400: JSON malformado no corpo", async () => {
+    const r = await fetch(`${base}/api/revisar`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{ não é json",
+    });
+    expect(r.status).toBe(400);
+    const corpo = (await r.json()) as { erro: { codigo: string; motivo: string } };
+    expect(corpo.erro.codigo).toBe("corpo_invalido");
+    expect(corpo.erro.motivo.length).toBeGreaterThan(0);
+  });
+});
