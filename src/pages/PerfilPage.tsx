@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { encerrarSessao, tipoSessao } from "../sessao";
+import { encerrarSessao } from "../sessao";
 import {
   carregarConfigIA,
   carregarPerfil,
@@ -107,7 +107,7 @@ export default function PerfilPage() {
     navegar("/login", { replace: true });
   };
 
-  const rotuloSessao = tipoSessao();
+  const emailConta = (user?.email ?? email).trim();
 
   return (
     <main className="perfil-main" id="conteudo">
@@ -125,7 +125,7 @@ export default function PerfilPage() {
       <p className="status-sistema" role="status" aria-live="polite">
         {status ??
           (firebaseConfigurado
-            ? "Perfil sincronizado com a nuvem (Firebase) e salvo neste dispositivo."
+            ? "Seus dados estão salvos na sua conta."
             : "Alterações ficam salvas apenas neste dispositivo (sem backend).")}
       </p>
 
@@ -152,9 +152,10 @@ export default function PerfilPage() {
             <input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              readOnly
               placeholder="ex: marcelo.silva@ufrj.br"
             />
+            <small className="perfil-card-dica">vem da sua conta</small>
           </label>
 
           <label className="perfil-campo">
@@ -238,11 +239,7 @@ export default function PerfilPage() {
           <section className="perfil-card" aria-label="Sessão">
             <h3>Sessão</h3>
             <p className="ia-status">
-              {rotuloSessao === "lembrada"
-                ? "Sessão lembrada neste dispositivo (persiste entre visitas)."
-                : rotuloSessao === "aba"
-                  ? "Sessão válida apenas nesta aba."
-                  : "Sessão local simulada, sem backend de autenticação."}
+              {emailConta ? `Você está conectado como ${emailConta}.` : "Você está conectado."}
             </p>
             <button className="btn perfil-btn-perigo" type="button" onClick={sair}>
               Sair da conta
