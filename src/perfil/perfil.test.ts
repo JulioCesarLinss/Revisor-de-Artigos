@@ -27,7 +27,7 @@ function storageFalso(): Armazenamento & { mapa: Map<string, string> } {
 describe("perfil/perfil — persistência local", () => {
   test("salva e recarrega o perfil com todas as os campos", () => {
     const st = storageFalso();
-    salvarPerfil({ nome: "Marcelo Silva", email: "marcelo@ufrj.br", instituicao: "UFRJ", perfil: "docente" }, st);
+    salvarPerfil({ nome: "Marcelo Silva", email: "marcelo@ufrj.br", perfil: "docente" }, st);
     const carregado = carregarPerfil(st);
     expect(carregado).not.toBeNull();
     expect(carregado?.nome).toBe("Marcelo Silva");

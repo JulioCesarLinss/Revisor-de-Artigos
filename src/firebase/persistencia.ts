@@ -63,12 +63,18 @@ export async function carregarWorkspaceNuvem(uid: string): Promise<EstadoWorkspa
   }
 }
 
-/** Salva o perfil do usuário na nuvem. */
+/** Salva o perfil do usuário na nuvem (nome, e-mail, perfil). */
 export async function salvarPerfilNuvem(uid: string, perfil: PerfilUsuario): Promise<boolean> {
   const ref = caminhoUsuario(uid, "perfil");
   if (!ref) return false;
   try {
-    await setDoc(ref, { ...perfil, atualizadoEm: Date.now() });
+    // Escrita por campo com merge: nunca apaga campos antigos do documento
+    // (ex.: documentos com `instituicao` mantêm o campo apenas dormente).
+    await setDoc(
+      ref,
+      { nome: perfil.nome, email: perfil.email, perfil: perfil.perfil, atualizadoEm: Date.now() },
+      { merge: true },
+    );
     return true;
   } catch {
     return false;
@@ -86,7 +92,6 @@ export async function carregarPerfilNuvem(uid: string): Promise<PerfilUsuario | 
     return {
       nome: d.nome ?? "",
       email: d.email ?? "",
-      instituicao: d.instituicao ?? "",
       perfil: d.perfil ?? "graduacao",
     };
   } catch {

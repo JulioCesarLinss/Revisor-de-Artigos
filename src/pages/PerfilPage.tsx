@@ -26,14 +26,21 @@ export default function PerfilPage() {
   // Heurística 1 (Nielsen): toda ação dá retorno imediato e legível.
   const [status, setStatus] = useState<string | null>(null);
 
-  // uid do Firebase (quando configurado) — chave da persistência na nuvem.
-  const { uid } = useAutorizacao();
+  // uid e conta do Firebase (quando configurado) — chave da nuvem e preenchimento.
+  const { uid, user } = useAutorizacao();
 
   const salvo = carregarPerfil();
   const [nome, setNome] = useState(salvo?.nome ?? "");
   const [email, setEmail] = useState(salvo?.email ?? "");
-  const [instituicao, setInstituicao] = useState(salvo?.instituicao ?? "");
   const [perfil, setPerfil] = useState(salvo?.perfil ?? "graduacao");
+
+  // Sem perfil salvo (local ou nuvem), preenche com a conta logada; no modo
+  // sem Firebase (user = null) nome e e-mail ficam vazios para digitação.
+  useEffect(() => {
+    if (carregarPerfil()) return; // perfil salvo tem prioridade sobre a conta
+    setNome((atual) => atual || user?.displayName || "");
+    setEmail((atual) => atual || user?.email || "");
+  }, [uid, user]);
 
   // Com Firebase, pré-carrega o perfil salvo na nuvem (sobrescreve o local vazio).
   useEffect(() => {
@@ -41,9 +48,10 @@ export default function PerfilPage() {
     let cancelado = false;
     void carregarPerfilNuvem(uid).then((nuvem) => {
       if (cancelado || !nuvem) return;
-      setNome(nuvem.nome);
-      setEmail(nuvem.email);
-      setInstituicao(nuvem.instituicao);
+      if (!carregarPerfil()) {
+        setNome(nuvem.nome);
+        setEmail(nuvem.email);
+      }
       setPerfil(nuvem.perfil);
     });
     return () => {
@@ -63,10 +71,10 @@ export default function PerfilPage() {
       setStatus("Preencha ao menos nome e e-mail para salvar.");
       return;
     }
-    salvarPerfil({ nome, email, instituicao, perfil });
+    salvarPerfil({ nome, email, perfil });
     // Com Firebase, espelha o perfil na nuvem (uid → usuarios/{uid}/dados/perfil).
     if (firebaseConfigurado && uid) {
-      void salvarPerfilNuvem(uid, { nome, email, instituicao, perfil });
+      void salvarPerfilNuvem(uid, { nome, email, perfil });
       setStatus("Perfil salvo na nuvem e neste dispositivo.");
     } else {
       setStatus("Perfil salvo neste dispositivo.");
@@ -146,16 +154,6 @@ export default function PerfilPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="ex: marcelo.silva@ufrj.br"
-            />
-          </label>
-
-          <label className="perfil-campo">
-            <span>Instituição (opcional)</span>
-            <input
-              type="text"
-              value={instituicao}
-              onChange={(e) => setInstituicao(e.target.value)}
-              placeholder="ex: UFRJ — Programa de Pós em Bioética"
             />
           </label>
 

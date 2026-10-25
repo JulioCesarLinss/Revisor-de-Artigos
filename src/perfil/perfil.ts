@@ -3,7 +3,7 @@ import type { ConfiguracaoIA } from "../ai/types";
 /**
  * Módulo `perfil` — dados do usuário e configurações persistidas no
  * dispositivo (localStorage). Sem backend ainda, a persistência é local:
- * - dados de perfil (nome, e-mail, instituição, perfil de utilização);
+ * - dados de perfil (nome, e-mail, perfil de utilização);
  * - chave do assistente IA (BYO-key, DC-03), reaproveitada pela tela Revisar.
  * O storage é injetável para os testes; o padrão é o localStorage real.
  */
@@ -17,7 +17,6 @@ export type Armazenamento = {
 export interface PerfilUsuario {
   nome: string;
   email: string;
-  instituicao: string;
   /** Valor de uma das opções de PERFIS (ex.: "graduacao"). */
   perfil: string;
 }
@@ -62,7 +61,6 @@ export function validarPerfil(entrada: Partial<PerfilUsuario>): PerfilUsuario | 
   return {
     nome,
     email,
-    instituicao: (entrada.instituicao ?? "").trim(),
     perfil: entrada.perfil ?? "graduacao",
   };
 }
