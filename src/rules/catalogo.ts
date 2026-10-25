@@ -73,7 +73,7 @@ export const CATALOGO: Regra[] = [
     referencia: "Legibilidade de textos acadêmicos (divisão em parágrafos)",
     avaliar: (m: Manuscrito) =>
       m.paragrafos
-        .filter((p) => p.texto.length > LIMITE_CARACTERES_PARAGRAFO)
+        .filter((p) => p.texto.length > LIMITE_CARACTERES_PARAGRAFO && !p.ehTitulo)
         .map((p) =>
           problema(
             CATALOGO[1],
@@ -117,6 +117,7 @@ export const CATALOGO: Regra[] = [
     avaliar: (m: Manuscrito) =>
       m.paragrafos
         .filter((p) => {
+          if (p.ehTitulo) return false; // título de seção não precisa de pontuação final
           const fim = p.texto.trimEnd();
           return fim.length >= MINIMO_CARACTERES_PARA_PONTUACAO_FINAL && !PONTUACAO_FINAL.test(fim);
         })
@@ -139,7 +140,7 @@ export const CATALOGO: Regra[] = [
     referencia: "Convenções tipográficas de destaque em textos científicos",
     avaliar: (m: Manuscrito) =>
       m.paragrafos
-        .filter((p) => (p.texto.match(/\b[A-ZÀ-Ü]{3,}\b/g) ?? []).length >= MINIMO_OCORRENCIAS_CAIXA_ALTA)
+        .filter((p) => !p.ehTitulo && (p.texto.match(/\b[A-ZÀ-Ü]{3,}\b/g) ?? []).length >= MINIMO_OCORRENCIAS_CAIXA_ALTA)
         .map((p) =>
           problema(
             CATALOGO[4],

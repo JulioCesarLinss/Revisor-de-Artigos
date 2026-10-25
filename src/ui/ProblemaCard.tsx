@@ -10,6 +10,8 @@ interface Props {
   /** Presente quando a assistência IA está configurada (Sprint 3). */
   onSugerir?: () => void;
   sugerindo?: boolean;
+  /** Falso quando o parágrafo é título — esconde o botão "Aplicar correção". */
+  listarAcao?: boolean;
 }
 
 const ROTULO_SEVERIDADE = {
@@ -18,7 +20,7 @@ const ROTULO_SEVERIDADE = {
   observacao: "Observação",
 } as const;
 
-export function ProblemaCard({ problema, onCorrigir, onLocalizar, onSugerir, sugerindo }: Props) {
+export function ProblemaCard({ problema, onCorrigir, onLocalizar, onSugerir, sugerindo, listarAcao = true }: Props) {
   const local = problema.paragrafo > 0 ? `Parágrafo ${problema.paragrafo}` : "Documento inteiro";
 
   /**
@@ -74,7 +76,7 @@ export function ProblemaCard({ problema, onCorrigir, onLocalizar, onSugerir, sug
               )}
             </button>
           )}
-          {problema.acao && !confirmar && (
+          {problema.acao && listarAcao && !confirmar && (
             <button
               className="btn btn-primary"
               type="button"
@@ -84,7 +86,7 @@ export function ProblemaCard({ problema, onCorrigir, onLocalizar, onSugerir, sug
               Aplicar correção
             </button>
           )}
-          {problema.acao && confirmar && (
+          {problema.acao && listarAcao && confirmar && (
             <span className="problema-confirmacao" role="group" aria-label={`Confirmar correção em ${local}`}>
               <span>Corrigir {local.toLowerCase()}?</span>
               {/* H7: foco direto no Confirmar — Enter confirma; Tab alcança Cancelar. */}

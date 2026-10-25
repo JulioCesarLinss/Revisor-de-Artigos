@@ -1,5 +1,6 @@
 import type { Manuscrito } from "../document/types.js";
 import type { Problema } from "../rules/types.js";
+import { ehTituloDeSecao } from "../document/titulo.js";
 
 /**
  * Relatório de conformidade por seção (Sprint 2): agrupa os problemas por
@@ -11,16 +12,6 @@ export interface Secao {
   nome: string;
   /** Parágrafos da seção (números 1-based). */
   paragrafos: number[];
-}
-
-/** Parágrafo inteiro em caixa-alta e curto = provável título de seção. */
-function ehTituloDeSecao(texto: string): boolean {
-  const compacto = texto.trim();
-  if (compacto.length === 0 || compacto.length > 80) return false;
-  const letras = compacto.replace(/[^A-Za-zÀ-ÿ]/g, "");
-  if (letras.length === 0) return false;
-  const maiusculas = letras.replace(/[^A-ZÀ-ÕÜ]/g, "").length;
-  return maiusculas / letras.length >= 0.9;
 }
 
 const NOMES_CONHECIDOS = [

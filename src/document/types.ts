@@ -7,6 +7,8 @@ export interface ParagrafoManuscrito {
   /** Número do parágrafo no documento, começando em 1. */
   index: number;
   texto: string;
+  /** Verdadeiro quando o parágrafo é provável título (curto e caixa-alta). */
+  ehTitulo?: boolean;
 }
 
 export interface Manuscrito {

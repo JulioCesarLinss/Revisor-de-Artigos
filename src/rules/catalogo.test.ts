@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { importarTexto } from "../document/importar";
+import { ehTituloDeSecao } from "../document/titulo";
 import { CATALOGO } from "./catalogo";
 import { avaliarManuscrito } from "./motor";
 
@@ -101,6 +102,27 @@ describe("rules/catálogo", () => {
     const achados = porRegra("Texto com  espaço duplo aqui.", "R010");
     expect(achados.length).toBe(1);
     expect(achados[0].acao).toBe("colapsarEspacos");
+  });
+
+  test("título em caixa-alta não gera R005 nem R004", () => {
+    // Título curto em caixa-alta, sem pontuação final e com 4+ palavras CAPS:
+    // sem a marcação ehTitulo dispararia R005 e R004.
+    const titulo = "ANALISE SISTEMATICA DE DADOS EXPERIMENTAIS OBTIDOS EM VIVOS";
+    expect(ehTituloDeSecao(titulo)).toBe(true);
+    const m = importarTexto(`${titulo}\n\nParágrafo final razoável e completo.`);
+    expect(m.paragrafos[0].ehTitulo).toBe(true);
+    expect(avaliarManuscrito(m).filter((p) => p.regraId === "R005").length).toBe(0);
+    expect(avaliarManuscrito(m).filter((p) => p.regraId === "R004").length).toBe(0);
+  });
+
+  test("parágrafo longo em caixa-alta continua sendo avaliado (R002)", () => {
+    // Acima de 80 caracteres deixa de ser título; R002 segue valendo.
+    const grito = "TEXTO LONGO EM CAIXA ALTA ".repeat(30).trim();
+    expect(ehTituloDeSecao(grito)).toBe(false);
+    expect(grito.length).toBeGreaterThan(600);
+    const achados = porRegra(`${grito}\n\nParágrafo final razoável e completo.`, "R002");
+    expect(achados.length).toBe(1);
+    expect(achados[0].paragrafo).toBe(1);
   });
 
   test("catálogo tem 10 regras determinísticas", () => {

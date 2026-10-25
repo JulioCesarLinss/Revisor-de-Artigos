@@ -550,6 +550,8 @@ export default function RevisarPage() {
           />
         )}
 
+        {/* Parágrafos marcados como título: o botão "Aplicar correção" não
+            aparece — a correção determinística poderia estragar o título. */}
         {analise?.problemas.map((p) => (
           <ProblemaCard
             key={p.id}
@@ -558,6 +560,7 @@ export default function RevisarPage() {
             onLocalizar={() => p.paragrafo > 0 && setRevisandoParagrafo(p.paragrafo)}
             onSugerir={estadoIA === "pronta" ? () => pedirSugestao(p) : undefined}
             sugerindo={carregandoSugestao === p.id}
+            listarAcao={!analise.manuscrito.paragrafos.find((x) => x.index === p.paragrafo)?.ehTitulo}
           />
         ))}
 

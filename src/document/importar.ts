@@ -1,4 +1,5 @@
 import { contarPalavras, type Manuscrito, type ParagrafoManuscrito } from "./types.js";
+import { ehTituloDeSecao } from "./titulo.js";
 
 /**
  * Importa texto bruto (colagem) para a representação interna do Manuscrito.
@@ -10,7 +11,13 @@ export function importarTexto(bruto: string): Manuscrito {
     .split(/\n\s*\n/)
     .map((p) => p.trim())
     .filter((p) => p.length > 0)
-    .map((texto, i) => ({ index: i + 1, texto }));
+    .map((texto, i) => ({
+      index: i + 1,
+      texto,
+      // Título usa a mesma heurística do relatório por seções (fonte única);
+      // só entra no objeto quando verdadeiro para não poluir a forma.
+      ...(ehTituloDeSecao(texto) ? { ehTitulo: true } : {}),
+    }));
 
   return {
     bruto,
