@@ -69,14 +69,6 @@ export default function LaudoPage() {
             Ir para Revisar →
           </Link>
         </div>
-        <div className="laudo-navegacao">
-          <Link className="btn" to="/historico">
-            ← Histórico
-          </Link>
-          <Link className="btn" to="/perfil">
-            Perfil →
-          </Link>
-        </div>
       </main>
     );
   }
@@ -216,14 +208,6 @@ export default function LaudoPage() {
         </footer>
       </div>
 
-      <div className="laudo-navegacao">
-        <Link className="btn" to="/historico">
-          ← Histórico
-        </Link>
-        <Link className="btn btn-primary" to="/perfil">
-          Perfil →
-        </Link>
-      </div>
     </main>
   );
 }

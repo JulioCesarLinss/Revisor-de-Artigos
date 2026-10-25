@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { encerrarSessao } from "../sessao";
 import {
   carregarConfigIA,
@@ -245,15 +245,6 @@ export default function PerfilPage() {
             </button>
           </section>
         </div>
-      </div>
-
-      <div className="perfil-navegacao">
-        <Link className="btn" to="/laudo">
-          ← Laudo
-        </Link>
-        <Link className="btn" to="/revisar">
-          Revisar →
-        </Link>
       </div>
     </main>
   );

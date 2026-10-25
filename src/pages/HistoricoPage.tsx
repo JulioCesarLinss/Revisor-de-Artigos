@@ -197,14 +197,6 @@ export default function HistoricoPage() {
         </>
       )}
 
-      <div className="historico-navegacao">
-        <Link className="btn" to="/revisar">
-          ← Revisar
-        </Link>
-        <Link className="btn" to="/laudo">
-          Laudo →
-        </Link>
-      </div>
     </main>
   );
 }
