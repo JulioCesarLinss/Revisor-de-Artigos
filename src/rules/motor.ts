@@ -1,6 +1,6 @@
-import type { Manuscrito } from "../document/types";
-import { CATALOGO } from "./catalogo";
-import type { Problema, Severidade } from "./types";
+import type { Manuscrito } from "../document/types.js";
+import { CATALOGO } from "./catalogo.js";
+import type { Problema, Severidade } from "./types.js";
 
 const ORDEM_SEVERIDADE: Record<Severidade, number> = {
   critico: 0,

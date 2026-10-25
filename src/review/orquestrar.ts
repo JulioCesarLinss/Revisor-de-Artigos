@@ -1,8 +1,8 @@
-import { importarTexto } from "../document/importar";
-import type { Manuscrito } from "../document/types";
-import { relatorioPorSecao, type LinhaRelatorio } from "./secoes";
-import { avaliarManuscrito } from "../rules/motor";
-import type { Problema } from "../rules/types";
+import { importarTexto } from "../document/importar.js";
+import type { Manuscrito } from "../document/types.js";
+import { relatorioPorSecao, type LinhaRelatorio } from "./secoes.js";
+import { avaliarManuscrito } from "../rules/motor.js";
+import type { Problema } from "../rules/types.js";
 
 export interface ResumoRevisao {
   total: number;

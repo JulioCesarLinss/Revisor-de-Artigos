@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { iniciarRevisao } from "../src/review/orquestrar";
+import { iniciarRevisao } from "../src/review/orquestrar.js";
 
 /**
  * Função serverless do Vercel para POST /api/revisar.

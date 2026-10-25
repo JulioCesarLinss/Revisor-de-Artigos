@@ -1,4 +1,4 @@
-import { contarPalavras, type Manuscrito, type ParagrafoManuscrito } from "./types";
+import { contarPalavras, type Manuscrito, type ParagrafoManuscrito } from "./types.js";
 
 /**
  * Importa texto bruto (colagem) para a representação interna do Manuscrito.

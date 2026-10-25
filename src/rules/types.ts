@@ -1,4 +1,4 @@
-import type { Manuscrito } from "../document/types";
+import type { Manuscrito } from "../document/types.js";
 
 /** Severidade indica o impacto do problema (ver Glossário do CEREBRO). */
 export type Severidade = "critico" | "advertencia" | "observacao";

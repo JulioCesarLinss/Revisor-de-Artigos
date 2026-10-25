@@ -1,5 +1,5 @@
-import type { Manuscrito } from "../document/types";
-import type { Problema } from "../rules/types";
+import type { Manuscrito } from "../document/types.js";
+import type { Problema } from "../rules/types.js";
 
 /**
  * Relatório de conformidade por seção (Sprint 2): agrupa os problemas por

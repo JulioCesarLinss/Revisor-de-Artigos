@@ -1,5 +1,5 @@
-import type { Manuscrito } from "../document/types";
-import { trechoDe, type Problema, type Regra } from "./types";
+import type { Manuscrito } from "../document/types.js";
+import { trechoDe, type Problema, type Regra } from "./types.js";
 
 const LIMITE_CARACTERES_PARAGRAFO = 600;
 const MINIMO_CARACTERES_PARA_PONTUACAO_FINAL = 40;
