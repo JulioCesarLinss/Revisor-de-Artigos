@@ -122,12 +122,11 @@ export default function PerfilPage() {
         </div>
       </div>
 
-      <p className="status-sistema" role="status" aria-live="polite">
-        {status ??
-          (firebaseConfigurado
-            ? "Seus dados estão salvos na sua conta."
-            : "Alterações ficam salvas apenas neste dispositivo (sem backend).")}
-      </p>
+      {status && (
+        <p className="status-sistema" role="status" aria-live="polite">
+          {status}
+        </p>
+      )}
 
       <div className="perfil-grid">
         {/* Dados do autor/revisor */}
