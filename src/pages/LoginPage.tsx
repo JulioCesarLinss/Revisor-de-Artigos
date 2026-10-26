@@ -7,16 +7,10 @@ import { configurado as firebaseConfigurado } from "../firebase/config";
 
 type Aba = "login" | "cadastro";
 
-/** Selos de integridade da coluna institucional (mesma mensagem do mockup). */
-const SELOS = [
-  { titulo: "Criptografia ponta a ponta", texto: "Seus inéditos protegidos" },
-  { titulo: "100% LGPD acadêmica", texto: "Sem treino de modelos públicos" },
-];
-
 /**
  * Tela /login — RF01 (login/cadastro), guiada pelo mockup de referência e pelo
- * design system Academic Modernist. Sem autenticação real: qualquer envio
- * válido navega para /revisar.
+ * design system Academic Modernist. Autentica via Firebase quando configurado;
+ * sem Firebase, usa a sessão local simulada.
  */
 export default function LoginPage() {
   const navegar = useNavigate();
@@ -95,15 +89,6 @@ export default function LoginPage() {
             Acesse a plataforma de formatação, checagem cruzada de citações e conformidade técnica para teses,
             dissertações e artigos científicos.
           </p>
-
-          <div className="login-selos">
-            {SELOS.map((s) => (
-              <div key={s.titulo} className="login-selo">
-                <strong>{s.titulo}</strong>
-                <span>{s.texto}</span>
-              </div>
-            ))}
-          </div>
         </section>
 
         {/* Card de autenticação com abas Entrar / Criar conta */}
@@ -129,11 +114,11 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <p className="login-contexto">
-            {aba === "login"
-              ? "Utilize seu e-mail institucional para sincronização com seu repositório de pesquisas."
-              : "Preencha seus dados para receber revisões precisas de normas e formatações ABNT."}
-          </p>
+          {aba === "cadastro" && (
+            <p className="login-contexto">
+              Preencha seus dados para receber revisões precisas de normas e formatações ABNT.
+            </p>
+          )}
 
           {aba === "login" ? (
             <form className="login-form" onSubmit={entrar}>
@@ -151,12 +136,7 @@ export default function LoginPage() {
               </div>
 
               <div className="login-campo">
-                <div className="login-campo-topo">
-                  <label htmlFor="login-senha">Senha de acesso</label>
-                  <a className="login-link" href="#esqueci" onClick={(e) => e.preventDefault()}>
-                    Esqueci minha senha
-                  </a>
-                </div>
+                <label htmlFor="login-senha">Senha de acesso</label>
                 <div className="login-senha-wrap">
                   <input
                     id="login-senha"
@@ -186,9 +166,6 @@ export default function LoginPage() {
                   />
                   Lembrar de mim neste dispositivo
                 </label>
-                <span className="login-sessao">
-                  <span className="login-sessao-dot" aria-hidden="true" /> Sessão protegida
-                </span>
               </div>
 
               {erroAuth && (
@@ -282,32 +259,6 @@ export default function LoginPage() {
               </button>
             </form>
           )}
-
-          <div className="login-divisor" role="separator">
-            <span>Ou acesse via</span>
-          </div>
-
-          <div className="login-federados">
-            <button type="button" className="login-federado" title="Entrar com Google (em breve)">
-              <span className="login-federado-icone" aria-hidden="true">
-                G
-              </span>
-              <span className="login-federado-texto">
-                <strong>Entrar com Google</strong>
-                <small>Sincronização com Workspace</small>
-              </span>
-            </button>
-          </div>
-
-          <div className="login-privacidade">
-            <strong>
-              Compromisso ético e sigilo de autoria <span className="login-lgpd-chip">LGPD ok</span>
-            </strong>
-            <p>
-              Ambiente seguro com criptografia e conformidade LGPD. Seus dados e manuscritos{" "}
-              <strong>nunca</strong> são compartilhados ou usados para treinamento de modelos públicos de IA.
-            </p>
-          </div>
         </section>
       </div>
     </main>
