@@ -3,4 +3,10 @@ dist/
 *.log
 .DS_Store
 .vercel
+
+# Segredos e chaves de API — nunca versionar (repositório público)
 .env*
+*.pem
+*.key
+*serviceAccount*.json
+firebase-adminsdk*.json

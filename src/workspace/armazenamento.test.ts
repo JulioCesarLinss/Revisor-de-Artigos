@@ -5,6 +5,7 @@ import {
   contarPorOrigem,
   limparHistoricoWorkspace,
   limparWorkspace,
+  restaurarOriginalWorkspace,
   salvarWorkspace,
   validarWorkspace,
   type Armazenamento,
@@ -26,6 +27,7 @@ function storageFalso(): Armazenamento & { mapa: Map<string, string> } {
 
 const WORKSPACE: EstadoWorkspace = {
   bruto: "Parágrafo um.\n\nParágrafo dois.",
+  textoOriginal: "Parágrafo um.\n\nParágrafo dois.",
   historico: [
     { id: 1, origem: "manual", descricao: "correção rápida aplicada", paragrafo: 1, quando: "10:00:00" },
     { id: 2, origem: "ia", descricao: "sugestão aceita (R001)", paragrafo: 2, quando: "10:05:00" },
@@ -71,13 +73,13 @@ describe("workspace/armazenamento — persistência", () => {
     expect(parcial?.feedbacks).toEqual({ 1: true });
   });
 
-  test("limparWorkspace descarta tudo; limparHistorico preserva o manuscrito", () => {
+  test("limparWorkspace descarta tudo; limparHistorico preserva o manuscrito e volta a Rascunho", () => {
     const st = storageFalso();
     salvarWorkspace(WORKSPACE, st);
 
     const limpo = limparHistoricoWorkspace(st);
     expect(limpo?.bruto).toBe(WORKSPACE.bruto);
-    expect(limpo?.estadoFluxo).toBe("revisao");
+    expect(limpo?.estadoFluxo).toBe("rascunho"); // o rastro foi apagado: fluxo recomeça
     expect(limpo?.historico).toEqual([]);
     expect(limpo?.versoes).toEqual([]);
     expect(limpo?.feedbacks).toEqual({});
@@ -86,6 +88,39 @@ describe("workspace/armazenamento — persistência", () => {
     limparWorkspace(st);
     expect(carregarWorkspace(st)).toBeNull();
     expect(st.mapa.has(CHAVE_WORKSPACE)).toBe(false);
+  });
+
+  test("textoOriginal é salvo e recarregado junto do workspace", () => {
+    const st = storageFalso();
+    salvarWorkspace({ ...WORKSPACE, textoOriginal: "TEXTO DO ARQUIVO\n\nPUBLICADO." }, st);
+    const carregado = carregarWorkspace(st);
+    expect(carregado?.textoOriginal).toBe("TEXTO DO ARQUIVO\n\nPUBLICADO.");
+  });
+
+  test("restaurarOriginalWorkspace volta ao texto do arquivo e zera o rastro", () => {
+    const st = storageFalso();
+    salvarWorkspace(
+      { ...WORKSPACE, bruto: "Texto editado depois.", estadoFluxo: "final" },
+      st,
+    );
+
+    const restaurado = restaurarOriginalWorkspace(st);
+    expect(restaurado?.bruto).toBe(WORKSPACE.textoOriginal!);
+    expect(restaurado?.textoOriginal).toBe(WORKSPACE.textoOriginal!);
+    expect(restaurado?.estadoFluxo).toBe("rascunho");
+    expect(restaurado?.historico).toEqual([]);
+    expect(restaurado?.versoes).toEqual([]);
+    expect(restaurado?.feedbacks).toEqual({});
+    // Persistido: ao recarregar, continua restaurado.
+    expect(carregarWorkspace(st)?.bruto).toBe(WORKSPACE.textoOriginal!);
+    expect(carregarWorkspace(st)?.estadoFluxo).toBe("rascunho");
+  });
+
+  test("restaurarOriginalWorkspace devolve null quando não há arquivo original", () => {
+    const st = storageFalso();
+    salvarWorkspace({ ...WORKSPACE, textoOriginal: null }, st);
+    expect(restaurarOriginalWorkspace(st)).toBeNull();
+    expect(carregarWorkspace(st)?.estadoFluxo).toBe("revisao"); // nada mudou
   });
 
   test("contarPorOrigem separa manual × IA", () => {

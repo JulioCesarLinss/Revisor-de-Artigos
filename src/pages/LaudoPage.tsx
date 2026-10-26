@@ -99,11 +99,6 @@ export default function LaudoPage() {
         </div>
       </div>
 
-      <p className="status-sistema" role="status" aria-live="polite">
-        Laudo gerado em {rotuloGeradoEm(laudo.geradoEm)} — refletem o manuscrito salvo neste dispositivo (não envia
-        dados para a nuvem).
-      </p>
-
       <div className="laudo-folha">
         <header className="laudo-folha-topo">
           <span className="laudo-selo">NormaReview AI</span>

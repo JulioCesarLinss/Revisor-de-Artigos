@@ -18,6 +18,8 @@ export const CHAVE_WORKSPACE = "normareview.workspace";
 
 export interface EstadoWorkspace {
   bruto: string;
+  /** Texto do arquivo original enviado (null quando nada foi anexado). */
+  textoOriginal?: string | null;
   historico: RegistroAlteracao[];
   versoes: VersaoSnapshot[];
   estadoFluxo: EstadoFluxo;
@@ -66,6 +68,12 @@ export function validarWorkspace(dados: unknown): EstadoWorkspace | null {
   if (typeof dados !== "object" || dados === null) return null;
   const d = dados as Partial<EstadoWorkspace>;
   if (typeof d.bruto !== "string") return null;
+  if (
+    d.textoOriginal !== undefined &&
+    d.textoOriginal !== null &&
+    typeof d.textoOriginal !== "string"
+  )
+    return null;
   if (!Array.isArray(d.historico) || !Array.isArray(d.versoes)) return null;
   if (typeof d.estadoFluxo !== "string" || !ORDEM_FLUXO.includes(d.estadoFluxo as EstadoFluxo)) return null;
   if (typeof d.feedbacks !== "object" || d.feedbacks === null) return null;
@@ -78,6 +86,7 @@ export function validarWorkspace(dados: unknown): EstadoWorkspace | null {
 
   return {
     bruto: d.bruto,
+    textoOriginal: d.textoOriginal ?? null,
     historico: d.historico.filter(ehRegistro),
     versoes: d.versoes.filter(ehVersao),
     estadoFluxo: d.estadoFluxo as EstadoFluxo,
@@ -120,14 +129,41 @@ export function limparWorkspace(st?: Armazenamento): void {
 
 /**
  * Limpa apenas o rastro (alterações, versões e feedback), preservando o
- * manuscrito e o estado do fluxo — o que a tela /historico oferece.
+ * manuscrito — e a etapa volta a "Rascunho" (o rastro é o que define o
+ * avanço no fluxo guiado; sem ele, a condução recomeça).
  */
 export function limparHistoricoWorkspace(st?: Armazenamento): EstadoWorkspace | null {
   const atual = carregarWorkspace(st);
   if (!atual) return null;
-  const limpo: EstadoWorkspace = { ...atual, historico: [], versoes: [], feedbacks: {} };
+  const limpo: EstadoWorkspace = {
+    ...atual,
+    historico: [],
+    versoes: [],
+    feedbacks: {},
+    estadoFluxo: "rascunho",
+  };
   salvarWorkspace(limpo, st);
   return limpo;
+}
+
+/**
+ * Volta ao texto original do arquivo enviado: restaura `bruto`, zera o
+ * rastro e a etapa recomeça em "Rascunho". null quando não há original nem
+ * workspace — a tela decide como avisar o usuário.
+ */
+export function restaurarOriginalWorkspace(st?: Armazenamento): EstadoWorkspace | null {
+  const atual = carregarWorkspace(st);
+  if (!atual?.textoOriginal) return null;
+  const restaurado: EstadoWorkspace = {
+    bruto: atual.textoOriginal,
+    textoOriginal: atual.textoOriginal,
+    historico: [],
+    versoes: [],
+    estadoFluxo: "rascunho",
+    feedbacks: {},
+  };
+  salvarWorkspace(restaurado, st);
+  return restaurado;
 }
 
 /** Contagem por origem para o resumo da tela de histórico (DC-13). */

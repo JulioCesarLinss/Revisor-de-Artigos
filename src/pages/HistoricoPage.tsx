@@ -6,11 +6,22 @@ import {
   carregarWorkspace,
   contarPorOrigem,
   limparHistoricoWorkspace,
+  limparWorkspace,
+  restaurarOriginalWorkspace,
   type EstadoWorkspace,
 } from "../workspace/armazenamento";
 import { tituloDaRegra } from "../ui/rotulos";
 
 type Filtro = "todas" | "manual" | "ia";
+
+/** Ações que exigem confirmação dentro do app (especifica a pergunta). */
+type Confirmacao = "limpar" | "voltarOriginal" | "descartar" | null;
+
+const PERGUNTA_CONFIRMACAO: Record<Exclude<Confirmacao, null>, string> = {
+  limpar: "Limpar o histórico de alterações e versões? O manuscrito atual será mantido.",
+  voltarOriginal: "Restaurar o texto original do arquivo? O histórico e as versões serão apagados.",
+  descartar: "Apagar o manuscrito, o histórico e as versões? Esta ação não pode ser desfeita.",
+};
 
 const FILTROS: { valor: Filtro; rotulo: string }[] = [
   { valor: "todas", rotulo: "Todas" },
@@ -30,6 +41,9 @@ export default function HistoricoPage() {
   const [filtro, setFiltro] = useState<Filtro>("todas");
   const [status, setStatus] = useState<string | null>(null);
 
+  /** Confirmação em painel no app (sem pop-up do navegador). */
+  const [confirmacao, setConfirmacao] = useState<Confirmacao>(null);
+
   const contagem = contarPorOrigem(workspace?.historico ?? []);
   const versoes = workspace?.versoes ?? [];
   const alteracoes = (workspace?.historico ?? [])
@@ -41,12 +55,31 @@ export default function HistoricoPage() {
   const localizar = (alvo: number) => navegar("/revisar", { state: { alvo } });
 
   const limpar = () => {
-    const ok = window.confirm(
-      "Limpar o histórico de alterações e versões? O manuscrito atual será mantido.",
-    );
-    if (!ok) return;
     setWorkspace(limparHistoricoWorkspace());
-    setStatus("Histórico limpo — o manuscrito atual foi mantido.");
+    setConfirmacao(null);
+    setStatus("Histórico limpo — o manuscrito atual foi mantido e a etapa voltou a Rascunho.");
+  };
+
+  const temOriginal = !!workspace?.textoOriginal;
+
+  const voltarAoOriginal = () => {
+    const restaurado = restaurarOriginalWorkspace();
+    setWorkspace(restaurado);
+    setConfirmacao(null);
+    setStatus(restaurado ? "Texto original restaurado — o rastro recomeçou do zero (etapa Rascunho)." : null);
+  };
+
+  const descartarTudo = () => {
+    limparWorkspace();
+    setWorkspace(null);
+    setConfirmacao(null);
+    setStatus("Manuscrito, histórico e versões apagados deste dispositivo.");
+  };
+
+  const confirmar = () => {
+    if (confirmacao === "limpar") limpar();
+    else if (confirmacao === "voltarOriginal") voltarAoOriginal();
+    else if (confirmacao === "descartar") descartarTudo();
   };
 
   const vazio = !workspace || (contagem.total === 0 && versoes.length === 0);
@@ -62,8 +95,26 @@ export default function HistoricoPage() {
           </p>
         </div>
         <div className="historico-acoes">
+          <button
+            className="btn"
+            type="button"
+            disabled={!temOriginal}
+            title={temOriginal ? "Restaura o texto original do arquivo enviado" : "Nenhum arquivo original carregado"}
+            onClick={temOriginal ? () => setConfirmacao("voltarOriginal") : undefined}
+          >
+            Voltar ao original
+          </button>
+          <button
+            className="btn historico-btn-perigo"
+            type="button"
+            disabled={!workspace}
+            title={workspace ? "Apaga manuscrito, histórico e versões deste dispositivo" : "Nada para descartar"}
+            onClick={workspace ? () => setConfirmacao("descartar") : undefined}
+          >
+            Descartar tudo
+          </button>
           {!vazio && (
-            <button className="btn historico-btn-perigo" type="button" onClick={limpar}>
+            <button className="btn historico-btn-perigo" type="button" onClick={() => setConfirmacao("limpar")}>
               Limpar histórico
             </button>
           )}
@@ -72,6 +123,18 @@ export default function HistoricoPage() {
           </Link>
         </div>
       </div>
+
+      {confirmacao && (
+        <div className="problema-confirmacao historico-confirmacao-panel" role="group" aria-label="Confirmar ação">
+          <span>{PERGUNTA_CONFIRMACAO[confirmacao]}</span>
+          <button className="btn btn-primary" type="button" onClick={confirmar}>
+            Confirmar
+          </button>
+          <button className="btn" type="button" onClick={() => setConfirmacao(null)}>
+            Cancelar
+          </button>
+        </div>
+      )}
 
       <p className="status-sistema" role="status" aria-live="polite">
         {status ??

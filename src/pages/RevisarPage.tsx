@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { statusIA, sugerirReescrita } from "../ai/assistente";
+import { diagnosticarComGemini, geminiConfigurado } from "../ai/geminiCliente";
+import type { ParagrafoNumerado, ResultadoDiagnostico } from "../ai/gemini";
 import { carregarConfigIA, salvarConfigIA } from "../perfil/perfil";
 import type { ConfiguracaoIA, SugestaoIA } from "../ai/types";
 import { aplicarCorrecao } from "../document/acoes";
@@ -8,6 +10,7 @@ import { aplicarSugestao } from "../document/aplicarSugestao";
 import { lerArquivo, type ResultadoUpload } from "../document/arquivo";
 import { iniciarRevisao, type AnaliseRevisao } from "../review/orquestrar";
 import type { Problema } from "../rules/types";
+import { PainelGemini } from "../ui/PainelGemini";
 import { PainelHistorico } from "../ui/PainelHistorico";
 import { ManuscritoPaginado } from "../ui/ManuscritoPaginado";
 import { PainelSecoes } from "../ui/PainelSecoes";
@@ -70,6 +73,9 @@ export default function RevisarPage() {
   const [ultimoPedido, setUltimoPedido] = useState<Problema | null>(null);
   const [historico, setHistorico] = useState<RegistroAlteracao[]>(salvo?.historico ?? []);
 
+  // Texto original do arquivo enviado — base para "Voltar ao original" no /historico.
+  const [textoOriginal, setTextoOriginal] = useState<string | null>(salvo?.textoOriginal ?? null);
+
   // Heurística 1 (Nielsen) — visibilidade do status do sistema
   const [ocupadoCom, setOcupadoCom] = useState<string | null>(null);
   const [statusSistema, setStatusSistema] = useState<string | null>(null);
@@ -81,11 +87,46 @@ export default function RevisarPage() {
   const [mostrandoComparacao, setMostrandoComparacao] = useState(false);
 
   const estadoIA = statusIA(configIA);
+  // Gemini: a chave vive só no servidor (api/gemini) — aqui consultamos se ele
+  // está ativo (null = ainda sem resposta da consulta).
+  const [geminiAtivo, setGeminiAtivo] = useState<boolean | null>(null);
+  useEffect(() => {
+    let vivo = true;
+    void geminiConfigurado().then((ativo) => {
+      if (vivo) setGeminiAtivo(ativo);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, []);
 
   // Ocupado quando há análise/versão em processamento ou sugestão IA pendente.
   const processando = ocupadoCom !== null || carregandoSugestao !== null;
 
-  const analisar = useCallback(() => {
+  // Diagnóstico com Gemini (DC-03): pedido só pelo botão "Analisar"; a análise
+  // local acima já terminou antes, então uma falha da IA não atrasa o fluxo.
+  const [diagnostico, setDiagnostico] = useState<ResultadoDiagnostico | null>(null);
+  const [analisandoGemini, setAnalisandoGemini] = useState(false);
+  const geminiOcupado = useRef(false);
+
+  const pedirDiagnostico = useCallback(async (paragrafos: ParagrafoNumerado[]) => {
+    if (geminiAtivo === false || geminiOcupado.current) return; // uma consulta por vez
+    geminiOcupado.current = true;
+    setDiagnostico(null);
+    setAnalisandoGemini(true);
+    try {
+      const diagnosticado = await diagnosticarComGemini(paragrafos);
+      setDiagnostico(diagnosticado);
+      if (diagnosticado.ok) {
+        setStatusSistema(`Diagnóstico do Gemini — ${diagnosticado.diagnosticos.length} apontamento(s).`);
+      }
+    } finally {
+      geminiOcupado.current = false;
+      setAnalisandoGemini(false);
+    }
+  }, [geminiAtivo]);
+
+  const analisar = useCallback((comGemini = false) => {
     setOcupadoCom("Analisando manuscrito…");
     setRevisandoParagrafo(null);
     setTimeout(() => {
@@ -93,6 +134,8 @@ export default function RevisarPage() {
       setAnalise(resultado);
       setOcupadoCom(null);
       setStatusSistema(`Análise concluída — ${resultado.resumo.total} problema(s) encontrado(s).`);
+      // Clique em "Analisar": a análise local e o diagnóstico do Gemini juntos.
+      if (comGemini) void pedirDiagnostico(resultado.manuscrito.paragrafos);
       // "Localizar" vindo do /historico: abre o modo revisar no parágrafo alvo.
       const alvo = alvoPendente.current;
       if (alvo !== null) {
@@ -100,13 +143,19 @@ export default function RevisarPage() {
         if (alvo > 0 && alvo <= resultado.manuscrito.paragrafos.length) setRevisandoParagrafo(alvo);
       }
     }, 0);
-  }, [bruto]);
+  }, [bruto, pedirDiagnostico]);
 
   // Persiste o workspace a cada mudança: /historico lê daqui e o rascunho
   // sobrevive à navegação entre rotas.
   useEffect(() => {
-    salvarWorkspace({ bruto, historico, versoes, estadoFluxo, feedbacks });
-  }, [bruto, historico, versoes, estadoFluxo, feedbacks]);
+    salvarWorkspace({ bruto, textoOriginal, historico, versoes, estadoFluxo, feedbacks });
+  }, [bruto, textoOriginal, historico, versoes, estadoFluxo, feedbacks]);
+
+  // Sem manuscrito, o fluxo guiado volta ao início (a barra de etapas mostra
+  // "Rascunho" e o selo de exportação nem aparece) — inclusive na próxima visita.
+  useEffect(() => {
+    if (bruto.trim().length === 0 && estadoFluxo !== "rascunho") setEstadoFluxo("rascunho");
+  }, [bruto, estadoFluxo]);
 
   // Com Firebase, carrega da nuvem quando o dispositivo local está vazio
   // (primeiro acesso deste dispositivo à conta).
@@ -117,6 +166,7 @@ export default function RevisarPage() {
     void carregarWorkspaceNuvem(uid).then((nuvem) => {
       if (!nuvem || bruto.trim().length > 0) return; // só preenche vazio
       setBruto(nuvem.bruto);
+      setTextoOriginal(nuvem.textoOriginal ?? null);
       setHistorico(nuvem.historico ?? []);
       setVersoes(nuvem.versoes ?? []);
       setEstadoFluxo(nuvem.estadoFluxo ?? estadoInicial());
@@ -128,7 +178,7 @@ export default function RevisarPage() {
   // cada tecla). O localStorage continua sendo a fonte imediata/offline.
   useEffect(() => {
     if (!uid) return;
-    const estado = { bruto, historico, versoes, estadoFluxo, feedbacks };
+    const estado = { bruto, textoOriginal, historico, versoes, estadoFluxo, feedbacks };
     const t = setTimeout(() => {
       void salvarWorkspaceNuvem(uid, estado);
     }, 1200);
@@ -181,7 +231,7 @@ export default function RevisarPage() {
       if (e.shiftKey) {
         if (bruto.trim().length > 0 && estadoFluxo !== "final") avancarFluxo();
       } else if (bruto.trim().length > 0) {
-        analisar();
+        analisar(true);
       }
     };
     window.addEventListener("keydown", aoTeclar);
@@ -221,8 +271,10 @@ export default function RevisarPage() {
     }
 
     setBruto(resultado.texto);
+    setTextoOriginal(resultado.texto); // guarda o original do upload p/ "Voltar ao original"
     setRevisandoParagrafo(null);
     alvoPendente.current = null; // o texto novo invalida um alvo antigo
+    setDiagnostico(null); // o diagnóstico anterior pertencia ao texto anterior
     setOcupadoCom("Analisando manuscrito…");
     setTimeout(() => {
       const analiseNova = iniciarRevisao(resultado.texto);
@@ -344,7 +396,7 @@ export default function RevisarPage() {
         />
 
         {/* H1: a linha de status só existe quando há status a mostrar. */}
-        {(carregandoSugestao !== null || ocupadoCom !== null || statusSistema) && (
+        {(carregandoSugestao !== null || ocupadoCom !== null || analisandoGemini || statusSistema) && (
           <p className="status-sistema" role="status" aria-live="polite">
             {carregandoSugestao !== null ? (
               <>
@@ -355,6 +407,11 @@ export default function RevisarPage() {
               <>
                 <span className="status-spinner" aria-hidden="true" />
                 {ocupadoCom}
+              </>
+            ) : analisandoGemini ? (
+              <>
+                <span className="status-spinner" aria-hidden="true" />
+                Diagnóstico do Gemini em andamento…
               </>
             ) : (
               statusSistema
@@ -418,7 +475,7 @@ export default function RevisarPage() {
             <button
               className="btn btn-accent"
               type="button"
-              onClick={analisar}
+              onClick={() => analisar(true)}
               disabled={!podeAnalisar}
               aria-busy={processando || undefined}
               title={
@@ -427,7 +484,7 @@ export default function RevisarPage() {
                   ? "Volte à edição (botão \"Voltar à edição\" ou tecla Esc) para analisar novamente"
                   : bruto.trim().length === 0
                     ? "Cole ou digite o texto do manuscrito para habilitar a análise"
-                    : "Verifica o manuscrito contra o catálogo de regras normativas"
+                    : "Verifica o manuscrito contra o catálogo de regras e pede um diagnóstico ao Gemini"
               }
             >
               Analisar <kbd className="atalho-tecla" aria-hidden="true">Ctrl+↵</kbd>
@@ -527,6 +584,17 @@ export default function RevisarPage() {
           )}
           {erroIA && renderErroIA()}
         </div>
+
+        {/* Diagnóstico do Gemini — resultado do clique em "Analisar". */}
+        <PainelGemini
+          configurado={geminiAtivo !== false}
+          carregando={analisandoGemini}
+          resultado={diagnostico}
+          onTentar={() => {
+            if (analise) void pedirDiagnostico(analise.manuscrito.paragrafos);
+          }}
+          onFocar={(n) => n > 0 && setRevisandoParagrafo(n)}
+        />
 
         {analise && <PainelSecoes secoes={analise.secoes} onFocarSecao={(indices) => {
           const primeiro = indices[0];

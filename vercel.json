@@ -8,6 +8,10 @@
     "api/health.ts": {
       "memory": 128,
       "maxDuration": 10
+    },
+    "api/gemini.ts": {
+      "memory": 512,
+      "maxDuration": 60
     }
   },
   "rewrites": [
