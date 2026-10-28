@@ -11,6 +11,12 @@ import {
   type EstadoWorkspace,
 } from "../workspace/armazenamento";
 import { tituloDaRegra } from "../ui/rotulos";
+import { useAutorizacao } from "../firebase/auth";
+import { apagarWorkspaceNuvem, salvarWorkspaceNuvem } from "../firebase/persistencia";
+
+/** Aviso quando a ação valeu no dispositivo mas a cópia da conta não acompanhou. */
+const AVISO_NUVEM =
+  "Não foi possível atualizar a cópia salva na sua conta. Verifique a conexão e repita a ação.";
 
 type Filtro = "todas" | "manual" | "ia";
 
@@ -37,6 +43,9 @@ function descrever(descricao: string): string {
 /** Tela /historico — versões do fluxo guiado e alterações com rastro (DC-13). */
 export default function HistoricoPage() {
   const navegar = useNavigate();
+  // Logado: as ações também atualizam a cópia do Firestore (senão o /revisar
+  // traria de volta o que foi apagado aqui).
+  const { uid } = useAutorizacao();
   const [workspace, setWorkspace] = useState<EstadoWorkspace | null>(() => carregarWorkspace());
   const [filtro, setFiltro] = useState<Filtro>("todas");
   const [status, setStatus] = useState<string | null>(null);
@@ -54,10 +63,20 @@ export default function HistoricoPage() {
   /** Localizar o parágrafo no editor: /revisar restaura, analisa e salta (Esc volta). */
   const localizar = (alvo: number) => navegar("/revisar", { state: { alvo } });
 
+  /** Aplica no dispositivo na hora; a nuvem vem depois e só muda o status se falhar. */
+  const sincronizar = async (acaoNuvem: (uid: string) => Promise<boolean>, mensagemOk: string) => {
+    setStatus(mensagemOk);
+    if (!uid) return; // sem login: só o dispositivo
+    if (!(await acaoNuvem(uid))) setStatus(`${mensagemOk} ${AVISO_NUVEM}`);
+  };
+
   const limpar = () => {
-    setWorkspace(limparHistoricoWorkspace());
+    const limpo = limparHistoricoWorkspace();
+    setWorkspace(limpo);
     setConfirmacao(null);
-    setStatus("Histórico limpo — o manuscrito atual foi mantido e a etapa voltou a Rascunho.");
+    const mensagem = "Histórico limpo — o manuscrito atual foi mantido e a etapa voltou a Rascunho.";
+    if (limpo) void sincronizar((u) => salvarWorkspaceNuvem(u, limpo), mensagem);
+    else setStatus(mensagem);
   };
 
   const temOriginal = !!workspace?.textoOriginal;
@@ -66,14 +85,24 @@ export default function HistoricoPage() {
     const restaurado = restaurarOriginalWorkspace();
     setWorkspace(restaurado);
     setConfirmacao(null);
-    setStatus(restaurado ? "Texto original restaurado — o rastro recomeçou do zero (etapa Rascunho)." : null);
+    if (restaurado) {
+      void sincronizar(
+        (u) => salvarWorkspaceNuvem(u, restaurado),
+        "Texto original restaurado — o rastro recomeçou do zero (etapa Rascunho).",
+      );
+    } else {
+      setStatus(null);
+    }
   };
 
   const descartarTudo = () => {
     limparWorkspace();
     setWorkspace(null);
     setConfirmacao(null);
-    setStatus("Manuscrito, histórico e versões apagados deste dispositivo.");
+    void sincronizar(
+      apagarWorkspaceNuvem,
+      uid ? "Manuscrito, histórico e versões apagados." : "Manuscrito, histórico e versões apagados deste dispositivo.",
+    );
   };
 
   const confirmar = () => {

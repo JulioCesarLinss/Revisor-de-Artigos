@@ -36,8 +36,8 @@ export function PainelGemini({ configurado, carregando, resultado, podePedir, de
       <h2>Diagnóstico com Gemini</h2>
       {/* H6: legenda explica o que é e de onde vem, sem exigir memorização. */}
       <p className="resumo-legenda">
-        Segunda opinião sobre o texto inteiro: o Gemini lê o manuscrito e aponta problemas com sugestão de correção.
-        A análise normativa acima continua sendo a referência.
+        Obtenha uma análise complementar do seu manuscrito, com sugestões de melhoria na clareza, coerência, estrutura
+        e qualidade da escrita acadêmica.
       </p>
 
       {!configurado ? (
@@ -46,9 +46,10 @@ export function PainelGemini({ configurado, carregando, resultado, podePedir, de
         </p>
       ) : (
         <>
+          <h3 className="gemini-subtitulo">Como funciona</h3>
           <p className="ia-status">
-            Ao pedir o diagnóstico, o texto (até cerca de 36 mil caracteres) é enviado ao Google Gemini. No plano
-            gratuito, o Google pode usar o conteúdo enviado para melhorar os produtos dele.
+            O texto do artigo será enviado ao Google Gemini para uma avaliação complementar. Você receberá sugestões
+            de melhoria e poderá compará-las com os apontamentos da revisão normativa.
           </p>
           <div className="gemini-acoes">
             <button
