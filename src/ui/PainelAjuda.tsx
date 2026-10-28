@@ -75,6 +75,11 @@ export function PainelAjuda({ onFechar }: Props) {
                 <strong>Errou?</strong> "Desfazer" volta o texto ao estado anterior à última alteração. O histórico
                 registra cada correção e sugestão aceita.
               </li>
+              <li>
+                <strong>Exporte</strong> o texto revisado: "Baixar .docx" gera um arquivo do Word com formatação ABNT
+                básica (Times New Roman 12, espaçamento 1,5, margens 3 e 2 cm); "Copiar texto" leva o texto para
+                colar onde quiser. A formatação do arquivo original não é mantida.
+              </li>
             </ol>
           </div>
 

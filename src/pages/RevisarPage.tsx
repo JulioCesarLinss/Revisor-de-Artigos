@@ -20,6 +20,8 @@ import { Resumo } from "../ui/Resumo";
 import { registrar, type RegistroAlteracao } from "../workspace/historico";
 import { posicoesParagrafos } from "../workspace/paragrafos";
 import { desempilhar, empilhar } from "../workspace/desfazer";
+import { gerarDocx, MIME_DOCX, nomeExportado } from "../exportar/docx";
+import { baixarArquivo } from "../exportar/baixar";
 import { carregarWorkspace, salvarWorkspace } from "../workspace/armazenamento";
 import { useAutorizacao } from "../firebase/auth";
 import { carregarWorkspaceNuvem, salvarWorkspaceNuvem } from "../firebase/persistencia";
@@ -109,6 +111,11 @@ export default function RevisarPage() {
    */
   const [pilhaDesfazer, setPilhaDesfazer] = useState<string[]>([]);
   const ultimaTecla = useRef(0);
+
+  // Exportar: nome do arquivo anexado (base do nome exportado) e o menu aberto.
+  const [nomeArquivo, setNomeArquivo] = useState<string | null>(null);
+  const [menuExportar, setMenuExportar] = useState(false);
+  const exportarRef = useRef<HTMLSpanElement | null>(null);
 
   const estadoIA = statusIA(configIA);
   // Gemini: a chave vive só no servidor (api/gemini) — aqui consultamos se ele
@@ -259,6 +266,51 @@ export default function RevisarPage() {
     setStatusSistema("Última alteração desfeita.");
   }, [pilhaDesfazer, acompanhando]);
 
+  /** Lembra, no status, quantos avisos ainda havia no texto exportado. */
+  const avisoPendente = analise && analise.problemas.length > 0
+    ? ` Atenção: a análise ainda aponta ${analise.problemas.length} aviso(s).`
+    : "";
+
+  /** Baixa o texto revisado em .docx com formatação ABNT básica. */
+  const exportarDocx = useCallback(() => {
+    setMenuExportar(false);
+    const nome = nomeExportado(nomeArquivo);
+    try {
+      baixarArquivo(gerarDocx(bruto), nome, MIME_DOCX);
+      setStatusSistema(`"${nome}" gerado com formatação ABNT básica.${avisoPendente}`);
+    } catch {
+      setStatusSistema("Não foi possível gerar o arquivo .docx. Tente novamente.");
+    }
+  }, [bruto, nomeArquivo, avisoPendente]);
+
+  /** Copia o texto revisado para colar no Word ou no Google Docs. */
+  const copiarTexto = useCallback(async () => {
+    setMenuExportar(false);
+    try {
+      await navigator.clipboard.writeText(bruto);
+      setStatusSistema(`Texto copiado — cole no Word ou no Google Docs.${avisoPendente}`);
+    } catch {
+      setStatusSistema("O navegador não permitiu copiar. Selecione o texto no editor e use Ctrl+C.");
+    }
+  }, [bruto, avisoPendente]);
+
+  // Menu "Exportar": fecha ao clicar fora ou apertar Esc.
+  useEffect(() => {
+    if (!menuExportar) return;
+    const aoClicar = (e: MouseEvent) => {
+      if (!exportarRef.current?.contains(e.target as Node)) setMenuExportar(false);
+    };
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuExportar(false);
+    };
+    document.addEventListener("mousedown", aoClicar);
+    document.addEventListener("keydown", aoTeclar);
+    return () => {
+      document.removeEventListener("mousedown", aoClicar);
+      document.removeEventListener("keydown", aoTeclar);
+    };
+  }, [menuExportar]);
+
   /** Lê o arquivo no cliente e carrega o texto como novo rascunho (a análise espera o "Analisar"). */
   const receberArquivo = useCallback(async (file: File | null | undefined) => {
     if (!file) return;
@@ -290,6 +342,7 @@ export default function RevisarPage() {
     setAnalise(null); // avisos do texto anterior não valem para o novo
     setAcompanhando(false);
     setPilhaDesfazer([]); // o "Desfazer" não atravessa para outro arquivo
+    setNomeArquivo(file.name);
     setOcupadoCom(null);
     setStatusSistema(`Arquivo "${file.name}" carregado — clique em Analisar para verificar o texto.`);
   }, []);
@@ -483,6 +536,36 @@ export default function RevisarPage() {
             >
               Analisar <kbd className="atalho-tecla" aria-hidden="true">Ctrl+↵</kbd>
             </button>
+            {/* Exportar: o fim da revisão — o texto corrigido sai do app. */}
+            <span className="exportar-wrap" ref={exportarRef}>
+              <button
+                className="btn btn-primary"
+                type="button"
+                onClick={() => setMenuExportar((aberto) => !aberto)}
+                disabled={bruto.trim().length === 0 || processando}
+                aria-haspopup="menu"
+                aria-expanded={menuExportar}
+                title={
+                  bruto.trim().length === 0
+                    ? "Anexe, cole ou digite o manuscrito para poder exportar"
+                    : "Baixar o texto revisado em .docx ou copiá-lo"
+                }
+              >
+                Exportar ▾
+              </button>
+              {menuExportar && (
+                <span className="exportar-menu" role="menu" aria-label="Exportar o texto revisado">
+                  <button type="button" role="menuitem" className="exportar-item" onClick={exportarDocx}>
+                    <strong>Baixar .docx</strong>
+                    <small>Word, com formatação ABNT básica</small>
+                  </button>
+                  <button type="button" role="menuitem" className="exportar-item" onClick={() => void copiarTexto()}>
+                    <strong>Copiar texto</strong>
+                    <small>Para colar no Word ou no Google Docs</small>
+                  </button>
+                </span>
+              )}
+            </span>
           </span>
         </div>
 
