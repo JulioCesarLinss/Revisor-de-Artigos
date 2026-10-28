@@ -62,8 +62,8 @@ export default function LaudoPage() {
         <div className="empty-card laudo-vazio">
           <h3>Nenhum manuscrito para apurar</h3>
           <p>
-            Abra o editor, cole ou anexe seu texto e clique em <strong>Analisar</strong>. O laudo sempre reflete a
-            última análise do manuscrito salvo.
+            Abra o editor e cole ou anexe seu texto — a análise é automática. O laudo sempre reflete o manuscrito
+            salvo.
           </p>
           <Link className="btn btn-primary" to="/revisar">
             Ir para Revisar →

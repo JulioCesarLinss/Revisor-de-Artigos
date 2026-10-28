@@ -3,6 +3,10 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 interface Props {
   valor: string;
   onChange: (valor: string) => void;
+  /** Trecho destacado (posições no texto bruto); null = sem destaque. */
+  destaque?: { inicio: number; fim: number } | null;
+  /** O usuário clicou dentro do trecho destacado: o destaque deve sumir. */
+  onLimparDestaque?: () => void;
 }
 
 /** Largura de uma folha A4 a 96dpi (210mm). */
@@ -78,10 +82,17 @@ function iguais(a: string[], b: string[]): boolean {
  * de parágrafo (linha em branco, como o modelo do documento); Shift+Enter,
  * quebra de linha dentro do parágrafo. O cursor é restaurado pela posição
  * absoluta após repaginar.
+ *
+ * Destaque: textarea não pinta parte do texto, então cada folha tem por trás
+ * uma camada espelho (mesma tipografia, texto invisível) com o trecho em
+ * <mark>. O textarea é transparente e fica por cima — o usuário edita
+ * normalmente e vê o fundo amarelo no lugar certo.
  */
-export function ManuscritoPaginado({ valor, onChange }: Props) {
+export function ManuscritoPaginado({ valor, onChange, destaque = null, onLimparDestaque }: Props) {
   const medidorRef = useRef<HTMLDivElement | null>(null);
   const editoresRef = useRef<(HTMLTextAreaElement | null)[]>([]);
+  const camadasRef = useRef<(HTMLDivElement | null)[]>([]);
+  const marcaRef = useRef<HTMLElement | null>(null);
   const [paginas, setPaginas] = useState<string[]>(() => [valor]);
   /** Cursor/seleção absolutos (posição no texto bruto) a restaurar. */
   const cursor = useRef<{ inicio: number; fim: number } | null>(null);
@@ -135,6 +146,14 @@ export function ManuscritoPaginado({ valor, onChange }: Props) {
     }
   });
 
+  // Novo destaque: leva a folha até o trecho (centralizado na tela).
+  const inicioDestaque = destaque?.inicio ?? null;
+  const fimDestaque = destaque?.fim ?? null;
+  useEffect(() => {
+    if (inicioDestaque === null) return;
+    marcaRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [inicioDestaque, fimDestaque]);
+
   const inicioDaPagina = (pagina: number): number => {
     let inicio = 0;
     for (let i = 0; i < pagina; i++) inicio += paginas[i].length;
@@ -168,6 +187,43 @@ export function ManuscritoPaginado({ valor, onChange }: Props) {
     onChange(montar(pagina, novo));
   };
 
+  /** Clique dentro do trecho destacado apaga o destaque. */
+  const clicar = (pagina: number, el: HTMLTextAreaElement) => {
+    if (!destaque || !onLimparDestaque) return;
+    const posicao = inicioDaPagina(pagina) + el.selectionStart;
+    if (posicao >= destaque.inicio && posicao <= destaque.fim) onLimparDestaque();
+  };
+
+  /** Camada espelho da folha: o texto da folha com o trecho destacado em <mark>. */
+  const camada = (pagina: number, texto: string) => {
+    if (!destaque) return null;
+    const ini = inicioDaPagina(pagina);
+    const de = Math.max(destaque.inicio - ini, 0);
+    const ate = Math.min(destaque.fim - ini, texto.length);
+    if (ate <= de) return null; // o trecho não está nesta folha
+    return (
+      <div
+        className="folha-texto folha-destaque-camada"
+        aria-hidden="true"
+        ref={(el) => {
+          camadasRef.current[pagina] = el;
+        }}
+      >
+        {texto.slice(0, de)}
+        <mark
+          className="folha-destaque"
+          ref={(el) => {
+            // A folha onde o trecho começa é a que recebe a rolagem.
+            if (destaque.inicio >= ini) marcaRef.current = el;
+          }}
+        >
+          {texto.slice(de, ate)}
+        </mark>
+        {texto.slice(ate)}
+      </div>
+    );
+  };
+
   return (
     <div className="folhas-area">
       <p className="folhas-dica">
@@ -187,18 +243,27 @@ export function ManuscritoPaginado({ valor, onChange }: Props) {
           aria-label={`Folha ${folhaIdx + 1} de ${paginas.length}`}
           style={{ width: LARGURA_FOLHA_PX }}
         >
-          <textarea
-            ref={(el) => {
-              editoresRef.current[folhaIdx] = el;
-            }}
-            className="folha-texto folha-texto-area"
-            aria-label={`Manuscrito — folha ${folhaIdx + 1} de ${paginas.length}`}
-            value={texto}
-            placeholder="Digite ou cole o manuscrito aqui…"
-            spellCheck={false}
-            onChange={(e) => editar(folhaIdx, e.target.value)}
-            onKeyDown={(e) => teclar(folhaIdx, e)}
-          />
+          <div className="folha-miolo">
+            {camada(folhaIdx, texto)}
+            <textarea
+              ref={(el) => {
+                editoresRef.current[folhaIdx] = el;
+              }}
+              className="folha-texto folha-texto-area"
+              aria-label={`Manuscrito — folha ${folhaIdx + 1} de ${paginas.length}`}
+              value={texto}
+              placeholder="Digite ou cole o manuscrito aqui…"
+              spellCheck={false}
+              onChange={(e) => editar(folhaIdx, e.target.value)}
+              onKeyDown={(e) => teclar(folhaIdx, e)}
+              onClick={(e) => clicar(folhaIdx, e.currentTarget)}
+              onScroll={(e) => {
+                // Mantém a camada de destaque alinhada se o textarea rolar.
+                const camadaEl = camadasRef.current[folhaIdx];
+                if (camadaEl) camadaEl.scrollTop = e.currentTarget.scrollTop;
+              }}
+            />
+          </div>
           <span className="folha-num" aria-hidden="true">
             {folhaIdx + 1}
           </span>

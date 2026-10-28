@@ -38,7 +38,15 @@ export type ResultadoDiagnostico =
 /** Ordem de tentativa: o primeiro é o mais barato; o segundo cobre instabilidade. */
 const MODELOS = ["gemini-flash-lite-latest", "gemini-flash-latest"];
 const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models";
-const TIMEOUT_MS = 60_000;
+/**
+ * Prazo do diagnóstico inteiro (todas as tentativas). A função da Vercel é
+ * encerrada aos 60s (maxDuration em vercel.json): 50s deixa folga para a
+ * inicialização e a resposta.
+ */
+const PRAZO_TOTAL_MS = 50_000;
+/** Com menos que isso de prazo, não vale começar a próxima tentativa. */
+const MINIMO_NOVA_TENTATIVA_MS = 8_000;
+const MOTIVO_DEMORA = "O Gemini demorou demais para responder. Tente novamente em instantes.";
 /** Limpeza de envio (~9 mil tokens) — cobre artigos típicos sem estourar cota. */
 const MAXIMO_TEXTO = 36_000;
 const MAXIMO_DIAGNOSTICOS = 40;
@@ -210,9 +218,10 @@ async function chamarGemini(
   modelo: string,
   chave: string,
   texto: string,
+  prazoMs: number,
 ): Promise<{ ok: true; conteudo: string; semConteudo: boolean; estourou: boolean } | { ok: false; falha: Falha }> {
   const controle = new AbortController();
-  const timer = setTimeout(() => controle.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => controle.abort(), prazoMs);
   try {
     const resposta = await fetch(`${ENDPOINT}/${modelo}:generateContent`, {
       method: "POST",
@@ -247,7 +256,7 @@ async function chamarGemini(
     };
   } catch (erro) {
     if (erro instanceof Error && erro.name === "AbortError") {
-      return { ok: false, falha: { motivo: "O Gemini demorou mais de um minuto para responder. Tente novamente.", tentarProximo: false } };
+      return { ok: false, falha: { motivo: MOTIVO_DEMORA, tentarProximo: false } };
     }
     return { ok: false, falha: { motivo: "Não foi possível contactar o Gemini. Verifique sua conexão.", tentarProximo: false } };
   } finally {
@@ -259,10 +268,13 @@ async function chamarGemini(
  * Pede ao Gemini um diagnóstico do manuscrito inteiro. Nunca lança: qualquer
  * problema vira { ok: false } com motivo em português (H9 / DC-03).
  * A chave é passada pelo chamador (o servidor), nunca lida do navegador.
+ * Todas as tentativas dividem um prazo total (`prazoTotalMs`, trocável nos
+ * testes): a primeira usa o prazo inteiro; as seguintes, só o que sobrou.
  */
 export async function executarDiagnostico(
   paragrafos: ParagrafoNumerado[],
   chave: string,
+  prazoTotalMs: number = PRAZO_TOTAL_MS,
 ): Promise<ResultadoDiagnostico> {
   if (chave.trim().length === 0) {
     return { ok: false, motivo: "O diagnóstico com Gemini não está disponível no momento." };
@@ -270,10 +282,15 @@ export async function executarDiagnostico(
 
   const { texto, truncado } = montarTexto(paragrafos);
   const limite = paragrafos.reduce((maior, p) => Math.max(maior, p.index), 0);
+  const fim = Date.now() + prazoTotalMs;
 
   let ultima: Falha = { motivo: MOTIVO_FORMATO, tentarProximo: false };
-  for (const modelo of MODELOS) {
-    const chamada = await chamarGemini(modelo, chave, texto);
+  for (const [tentativa, modelo] of MODELOS.entries()) {
+    const restante = fim - Date.now();
+    // Sem tempo para outra tentativa: devolve o motivo da anterior antes de a
+    // Vercel encerrar a função no meio (o que viraria um erro sem explicação).
+    if (tentativa > 0 && restante < MINIMO_NOVA_TENTATIVA_MS) return { ok: false, motivo: ultima.motivo };
+    const chamada = await chamarGemini(modelo, chave, texto, Math.max(restante, 0));
     if (!chamada.ok) {
       if (chamada.falha.tentarProximo) {
         ultima = chamada.falha;

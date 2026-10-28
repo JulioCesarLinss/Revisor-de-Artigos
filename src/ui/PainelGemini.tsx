@@ -58,7 +58,7 @@ export function PainelGemini({ configurado, carregando, resultado, podePedir, de
               onClick={onPedir}
               disabled={!podePedir || carregando}
               aria-busy={carregando || undefined}
-              title={podePedir ? "Envia o manuscrito ao Gemini e mostra os apontamentos aqui" : "Cole ou digite o texto do manuscrito (e saia do modo revisar) para pedir o diagnóstico"}
+              title={podePedir ? "Envia o manuscrito ao Gemini e mostra os apontamentos aqui" : "Cole, digite ou anexe o manuscrito para pedir o diagnóstico"}
             >
               {resultado === null ? "Pedir diagnóstico ao Gemini" : "Pedir novo diagnóstico"}
             </button>

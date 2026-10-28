@@ -37,6 +37,16 @@ describe("laudo/gerar", () => {
     expect(encaminhamento({ maiorSeveridade: null, resumo: { total: 0, criticos: 0, advertencias: 0, observacoes: 0 } }).titulo).toContain("conformidade");
   });
 
+  test("rótulos do encaminhamento são palavras comuns (sem 'Advertencial'/'Empregável')", () => {
+    const resumo = { total: 0, criticos: 0, advertencias: 0, observacoes: 0 };
+    const titulos = (["critico", "advertencia", "observacao", null] as const).map(
+      (s) => encaminhamento({ maiorSeveridade: s, resumo }).titulo,
+    );
+    for (const t of titulos) expect(t).not.toMatch(/Advertencial|Empregável/);
+    expect(titulos[1]).toBe("Com ressalvas — ajustes recomendados antes da entrega");
+    expect(titulos[3]).toBe("Em conformidade — nenhuma pendência normativa");
+  });
+
   test("texto do laudo contém cabeçalho, resumo e rodapé legíveis", () => {
     const laudo = construirLaudo(iniciarRevisao(MANUSCRITO));
     const texto = laudoComoTexto(laudo);

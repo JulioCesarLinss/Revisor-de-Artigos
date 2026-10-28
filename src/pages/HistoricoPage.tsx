@@ -60,7 +60,7 @@ export default function HistoricoPage() {
     .slice()
     .reverse();
 
-  /** Localizar o parágrafo no editor: /revisar restaura, analisa e salta (Esc volta). */
+  /** Localizar o parágrafo no editor: /revisar restaura, analisa e destaca o parágrafo. */
   const localizar = (alvo: number) => navegar("/revisar", { state: { alvo } });
 
   /** Aplica no dispositivo na hora; a nuvem vem depois e só muda o status se falhar. */
@@ -176,7 +176,7 @@ export default function HistoricoPage() {
         <div className="empty-card historico-vazio">
           <h3>Nenhuma revisão registrada ainda</h3>
           <p>
-            Abra o editor, carregue um exemplo ou cole seu manuscrito e clique em <strong>Analisar</strong>. Cada
+            Abra o editor e anexe ou cole seu manuscrito — a análise é automática. Cada
             correção rápida e cada sugestão de IA aceita aparecerão aqui com rastro, além das versões registradas
             ao avançar no fluxo.
           </p>
@@ -276,7 +276,7 @@ export default function HistoricoPage() {
                         className="btn historico-localizar"
                         type="button"
                         onClick={() => localizar(h.paragrafo)}
-                        title="Ir para o parágrafo no editor (analisa e abre o modo revisar)"
+                        title="Ir para o parágrafo no editor (fica destacado até você clicar nele)"
                       >
                         Localizar
                       </button>

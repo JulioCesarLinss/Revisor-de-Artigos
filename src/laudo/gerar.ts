@@ -54,7 +54,7 @@ export function encaminhamento(l: Pick<Laudo, "maiorSeveridade" | "resumo">): {
       };
     case "advertencia":
       return {
-        titulo: "Advertencial — ajustes recomendados antes da entrega",
+        titulo: "Com ressalvas — ajustes recomendados antes da entrega",
         texto:
           "Não há pendências críticas, mas há advertências normativas que merecem ajuste antes da entrega final.",
       };
@@ -65,7 +65,7 @@ export function encaminhamento(l: Pick<Laudo, "maiorSeveridade" | "resumo">): {
       };
     default:
       return {
-        titulo: "Empregável — documento em conformidade",
+        titulo: "Em conformidade — nenhuma pendência normativa",
         texto: "O documento passou por todas as verificações do catálogo normativo sem pendências.",
       };
   }

@@ -1,5 +1,11 @@
-import { describe, expect, test } from "bun:test";
-import { chaveGemini, interpretarDiagnostico, recortarParagrafos, validarParagrafos } from "./gemini";
+import { afterEach, describe, expect, test } from "bun:test";
+import {
+  chaveGemini,
+  executarDiagnostico,
+  interpretarDiagnostico,
+  recortarParagrafos,
+  validarParagrafos,
+} from "./gemini";
 
 /** Monta a resposta em JSON como o Gemini devolveria. */
 function resposta(diagnosticos: unknown[], resumo = "Texto com pontos de atenção."): string {
@@ -181,5 +187,73 @@ describe("ai/gemini — recortarParagrafos (limite de envio)", () => {
     expect(r.truncado).toBe(true);
     expect(r.paragrafos.length).toBe(1);
     expect(`[1] ${r.paragrafos[0].texto}`.length).toBeLessThanOrEqual(36_000);
+  });
+});
+
+describe("ai/gemini — executarDiagnostico (tentativas e prazo)", () => {
+  const fetchOriginal = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = fetchOriginal;
+  });
+
+  const PARAGRAFOS = [{ index: 1, texto: "Texto do manuscrito." }];
+
+  /** Resposta de sucesso no formato da API do Gemini. */
+  function sucesso(): Response {
+    const conteudo = JSON.stringify({ resumo: "Tudo certo.", diagnosticos: [] });
+    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: conteudo }] } }] }), {
+      status: 200,
+    });
+  }
+
+  /** Troca o fetch global e registra as URLs chamadas. */
+  function simular(responder: (url: string, init?: RequestInit) => Promise<Response>): string[] {
+    const urls: string[] = [];
+    globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+      urls.push(String(url));
+      return responder(String(url), init);
+    }) as typeof fetch;
+    return urls;
+  }
+
+  test("instabilidade no primeiro modelo: tenta o segundo", async () => {
+    const urls = simular(async (url) => (url.includes("flash-lite") ? new Response("", { status: 503 }) : sucesso()));
+    const r = await executarDiagnostico(PARAGRAFOS, "chave");
+    expect(r.ok).toBe(true);
+    expect(urls.length).toBe(2);
+  });
+
+  test("chave recusada (401): não tenta outro modelo", async () => {
+    const urls = simular(async () => new Response("", { status: 401 }));
+    const r = await executarDiagnostico(PARAGRAFOS, "chave");
+    expect(r.ok).toBe(false);
+    expect(urls.length).toBe(1);
+  });
+
+  test("Gemini sem responder: desiste no prazo total com motivo legível", async () => {
+    const urls = simular(
+      (_url, init) =>
+        new Promise<Response>((_, rejeitar) => {
+          init?.signal?.addEventListener("abort", () => {
+            const erro = new Error("abortado");
+            erro.name = "AbortError";
+            rejeitar(erro);
+          });
+        }),
+    );
+    const inicio = Date.now();
+    const r = await executarDiagnostico(PARAGRAFOS, "chave", 50);
+    expect(Date.now() - inicio).toBeLessThan(2000);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.motivo).toContain("demorou demais");
+    expect(urls.length).toBe(1);
+  });
+
+  test("sem prazo para a segunda tentativa: devolve o motivo da primeira", async () => {
+    const urls = simular(async () => new Response("", { status: 503 }));
+    const r = await executarDiagnostico(PARAGRAFOS, "chave", 100);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.motivo).toContain("alta demanda");
+    expect(urls.length).toBe(1);
   });
 });

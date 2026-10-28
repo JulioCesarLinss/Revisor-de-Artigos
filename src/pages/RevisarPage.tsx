@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { statusIA, sugerirReescrita } from "../ai/assistente";
 import { diagnosticarComGemini, geminiConfigurado } from "../ai/geminiCliente";
@@ -16,12 +16,11 @@ import { ManuscritoPaginado } from "../ui/ManuscritoPaginado";
 import { PainelSecoes } from "../ui/PainelSecoes";
 import { PainelSugestao } from "../ui/PainelSugestao";
 import { ProblemaCard } from "../ui/ProblemaCard";
-import { RevisarView } from "../ui/RevisarView";
 import { Resumo } from "../ui/Resumo";
 import { BarraFluxo } from "../ui/BarraFluxo";
 import { ComparacaoView } from "../ui/ComparacaoView";
-import { tituloDaRegra } from "../ui/rotulos";
 import { registrar, type RegistroAlteracao } from "../workspace/historico";
+import { posicoesParagrafos } from "../workspace/paragrafos";
 import {
   estadoInicial,
   proximoEstado,
@@ -34,6 +33,15 @@ import { carregarWorkspace, salvarWorkspace } from "../workspace/armazenamento";
 import { useAutorizacao } from "../firebase/auth";
 import { carregarWorkspaceNuvem, salvarWorkspaceNuvem } from "../firebase/persistencia";
 
+/** Espera após a última tecla antes de reanalisar (as regras são instantâneas). */
+const ATRASO_REANALISE_MS = 500;
+
+/** Parágrafo destacado no editor; `total` invalida o destaque se parágrafos surgirem/sumirem. */
+interface Destaque {
+  paragrafo: number;
+  total: number;
+}
+
 /** Tela /revisar — editor de revisão interativa (conteúdo original do App). */
 export default function RevisarPage() {
   // uid do Firebase (quando configurado) — chave da persistência na nuvem.
@@ -43,19 +51,35 @@ export default function RevisarPage() {
   const [salvo] = useState(carregarWorkspace);
   const location = useLocation();
 
-  /** Alvo vindo do /historico ("Localizar"): aplicado após a 1ª análise. */
-  const alvoPendente = useRef<number | null>(
-    (location.state as { alvo?: number } | null)?.alvo ?? null,
-  );
-
   // Upload de arquivo (aba Revisar): seletor + arrastar-e-soltar na folha.
   const inputFileRef = useRef<HTMLInputElement | null>(null);
   const [arrastando, setArrastando] = useState(false);
   const [erroUpload, setErroUpload] = useState<string | null>(null);
 
   const [bruto, setBruto] = useState(salvo?.bruto ?? "");
-  const [analise, setAnalise] = useState<AnaliseRevisao | null>(null);
-  const [revisandoParagrafo, setRevisandoParagrafo] = useState<number | null>(null);
+  // Texto restaurado já chega analisado (as regras rodam no navegador, na hora).
+  const [analise, setAnalise] = useState<AnaliseRevisao | null>(() =>
+    salvo && salvo.bruto.trim().length > 0 ? iniciarRevisao(salvo.bruto) : null,
+  );
+
+  // Destaque no editor: "Localizar" (avisos, seções, Gemini, ou o /historico
+  // via navegação) marca o parágrafo; clicar dentro dele apaga a marca.
+  const posicoes = useMemo(() => posicoesParagrafos(bruto), [bruto]);
+  const [destaque, setDestaque] = useState<Destaque | null>(() => {
+    const alvo = (location.state as { alvo?: number } | null)?.alvo;
+    return typeof alvo === "number" && alvo > 0 ? { paragrafo: alvo, total: posicoes.length } : null;
+  });
+  const focar = useCallback(
+    (paragrafo: number) => {
+      if (paragrafo <= 0) return;
+      setMostrandoComparacao(false); // o editor precisa estar visível
+      setDestaque({ paragrafo, total: posicoes.length });
+    },
+    [posicoes.length],
+  );
+  /** Trecho a destacar; some se o número de parágrafos mudou desde o clique. */
+  const trechoDestacado =
+    destaque && destaque.total === posicoes.length ? (posicoes[destaque.paragrafo - 1] ?? null) : null;
 
   // Sprint 3 — assistência IA (opcional; DC-03). A chave salva em /perfil
   // é carregada aqui, para não precisar ser digitada duas vezes.
@@ -131,27 +155,26 @@ export default function RevisarPage() {
   }, [geminiAtivo]);
 
   /**
-   * "Analisar" roda só as regras. `comGemini` vem do botão do painel do
-   * Gemini: reanalisa primeiro, para a numeração dos parágrafos enviada bater
-   * com o texto atual (e o "Localizar" levar ao lugar certo).
+   * Botão do painel do Gemini: reanalisa pelas regras na hora, para a
+   * numeração dos parágrafos enviada bater com o texto atual (e o
+   * "Localizar" levar ao lugar certo), e então pede o diagnóstico.
    */
-  const analisar = useCallback((comGemini = false) => {
-    setOcupadoCom("Analisando manuscrito…");
-    setRevisandoParagrafo(null);
-    setTimeout(() => {
-      const resultado = iniciarRevisao(bruto);
-      setAnalise(resultado);
-      setOcupadoCom(null);
-      setStatusSistema(`Análise concluída — ${resultado.resumo.total} problema(s) encontrado(s).`);
-      if (comGemini) void pedirDiagnostico(resultado.manuscrito.paragrafos, bruto);
-      // "Localizar" vindo do /historico: abre o modo revisar no parágrafo alvo.
-      const alvo = alvoPendente.current;
-      if (alvo !== null) {
-        alvoPendente.current = null;
-        if (alvo > 0 && alvo <= resultado.manuscrito.paragrafos.length) setRevisandoParagrafo(alvo);
-      }
-    }, 0);
+  const pedirGemini = useCallback(() => {
+    const resultado = iniciarRevisao(bruto);
+    setAnalise(resultado);
+    void pedirDiagnostico(resultado.manuscrito.paragrafos, bruto);
   }, [bruto, pedirDiagnostico]);
+
+  // Os avisos acompanham o texto: pouco depois da última alteração (tecla,
+  // correção rápida, sugestão aceita, upload), a análise é refeita e os avisos
+  // já resolvidos somem. Se a análise já é deste texto, nada a fazer.
+  useEffect(() => {
+    if ((analise?.manuscrito.bruto ?? "") === bruto) return;
+    const t = setTimeout(() => {
+      setAnalise(bruto.trim().length > 0 ? iniciarRevisao(bruto) : null);
+    }, ATRASO_REANALISE_MS);
+    return () => clearTimeout(t);
+  }, [bruto, analise]);
 
   // Persiste o workspace a cada mudança: /historico lê daqui e o rascunho
   // sobrevive à navegação entre rotas.
@@ -193,14 +216,6 @@ export default function RevisarPage() {
     return () => clearTimeout(t);
   }, [uid, bruto, textoOriginal, historico, versoes, estadoFluxo, feedbacks]);
 
-  // Ao montar com texto restaurado, analisa uma vez (e aplica um alvo pendente).
-  const iniciado = useRef(false);
-  useEffect(() => {
-    if (iniciado.current) return;
-    iniciado.current = true;
-    if (bruto.trim().length > 0) analisar();
-  }, [analisar, bruto]);
-
   const avancarFluxo = useCallback(() => {
     const seguinte = proximoEstado(estadoFluxo);
     if (!seguinte) return;
@@ -225,26 +240,20 @@ export default function RevisarPage() {
   }, [estadoFluxo]);
 
   /**
-   * Heurística 7 (Nielsen) — flexibilidade e eficiência de uso: aceleradores de
-   * teclado para as ações repetidas (analisar, avançar no fluxo), ignorados
-   * enquanto o app está ocupado ou no modo "revisar" (evita conflito com Esc).
+   * Heurística 7 (Nielsen) — flexibilidade e eficiência de uso: acelerador de
+   * teclado para avançar no fluxo (a análise já é automática), ignorado
+   * enquanto o app está ocupado.
    */
-  const podeAnalisar = bruto.trim().length > 0 && revisandoParagrafo === null && !processando;
-
   useEffect(() => {
     const aoTeclar = (e: KeyboardEvent) => {
-      if (!(e.ctrlKey || e.metaKey) || e.key !== "Enter") return;
-      if (processando || revisandoParagrafo !== null) return;
+      if (!(e.ctrlKey || e.metaKey) || !e.shiftKey || e.key !== "Enter") return;
+      if (processando) return;
       e.preventDefault();
-      if (e.shiftKey) {
-        if (bruto.trim().length > 0 && estadoFluxo !== "final") avancarFluxo();
-      } else if (bruto.trim().length > 0) {
-        analisar();
-      }
+      if (bruto.trim().length > 0 && estadoFluxo !== "final") avancarFluxo();
     };
     window.addEventListener("keydown", aoTeclar);
     return () => window.removeEventListener("keydown", aoTeclar);
-  }, [analisar, avancarFluxo, bruto, estadoFluxo, processando, revisandoParagrafo]);
+  }, [avancarFluxo, bruto, estadoFluxo, processando]);
 
   const darFeedback = useCallback((historicoId: number, ajudou: boolean) => {
     setFeedbacks((f) => ({ ...f, [historicoId]: ajudou }));
@@ -252,7 +261,6 @@ export default function RevisarPage() {
 
   const editar = useCallback((novo: string) => {
     setBruto(novo);
-    setRevisandoParagrafo(null);
   }, []);
 
   /** Lê o arquivo no cliente, carrega o texto como novo rascunho e analisa. */
@@ -280,8 +288,7 @@ export default function RevisarPage() {
 
     setBruto(resultado.texto);
     setTextoOriginal(resultado.texto); // guarda o original do upload p/ "Voltar ao original"
-    setRevisandoParagrafo(null);
-    alvoPendente.current = null; // o texto novo invalida um alvo antigo
+    setDestaque(null); // o texto novo invalida um destaque antigo
     setDiagnostico(null); // o diagnóstico anterior pertencia ao texto anterior
     setTextoDiagnosticado(null);
     setOcupadoCom("Analisando manuscrito…");
@@ -481,23 +488,6 @@ export default function RevisarPage() {
               </svg>
               Anexar
             </button>
-            <button
-              className="btn btn-accent"
-              type="button"
-              onClick={() => analisar()}
-              disabled={!podeAnalisar}
-              aria-busy={processando || undefined}
-              title={
-                /* H9: quando bloqueado, o botão explica por quê e como destravar. */
-                revisandoParagrafo !== null
-                  ? "Volte à edição (botão \"Voltar à edição\" ou tecla Esc) para analisar novamente"
-                  : bruto.trim().length === 0
-                    ? "Cole ou digite o texto do manuscrito para habilitar a análise"
-                    : "Verifica o manuscrito contra o catálogo de regras normativas"
-              }
-            >
-              Analisar <kbd className="atalho-tecla" aria-hidden="true">Ctrl+↵</kbd>
-            </button>
           </span>
         </div>
 
@@ -531,23 +521,13 @@ export default function RevisarPage() {
             void receberArquivo(e.dataTransfer.files?.[0]);
           }}
         >
-          {revisandoParagrafo !== null && analise ? (
-            <RevisarView
-              manuscrito={analise.manuscrito}
-              alvo={revisandoParagrafo}
-              motivo={
-                /* H6: diz qual regra motivou o salto, sem exigir memorização. */
-                analise.problemas.find((p) => p.paragrafo === revisandoParagrafo)
-                  ? `problema: ${tituloDaRegra(analise.problemas.find((p) => p.paragrafo === revisandoParagrafo)!.regraId) ?? "verificação normativa"}`
-                  : undefined
-              }
-              onVoltar={() => setRevisandoParagrafo(null)}
-            />          ) : (
-            <>
-              {/* Rascunho paginado em folhas A4 (edição inline por parágrafo). */}
-              <ManuscritoPaginado valor={bruto} onChange={editar} />
-            </>
-          )}
+          {/* Folhas A4 editáveis; o parágrafo localizado aparece destacado. */}
+          <ManuscritoPaginado
+            valor={bruto}
+            onChange={editar}
+            destaque={trechoDestacado}
+            onLimparDestaque={() => setDestaque(null)}
+          />
         </div>
         </>
         )}
@@ -599,15 +579,15 @@ export default function RevisarPage() {
           configurado={geminiAtivo !== false}
           carregando={analisandoGemini}
           resultado={diagnostico}
-          podePedir={podeAnalisar && !analisandoGemini}
+          podePedir={bruto.trim().length > 0 && !processando && !analisandoGemini}
           desatualizado={diagnostico !== null && textoDiagnosticado !== null && textoDiagnosticado !== bruto}
-          onPedir={() => analisar(true)}
-          onFocar={(n) => n > 0 && setRevisandoParagrafo(n)}
+          onPedir={pedirGemini}
+          onFocar={focar}
         />
 
         {analise && <PainelSecoes secoes={analise.secoes} onFocarSecao={(indices) => {
           const primeiro = indices[0];
-          if (primeiro) setRevisandoParagrafo(primeiro);
+          if (primeiro) focar(primeiro);
         }} />}
 
         {analise && analise.problemas.length === 0 && (
@@ -627,6 +607,14 @@ export default function RevisarPage() {
           />
         )}
 
+        {/* Contador que acompanha as correções: cai a cada aviso resolvido. */}
+        {analise && analise.problemas.length > 0 && (
+          <p className="avisos-restantes" role="status" aria-live="polite">
+            <strong>{analise.problemas.length}</strong>{" "}
+            {analise.problemas.length === 1 ? "aviso restante" : "avisos restantes"}
+          </p>
+        )}
+
         {/* Parágrafos marcados como título: o botão "Aplicar correção" não
             aparece — a correção determinística poderia estragar o título. */}
         {analise?.problemas.map((p) => (
@@ -634,7 +622,7 @@ export default function RevisarPage() {
             key={p.id}
             problema={p}
             onCorrigir={corrigir}
-            onLocalizar={() => p.paragrafo > 0 && setRevisandoParagrafo(p.paragrafo)}
+            onLocalizar={() => focar(p.paragrafo)}
             onSugerir={estadoIA === "pronta" ? () => pedirSugestao(p) : undefined}
             sugerindo={carregandoSugestao === p.id}
             listarAcao={!analise.manuscrito.paragrafos.find((x) => x.index === p.paragrafo)?.ehTitulo}

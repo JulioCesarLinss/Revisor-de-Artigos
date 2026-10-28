@@ -17,8 +17,9 @@ import {
 } from "./gemini";
 
 const ENDPOINT = "/api/gemini";
-/** O servidor corta em 60s (maxDuration da função): esperamos um pouco mais. */
+/** O servidor desiste em 50s e a Vercel corta em 60s: esperamos um pouco mais. */
 const TIMEOUT_MS = 70_000;
+const MOTIVO_DEMORA = "O Gemini demorou demais para responder. Tente novamente em instantes.";
 
 /** Chave usada só em desenvolvimento (não sobrevive ao bundle de produção). */
 function chaveDesenvolvimento(): string {
@@ -82,6 +83,8 @@ async function chamarApi(paragrafos: ParagrafoNumerado[]): Promise<ResultadoDiag
         return resultado.ok && recorte.truncado ? { ...resultado, truncado: true } : resultado;
       }
     }
+    // 504: a Vercel encerrou a função por tempo (resposta sem o nosso JSON).
+    if (resposta.status === 504) return { ok: false, motivo: MOTIVO_DEMORA };
     return {
       ok: false,
       motivo: `O servidor respondeu de forma inesperada (HTTP ${resposta.status}). Tente novamente.`,
@@ -91,7 +94,7 @@ async function chamarApi(paragrafos: ParagrafoNumerado[]): Promise<ResultadoDiag
       ok: false,
       motivo:
         erro instanceof Error && erro.name === "AbortError"
-          ? "O Gemini demorou mais de um minuto para responder. Tente novamente."
+          ? MOTIVO_DEMORA
           : "Não foi possível contactar o servidor para consultar o Gemini. Verifique sua conexão.",
     };
   } finally {

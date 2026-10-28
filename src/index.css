@@ -511,48 +511,16 @@ body {
   white-space: nowrap;
 }
 
-/* ---------- Modo revisar (navegação ao trecho) ---------- */
-.revisar-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.revisar-barra {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+/* Contador acima da lista de avisos: cai a cada correção. */
+.avisos-restantes {
+  margin: 4px 0 0;
+  font-family: var(--font-ui);
   font-size: 12.5px;
   color: var(--slate-600);
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  border-radius: 8px;
-  padding: 8px 12px;
 }
 
-.revisar-info strong {
-  font-family: var(--font-ui);
-  color: var(--cobalt-dark);
-}
-
-.manuscrito-revisao {
-  font-family: var(--font-serif);
-  font-size: 15px;
-  line-height: 1.9;
-  color: #1f2937;
-}
-
-.manuscrito-revisao p {
-  margin: 0 0 1.2em;
-  border-radius: 6px;
-  padding: 2px 6px;
-  transition: background 0.4s ease;
-}
-
-.par-alvo {
-  background: #fef3c7;
-  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.25);
+.avisos-restantes strong {
+  color: var(--ink);
 }
 
 /* ---------- Sprint 3: assistência IA ---------- */
@@ -1193,11 +1161,6 @@ body {
   margin-top: 0;
 }
 
-.revisar-motivo {
-  color: var(--amber);
-  font-weight: 600;
-}
-
 /* ---------- Upload de arquivo (aba Revisar) ---------- */
 .upload-erro {
   display: flex;
@@ -1372,6 +1335,31 @@ button .atalho-tecla {
    anel global de :focus-visible desenharia um retângulo de 950px. */
 .folha-a4 .folha-texto-area:focus-visible {
   outline: none;
+}
+
+/* Miolo da folha: camada de destaque por trás, textarea transparente por cima. */
+.folha-miolo {
+  position: relative;
+}
+
+.folha-destaque-camada {
+  position: absolute;
+  inset: 0;
+  height: 950px; /* mesma altura do textarea */
+  overflow: hidden;
+  color: transparent; /* só o fundo do <mark> aparece */
+  pointer-events: none;
+}
+
+.folha-miolo .folha-texto-area {
+  position: relative; /* acima da camada */
+}
+
+.folha-destaque {
+  color: transparent;
+  background: #fde68a;
+  border-radius: 3px;
+  box-shadow: 0 0 0 2px #fde68a;
 }
 
 .folha-num {
