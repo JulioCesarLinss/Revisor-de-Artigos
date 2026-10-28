@@ -2413,6 +2413,10 @@ button[aria-busy="true"] {
 }
 
 /* ---------- Diagnóstico com Gemini (painel da coluna de resultados) ---------- */
+.gemini-acoes {
+  margin: 8px 0 10px;
+}
+
 .gemini-resumo {
   margin: 0 0 8px;
   font-size: 12.5px;

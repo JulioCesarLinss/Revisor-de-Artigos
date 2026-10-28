@@ -7,8 +7,12 @@ interface Props {
   carregando: boolean;
   /** Resultado da última consulta; null = ainda não pedida. */
   resultado: ResultadoDiagnostico | null;
-  /** Repete a consulta com o manuscrito atual. */
-  onTentar: () => void;
+  /** Verdadeiro quando há texto e o app não está ocupado. */
+  podePedir: boolean;
+  /** O manuscrito mudou depois do diagnóstico exibido. */
+  desatualizado: boolean;
+  /** Reanalisa pelas regras e pede o diagnóstico com o manuscrito atual. */
+  onPedir: () => void;
   /** Navega até o parágrafo apontado no manuscrito. */
   onFocar: (paragrafo: number) => void;
 }
@@ -18,11 +22,12 @@ const ROTULO_SEVERIDADE = { alta: "Alta", media: "Média", baixa: "Baixa" } as c
 const CLASSE_SEVERIDADE = { alta: "critico", media: "advertencia", baixa: "observacao" } as const;
 
 /**
- * Diagnóstico do manuscrito pedido ao Gemini ao clicar em "Analisar".
+ * Diagnóstico do manuscrito com o Gemini, pedido no botão próprio do painel.
  * Segunda opinião sobre o texto inteiro: sempre abaixo da análise normativa
  * local, nunca no lugar dela (DC-02), e nunca quebrando o fluxo (DC-03).
+ * O texto só sai para o Google quando o usuário clica — e o aviso diz isso.
  */
-export function PainelGemini({ configurado, carregando, resultado, onTentar, onFocar }: Props) {
+export function PainelGemini({ configurado, carregando, resultado, podePedir, desatualizado, onPedir, onFocar }: Props) {
   const falha = resultado !== null && !resultado.ok;
   const sucesso = resultado !== null && resultado.ok;
 
@@ -35,41 +40,50 @@ export function PainelGemini({ configurado, carregando, resultado, onTentar, onF
         A análise normativa acima continua sendo a referência.
       </p>
 
+      {!configurado ? (
+        <p className="ia-status">
+          O diagnóstico com Gemini não está disponível no momento. O restante da revisão funciona normalmente.
+        </p>
+      ) : (
+        <>
+          <p className="ia-status">
+            Ao pedir o diagnóstico, o texto (até cerca de 36 mil caracteres) é enviado ao Google Gemini. No plano
+            gratuito, o Google pode usar o conteúdo enviado para melhorar os produtos dele.
+          </p>
+          <div className="gemini-acoes">
+            <button
+              className="btn btn-primary"
+              type="button"
+              onClick={onPedir}
+              disabled={!podePedir || carregando}
+              aria-busy={carregando || undefined}
+              title={podePedir ? "Envia o manuscrito ao Gemini e mostra os apontamentos aqui" : "Cole ou digite o texto do manuscrito (e saia do modo revisar) para pedir o diagnóstico"}
+            >
+              {resultado === null ? "Pedir diagnóstico ao Gemini" : "Pedir novo diagnóstico"}
+            </button>
+          </div>
+        </>
+      )}
+
       {carregando && (
         <p className="ia-status" role="status" aria-live="polite">
           <span className="status-spinner status-spinner-sm" aria-hidden="true" /> Gemini analisando o manuscrito…
         </p>
       )}
 
-      {!carregando && !configurado && (
-        <p className="ia-status">
-          Sem Gemini o fluxo continua completo: regras, relatório e correções. Configure a chave do Gemini
-          (<code>GEMINI_API_KEY</code> no servidor, <code>VITE_GEMINI_API_KEY</code> no desenvolvimento local) para
-          receber diagnósticos com IA.
-        </p>
-      )}
-
-      {!carregando && configurado && resultado === null && (
-        <p className="ia-status">
-          Clique em <strong>Analisar</strong> para pedir um diagnóstico do manuscrito ao Gemini.
-        </p>
-      )}
-
-      {/* H9: o quê (erro) → por quê (motivo) → como recuperar (tentar de novo). */}
+      {/* H9: o quê (erro) → por quê (motivo). A recuperação é o botão acima. */}
       {!carregando && falha && (
         <div className="ia-erro" role="alert">
           <strong className="ia-erro-titulo">Não foi possível consultar o Gemini</strong>
           <span>{resultado!.motivo}</span>
-          <span className="ia-erro-acoes">
-            <button className="btn" type="button" onClick={onTentar}>
-              Tentar novamente
-            </button>
-          </span>
         </div>
       )}
 
       {!carregando && sucesso && (
         <>
+          {desatualizado && (
+            <p className="gemini-aviso">O texto mudou depois deste diagnóstico. Peça um novo para atualizar.</p>
+          )}
           {resultado!.resumo && <p className="gemini-resumo">{resultado!.resumo}</p>}
           {resultado!.truncado && (
             <p className="gemini-aviso">
@@ -107,7 +121,7 @@ export function PainelGemini({ configurado, carregando, resultado, onTentar, onF
                       <strong>Sugestão:</strong> {d.sugestao}
                     </p>
                   )}
-                  {d.paragrafo > 0 && (
+                  {d.paragrafo > 0 && !desatualizado && (
                     <div className="problema-acoes">
                       <button className="btn" type="button" onClick={() => onFocar(d.paragrafo)}>
                         Localizar no manuscrito
