@@ -8,7 +8,7 @@ import {
 } from "firebase/auth";
 import { useEffect, useState } from "react";
 import { configurado, firebaseAuth } from "./config";
-import { sessaoAtiva } from "../sessao";
+import { ouvirSessao, sessaoAtiva } from "../sessao";
 
 /**
  * Módulo `firebase/auth` — autenticação email/senha via Firebase Auth.
@@ -108,7 +108,10 @@ export function useAutorizacao(): EstadoAutorizacao {
   });
 
   useEffect(() => {
-    if (!configurado) return; // modo local: estado inicial já é definitivo
+    // Modo local: acompanha o login/logout simulado (sessao.ts avisa na hora).
+    if (!configurado) {
+      return ouvirSessao((ativa) => setEstado({ pronto: true, autenticado: ativa, uid: null, user: null }));
+    }
     const auth = firebaseAuth();
     if (!auth) return;
     return onAuthStateChanged(auth, (user) => {

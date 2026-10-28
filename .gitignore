@@ -6,6 +6,8 @@ dist/
 
 # Segredos e chaves de API — nunca versionar (repositório público)
 .env*
+# Exceção: o modelo sem valores (guia para criar o .env.local)
+!.env.example
 *.pem
 *.key
 *serviceAccount*.json

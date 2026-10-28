@@ -148,3 +148,46 @@ describe("api — POST /api/revisar (Etapa 2)", () => {
     expect(corpo.erro.motivo.length).toBeGreaterThan(0);
   });
 });
+
+describe("api local — /api/gemini (mesmo tratador da Vercel)", () => {
+  test("GET informa se há chave no servidor, sem revelar nada", async () => {
+    const r = await fetch(`${base}/api/gemini`);
+    expect(r.status).toBe(200);
+    const corpo = (await r.json()) as { configurado: unknown };
+    expect(typeof corpo.configurado).toBe("boolean");
+  });
+
+  test("POST sem login → 401 (com chave configurada no servidor)", async () => {
+    const anterior = process.env.GEMINI_API_KEY;
+    process.env.GEMINI_API_KEY = "chave-de-teste";
+    try {
+      const r = await fetch(`${base}/api/gemini`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ paragrafos: [{ index: 1, texto: "Texto." }] }),
+      });
+      expect(r.status).toBe(401);
+      const corpo = (await r.json()) as { erro: { codigo: string } };
+      expect(corpo.erro.codigo).toBe("nao_autenticado");
+    } finally {
+      if (anterior === undefined) delete process.env.GEMINI_API_KEY;
+      else process.env.GEMINI_API_KEY = anterior;
+    }
+  });
+
+  test("POST com token inválido → 401", async () => {
+    const anterior = process.env.GEMINI_API_KEY;
+    process.env.GEMINI_API_KEY = "chave-de-teste";
+    try {
+      const r = await fetch(`${base}/api/gemini`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: "Bearer token-falso" },
+        body: JSON.stringify({ paragrafos: [{ index: 1, texto: "Texto." }] }),
+      });
+      expect(r.status).toBe(401);
+    } finally {
+      if (anterior === undefined) delete process.env.GEMINI_API_KEY;
+      else process.env.GEMINI_API_KEY = anterior;
+    }
+  });
+});

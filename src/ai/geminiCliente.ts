@@ -3,36 +3,22 @@
  *
  * A chave fica no servidor (`GEMINI_API_KEY` lida por `api/gemini.ts`): daqui
  * só fazemos `POST /api/gemini` e lemos o resultado — o segredo nunca passa
- * pelo bundle. Em desenvolvimento (`vite dev`) não existe função serverless
- * local, então a chamada sai direto do navegador com `VITE_GEMINI_API_KEY` do
- * `.env.local`; esse ramo é eliminado no build de produção
- * (`import.meta.env.DEV === false`), junto com a chave.
+ * pelo bundle. Vale também no desenvolvimento: o `bun run dev` repassa /api
+ * para o servidor local (`bun run api`), que usa o mesmo tratador da Vercel.
  */
 import { firebaseAuth } from "../firebase/config";
-import {
-  executarDiagnostico,
-  recortarParagrafos,
-  type ParagrafoNumerado,
-  type ResultadoDiagnostico,
-} from "./gemini";
+import { recortarParagrafos, type ParagrafoNumerado, type ResultadoDiagnostico } from "./gemini";
 
 const ENDPOINT = "/api/gemini";
 /** O servidor desiste em 50s e a Vercel corta em 60s: esperamos um pouco mais. */
 const TIMEOUT_MS = 70_000;
 const MOTIVO_DEMORA = "O Gemini demorou demais para responder. Tente novamente em instantes.";
 
-/** Chave usada só em desenvolvimento (não sobrevive ao bundle de produção). */
-function chaveDesenvolvimento(): string {
-  const chave = import.meta.env.VITE_GEMINI_API_KEY;
-  return typeof chave === "string" ? chave.trim() : "";
-}
-
 /**
- * Verdadeiro quando dá para consultar o Gemini: chave local no desenvolvimento
- * ou função serverless pronta em produção (GET /api/gemini).
+ * Verdadeiro quando o servidor tem a chave do Gemini (GET /api/gemini). Sem
+ * servidor (ex.: `bun run api` desligado no desenvolvimento), devolve false.
  */
 export async function geminiConfigurado(): Promise<boolean> {
-  if (import.meta.env.DEV) return chaveDesenvolvimento().length > 0;
   try {
     const resposta = await fetch(ENDPOINT, { method: "GET" });
     if (!resposta.ok) return false;
@@ -106,18 +92,6 @@ async function chamarApi(paragrafos: ParagrafoNumerado[]): Promise<ResultadoDiag
  * Pede ao Gemini um diagnóstico do manuscrito inteiro. Nunca lança: qualquer
  * problema vira { ok: false } com motivo em português (H9 / DC-03).
  */
-export async function diagnosticarComGemini(paragrafos: ParagrafoNumerado[]): Promise<ResultadoDiagnostico> {
-  // Desenvolvimento: sem função serverless local, a chamada sai direto do
-  // navegador com a chave do .env.local. Em produção este ramo não existe.
-  if (import.meta.env.DEV) {
-    const chave = chaveDesenvolvimento();
-    if (chave.length === 0) {
-      return {
-        ok: false,
-        motivo: "O Gemini não está configurado: defina VITE_GEMINI_API_KEY no .env.local (só em desenvolvimento).",
-      };
-    }
-    return executarDiagnostico(paragrafos, chave);
-  }
+export function diagnosticarComGemini(paragrafos: ParagrafoNumerado[]): Promise<ResultadoDiagnostico> {
   return chamarApi(paragrafos);
 }
