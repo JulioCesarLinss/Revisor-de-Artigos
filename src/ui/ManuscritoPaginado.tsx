@@ -146,6 +146,15 @@ export function ManuscritoPaginado({ valor, onChange, destaque = null, onLimparD
     }
   });
 
+  // A camada de destaque acompanha a rolagem interna da folha também quando
+  // ela aparece (o onScroll só cobre rolagens que acontecem depois).
+  useLayoutEffect(() => {
+    camadasRef.current.forEach((camadaEl, i) => {
+      const editor = editoresRef.current[i];
+      if (camadaEl && editor) camadaEl.scrollTop = editor.scrollTop;
+    });
+  });
+
   // Novo destaque: leva a folha até o trecho (centralizado na tela).
   const inicioDestaque = destaque?.inicio ?? null;
   const fimDestaque = destaque?.fim ?? null;

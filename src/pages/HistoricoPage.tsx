@@ -176,7 +176,7 @@ export default function HistoricoPage() {
         <div className="empty-card historico-vazio">
           <h3>Nenhuma revisão registrada ainda</h3>
           <p>
-            Abra o editor e anexe ou cole seu manuscrito — a análise é automática. Cada
+            Abra o editor, anexe ou cole seu manuscrito e clique em <strong>Analisar</strong>. Cada
             correção rápida e cada sugestão de IA aceita aparecerão aqui com rastro, além das versões registradas
             ao avançar no fluxo.
           </p>

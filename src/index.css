@@ -1353,6 +1353,14 @@ button .atalho-tecla {
 
 .folha-miolo .folha-texto-area {
   position: relative; /* acima da camada */
+  /* Sem barra visível: ela estreitaria o texto e as linhas quebrariam em
+     lugares diferentes da camada de destaque (e do espelho de medição).
+     A rolagem continua pela roda do mouse e pelo teclado. */
+  scrollbar-width: none;
+}
+
+.folha-miolo .folha-texto-area::-webkit-scrollbar {
+  display: none;
 }
 
 .folha-destaque {

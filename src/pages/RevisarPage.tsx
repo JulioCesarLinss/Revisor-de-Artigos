@@ -57,7 +57,12 @@ export default function RevisarPage() {
   const [erroUpload, setErroUpload] = useState<string | null>(null);
 
   const [bruto, setBruto] = useState(salvo?.bruto ?? "");
-  // Texto restaurado já chega analisado (as regras rodam no navegador, na hora).
+  /**
+   * A análise começa no botão "Analisar"; a partir daí os avisos acompanham
+   * as correções. Um texto restaurado (volta de outra tela) é trabalho em
+   * andamento e já chega analisado; um arquivo novo espera o clique.
+   */
+  const [acompanhando, setAcompanhando] = useState(() => !!salvo && salvo.bruto.trim().length > 0);
   const [analise, setAnalise] = useState<AnaliseRevisao | null>(() =>
     salvo && salvo.bruto.trim().length > 0 ? iniciarRevisao(salvo.bruto) : null,
   );
@@ -162,19 +167,29 @@ export default function RevisarPage() {
   const pedirGemini = useCallback(() => {
     const resultado = iniciarRevisao(bruto);
     setAnalise(resultado);
+    setAcompanhando(true);
     void pedirDiagnostico(resultado.manuscrito.paragrafos, bruto);
   }, [bruto, pedirDiagnostico]);
 
-  // Os avisos acompanham o texto: pouco depois da última alteração (tecla,
-  // correção rápida, sugestão aceita, upload), a análise é refeita e os avisos
-  // já resolvidos somem. Se a análise já é deste texto, nada a fazer.
+  /** Botão "Analisar" (ou Ctrl+Enter): verifica o texto e liga o acompanhamento. */
+  const analisar = useCallback(() => {
+    if (bruto.trim().length === 0) return;
+    const resultado = iniciarRevisao(bruto);
+    setAnalise(resultado);
+    setAcompanhando(true);
+    setStatusSistema(`Análise concluída — ${resultado.resumo.total} problema(s) encontrado(s).`);
+  }, [bruto]);
+
+  // Depois do "Analisar", os avisos acompanham o texto: pouco depois da última
+  // alteração (tecla, correção rápida, sugestão aceita), a análise é refeita e
+  // os avisos já resolvidos somem. Se a análise já é deste texto, nada a fazer.
   useEffect(() => {
-    if ((analise?.manuscrito.bruto ?? "") === bruto) return;
+    if (!acompanhando || (analise?.manuscrito.bruto ?? "") === bruto) return;
     const t = setTimeout(() => {
       setAnalise(bruto.trim().length > 0 ? iniciarRevisao(bruto) : null);
     }, ATRASO_REANALISE_MS);
     return () => clearTimeout(t);
-  }, [bruto, analise]);
+  }, [acompanhando, bruto, analise]);
 
   // Persiste o workspace a cada mudança: /historico lê daqui e o rascunho
   // sobrevive à navegação entre rotas.
@@ -241,19 +256,23 @@ export default function RevisarPage() {
 
   /**
    * Heurística 7 (Nielsen) — flexibilidade e eficiência de uso: acelerador de
-   * teclado para avançar no fluxo (a análise já é automática), ignorado
+   * teclado para as ações repetidas (analisar, avançar no fluxo), ignorados
    * enquanto o app está ocupado.
    */
   useEffect(() => {
     const aoTeclar = (e: KeyboardEvent) => {
-      if (!(e.ctrlKey || e.metaKey) || !e.shiftKey || e.key !== "Enter") return;
-      if (processando) return;
+      if (!(e.ctrlKey || e.metaKey) || e.key !== "Enter") return;
+      if (processando || bruto.trim().length === 0) return;
       e.preventDefault();
-      if (bruto.trim().length > 0 && estadoFluxo !== "final") avancarFluxo();
+      if (e.shiftKey) {
+        if (estadoFluxo !== "final") avancarFluxo();
+      } else {
+        analisar();
+      }
     };
     window.addEventListener("keydown", aoTeclar);
     return () => window.removeEventListener("keydown", aoTeclar);
-  }, [avancarFluxo, bruto, estadoFluxo, processando]);
+  }, [analisar, avancarFluxo, bruto, estadoFluxo, processando]);
 
   const darFeedback = useCallback((historicoId: number, ajudou: boolean) => {
     setFeedbacks((f) => ({ ...f, [historicoId]: ajudou }));
@@ -263,7 +282,7 @@ export default function RevisarPage() {
     setBruto(novo);
   }, []);
 
-  /** Lê o arquivo no cliente, carrega o texto como novo rascunho e analisa. */
+  /** Lê o arquivo no cliente e carrega o texto como novo rascunho (a análise espera o "Analisar"). */
   const receberArquivo = useCallback(async (file: File | null | undefined) => {
     if (!file) return;
     setErroUpload(null);
@@ -291,15 +310,10 @@ export default function RevisarPage() {
     setDestaque(null); // o texto novo invalida um destaque antigo
     setDiagnostico(null); // o diagnóstico anterior pertencia ao texto anterior
     setTextoDiagnosticado(null);
-    setOcupadoCom("Analisando manuscrito…");
-    setTimeout(() => {
-      const analiseNova = iniciarRevisao(resultado.texto);
-      setAnalise(analiseNova);
-      setOcupadoCom(null);
-      setStatusSistema(
-        `Arquivo "${file.name}" carregado — ${analiseNova.resumo.total} problema(s) encontrado(s).`,
-      );
-    }, 0);
+    setAnalise(null); // avisos do texto anterior não valem para o novo
+    setAcompanhando(false);
+    setOcupadoCom(null);
+    setStatusSistema(`Arquivo "${file.name}" carregado — clique em Analisar para verificar o texto.`);
   }, []);
 
   const corrigir = useCallback((problema: Problema) => {
@@ -487,6 +501,21 @@ export default function RevisarPage() {
                 <line x1="12" y1="3" x2="12" y2="15" />
               </svg>
               Anexar
+            </button>
+            <button
+              className="btn btn-accent"
+              type="button"
+              onClick={analisar}
+              disabled={bruto.trim().length === 0 || processando}
+              aria-busy={processando || undefined}
+              title={
+                /* H9: quando bloqueado, o botão explica por quê e como destravar. */
+                bruto.trim().length === 0
+                  ? "Anexe, cole ou digite o manuscrito para habilitar a análise"
+                  : "Verifica o manuscrito contra o catálogo de regras normativas; depois, os avisos acompanham suas correções"
+              }
+            >
+              Analisar <kbd className="atalho-tecla" aria-hidden="true">Ctrl+↵</kbd>
             </button>
           </span>
         </div>

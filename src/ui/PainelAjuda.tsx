@@ -60,8 +60,11 @@ export function PainelAjuda({ onFechar }: Props) {
             <ol>
               <li>
                 <strong>Anexe ou cole o manuscrito</strong> no canvas central (parágrafos separados por linha em
-                branco; títulos em CAIXA-ALTA criam seções no relatório). A verificação contra o catálogo de regras
-                é automática.
+                branco; títulos em CAIXA-ALTA criam seções no relatório).
+              </li>
+              <li>
+                <strong>Clique em Analisar</strong> (ou use <kbd className="atalho-tecla">Ctrl+↵</kbd>) para verificar
+                o texto contra o catálogo de regras. Daí em diante, os avisos acompanham suas correções.
               </li>
               <li>
                 <strong>Corrija os problemas</strong>: "Aplicar correção" resolve automaticamente; "Localizar no
@@ -78,6 +81,9 @@ export function PainelAjuda({ onFechar }: Props) {
           <div className="ajuda-secao">
             <h3>Atalhos de teclado</h3>
             <ul className="ajuda-lista-atalhos">
+              <li>
+                <kbd className="atalho-tecla">Ctrl+↵</kbd> analisar o manuscrito
+              </li>
               <li>
                 <kbd className="atalho-tecla">Ctrl+Shift+↵</kbd> avançar etapa do fluxo
               </li>
