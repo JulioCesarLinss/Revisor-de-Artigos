@@ -81,21 +81,43 @@ export function validarParagrafos(valor: unknown): ParagrafoNumerado[] | null {
   return paragrafos;
 }
 
-/** Numera os parágrafos como "[n] texto" e recorta no limite de envio. */
-function montarTexto(paragrafos: ParagrafoNumerado[]): { texto: string; truncado: boolean } {
-  const pedacos: string[] = [];
+/**
+ * Mantém só os parágrafos que cabem no limite de envio (cada um conta como
+ * "[n] texto" + separador). Usada no navegador, para o corpo de
+ * `POST /api/gemini` ficar pequeno, e no servidor, ao montar o texto.
+ */
+export function recortarParagrafos(paragrafos: ParagrafoNumerado[]): {
+  paragrafos: ParagrafoNumerado[];
+  truncado: boolean;
+} {
+  const cabem: ParagrafoNumerado[] = [];
   let total = 0;
   for (const p of paragrafos) {
-    const trecho = `[${p.index}] ${p.texto.trim()}`;
-    if (total + trecho.length + 2 > MAXIMO_TEXTO) {
+    const prefixo = `[${p.index}] `;
+    const texto = p.texto.trim();
+    if (total + prefixo.length + texto.length + 2 > MAXIMO_TEXTO) {
       // Só o primeiro parágrafo já estoura o limite: corta no meio dele.
-      if (pedacos.length === 0) return { texto: trecho.slice(0, MAXIMO_TEXTO), truncado: true };
-      return { texto: pedacos.join("\n\n"), truncado: true };
+      if (cabem.length === 0) {
+        return {
+          paragrafos: [{ index: p.index, texto: texto.slice(0, Math.max(0, MAXIMO_TEXTO - prefixo.length)) }],
+          truncado: true,
+        };
+      }
+      return { paragrafos: cabem, truncado: true };
     }
-    pedacos.push(trecho);
-    total += trecho.length + 2;
+    cabem.push({ index: p.index, texto });
+    total += prefixo.length + texto.length + 2;
   }
-  return { texto: pedacos.join("\n\n"), truncado: false };
+  return { paragrafos: cabem, truncado: false };
+}
+
+/** Numera os parágrafos como "[n] texto" e recorta no limite de envio. */
+function montarTexto(paragrafos: ParagrafoNumerado[]): { texto: string; truncado: boolean } {
+  const recorte = recortarParagrafos(paragrafos);
+  return {
+    texto: recorte.paragrafos.map((p) => `[${p.index}] ${p.texto}`).join("\n\n"),
+    truncado: recorte.truncado,
+  };
 }
 
 function normalizarSeveridade(valor: unknown): DiagnosticoGemini["severidade"] {
@@ -243,7 +265,7 @@ export async function executarDiagnostico(
   chave: string,
 ): Promise<ResultadoDiagnostico> {
   if (chave.trim().length === 0) {
-    return { ok: false, motivo: "O Gemini não está configurado no servidor: defina a variável GEMINI_API_KEY." };
+    return { ok: false, motivo: "O diagnóstico com Gemini não está disponível no momento." };
   }
 
   const { texto, truncado } = montarTexto(paragrafos);

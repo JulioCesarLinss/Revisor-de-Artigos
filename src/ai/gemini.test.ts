@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { chaveGemini, interpretarDiagnostico, validarParagrafos } from "./gemini";
+import { chaveGemini, interpretarDiagnostico, recortarParagrafos, validarParagrafos } from "./gemini";
 
 /** Monta a resposta em JSON como o Gemini devolveria. */
 function resposta(diagnosticos: unknown[], resumo = "Texto com pontos de atenção."): string {
@@ -150,5 +150,36 @@ describe("ai/gemini — validarParagrafos (corpo do POST /api/gemini)", () => {
 
   test("normaliza index fracionário e aceita texto vazio", () => {
     expect(validarParagrafos([{ index: 2.7, texto: "" }])).toEqual([{ index: 2, texto: "" }]);
+  });
+});
+
+describe("ai/gemini — recortarParagrafos (limite de envio)", () => {
+  test("texto curto passa inteiro, sem truncar", () => {
+    const r = recortarParagrafos([
+      { index: 1, texto: "  Primeiro.  " },
+      { index: 2, texto: "Segundo." },
+    ]);
+    expect(r.truncado).toBe(false);
+    expect(r.paragrafos).toEqual([
+      { index: 1, texto: "Primeiro." },
+      { index: 2, texto: "Segundo." },
+    ]);
+  });
+
+  test("manuscrito longo para no limite e marca truncado", () => {
+    const longo = Array.from({ length: 100 }, (_, i) => ({ index: i + 1, texto: "a".repeat(1000) }));
+    const r = recortarParagrafos(longo);
+    expect(r.truncado).toBe(true);
+    expect(r.paragrafos.length).toBeGreaterThan(0);
+    expect(r.paragrafos.length).toBeLessThan(100);
+    const total = r.paragrafos.reduce((soma, p) => soma + `[${p.index}] `.length + p.texto.length + 2, 0);
+    expect(total).toBeLessThanOrEqual(36_000);
+  });
+
+  test("um único parágrafo gigante é cortado no meio", () => {
+    const r = recortarParagrafos([{ index: 1, texto: "b".repeat(50_000) }]);
+    expect(r.truncado).toBe(true);
+    expect(r.paragrafos.length).toBe(1);
+    expect(`[1] ${r.paragrafos[0].texto}`.length).toBeLessThanOrEqual(36_000);
   });
 });

@@ -8,7 +8,13 @@
  * `.env.local`; esse ramo é eliminado no build de produção
  * (`import.meta.env.DEV === false`), junto com a chave.
  */
-import { executarDiagnostico, type ParagrafoNumerado, type ResultadoDiagnostico } from "./gemini";
+import { firebaseAuth } from "../firebase/config";
+import {
+  executarDiagnostico,
+  recortarParagrafos,
+  type ParagrafoNumerado,
+  type ResultadoDiagnostico,
+} from "./gemini";
 
 const ENDPOINT = "/api/gemini";
 /** O servidor corta em 60s (maxDuration da função): esperamos um pouco mais. */
@@ -36,16 +42,34 @@ export async function geminiConfigurado(): Promise<boolean> {
   }
 }
 
+/** ID token do usuário logado (o servidor exige login); null sem sessão. */
+async function tokenDoUsuario(): Promise<string | null> {
+  const usuario = firebaseAuth()?.currentUser ?? null;
+  if (!usuario) return null;
+  try {
+    return await usuario.getIdToken();
+  } catch {
+    return null;
+  }
+}
+
 /** POST /api/gemini — qualquer falha vira { ok: false } com motivo em português. */
 async function chamarApi(paragrafos: ParagrafoNumerado[]): Promise<ResultadoDiagnostico> {
+  const token = await tokenDoUsuario();
+  if (token === null) {
+    return { ok: false, motivo: "Entre na sua conta para usar o diagnóstico com Gemini." };
+  }
+  // Recorta aqui também: o servidor só aceita corpos pequenos.
+  const recorte = recortarParagrafos(paragrafos);
+
   const controle = new AbortController();
   const timer = setTimeout(() => controle.abort(), TIMEOUT_MS);
   try {
     const resposta = await fetch(ENDPOINT, {
       method: "POST",
       signal: controle.signal,
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ paragrafos }),
+      headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+      body: JSON.stringify({ paragrafos: recorte.paragrafos }),
     });
     const corpo = (await resposta.json().catch(() => null)) as unknown;
     if (corpo !== null && typeof corpo === "object") {
@@ -53,7 +77,10 @@ async function chamarApi(paragrafos: ParagrafoNumerado[]): Promise<ResultadoDiag
       if (erro !== null && typeof erro === "object" && typeof erro.motivo === "string") {
         return { ok: false, motivo: erro.motivo };
       }
-      if ("ok" in corpo) return corpo as ResultadoDiagnostico;
+      if ("ok" in corpo) {
+        const resultado = corpo as ResultadoDiagnostico;
+        return resultado.ok && recorte.truncado ? { ...resultado, truncado: true } : resultado;
+      }
     }
     return {
       ok: false,
