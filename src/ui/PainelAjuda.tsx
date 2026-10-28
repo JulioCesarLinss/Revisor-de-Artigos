@@ -72,8 +72,8 @@ export function PainelAjuda({ onFechar }: Props) {
                 resolvido sai da lista sozinho.
               </li>
               <li>
-                <strong>Avance no fluxo</strong> (Rascunho → Revisão → Final) para registrar versões e comparar
-                lado a lado; o histórico registra cada alteração.
+                <strong>Errou?</strong> "Desfazer" volta o texto ao estado anterior à última alteração. O histórico
+                registra cada correção e sugestão aceita.
               </li>
             </ol>
           </div>
@@ -83,9 +83,6 @@ export function PainelAjuda({ onFechar }: Props) {
             <ul className="ajuda-lista-atalhos">
               <li>
                 <kbd className="atalho-tecla">Ctrl+↵</kbd> analisar o manuscrito
-              </li>
-              <li>
-                <kbd className="atalho-tecla">Ctrl+Shift+↵</kbd> avançar etapa do fluxo
               </li>
               <li>
                 <kbd className="atalho-tecla">Esc</kbd> fechar painéis

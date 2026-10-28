@@ -18,15 +18,14 @@ const MANUSCRITO = [
 
 describe("laudo/gerar", () => {
   test("laudo apura métricas, resumo e seções da análise", () => {
-    const laudo = gerarLaudo(MANUSCRITO, "revisao");
+    const laudo = gerarLaudo(MANUSCRITO);
     expect(laudo.metricas.paragrafos).toBe(6);
     expect(laudo.resumo.total).toBe(iniciarRevisao(MANUSCRITO).resumo.total);
     expect(laudo.secoes.some((s) => s.secao === "INTRODUÇÃO")).toBe(true);
-    expect(laudo.estadoFluxo).toBe("revisao");
   });
 
   test("achados ficam ordenados por parágrafo e sem problemas de documento inteiro", () => {
-    const laudo = gerarLaudo("Texto curtinho sem título suficiente", "rascunho");
+    const laudo = gerarLaudo("Texto curtinho sem título suficiente");
     for (const p of laudo.achados) expect(p.paragrafo).toBeGreaterThan(0);
     const indices = laudo.achados.map((p) => p.paragrafo);
     expect([...indices].sort((a, b) => a - b)).toEqual(indices);
@@ -57,7 +56,7 @@ describe("laudo/gerar", () => {
   });
 
   test("texto vazio produz laudo vazio sem travar a tela", () => {
-    const laudo = gerarLaudo("", "rascunho");
+    const laudo = gerarLaudo("");
     expect(laudo.metricas.paragrafos).toBe(0);
     // R006 (documento muito curto) é apontada como problema do documento
     // inteiro: entra no resumo, mas não na lista de achados por parágrafo.

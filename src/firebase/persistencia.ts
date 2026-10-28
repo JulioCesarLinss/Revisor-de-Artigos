@@ -13,7 +13,7 @@ import type { PerfilUsuario } from "../perfil/perfil";
 /**
  * Módulo `firebase/persistencia` — espelhamento dos dados do usuário no
  * Firestore, por uid (`usuarios/{uid}/...`). Projeto de arquivo único:
- * - `usuarios/{uid}/dados/workspace` → EstadoWorkspace (rascunho, histórico, versões)
+ * - `usuarios/{uid}/dados/workspace` → EstadoWorkspace (texto, original, histórico)
  * - `usuarios/{uid}/dados/perfil`    → PerfilUsuario
  *
  * Degradação elegante: sem Firebase configurado (ou sem uid), todas as

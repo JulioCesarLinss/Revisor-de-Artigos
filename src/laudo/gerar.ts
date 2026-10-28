@@ -1,10 +1,9 @@
 import { iniciarRevisao, type AnaliseRevisao, type ResumoRevisao } from "../review/orquestrar";
-import { ORDEM_FLUXO, ROTULO_ESTADO, type EstadoFluxo } from "../workspace/fluxo";
 import type { Problema } from "../rules/types";
 import { tituloDaRegra } from "../ui/rotulos";
 
 /**
- * Módulo `laudo` — tela /laudo (.println do fluxo de revisão guiada).
+ * Módulo `laudo` — tela /laudo (apuração do manuscrito em revisão).
  * O laudo é uma apuração legível do resultado da análise: data, métricas do
  * documento, resumo por severidade, conformidade por seção e encaminhamento.
  * É report puro, sem IA (DC-02): regras do catálogo são a base normativa.
@@ -27,7 +26,6 @@ export interface LinhaLaudableLaudo {
 
 export interface Laudo {
   geradoEm: Date;
-  estadoFluxo: EstadoFluxo;
   metricas: MetricasDocumento;
   resumo: ResumoRevisao;
   /** Conformidade por seção, na ordem das seções do documento. */
@@ -72,10 +70,7 @@ export function encaminhamento(l: Pick<Laudo, "maiorSeveridade" | "resumo">): {
 }
 
 /** Converte a análise atual no laudo estruturado (puro, sem efeitos). */
-export function construirLaudo(
-  analise: AnaliseRevisao,
-  estadoFluxo: EstadoFluxo = ORDEM_FLUXO[0],
-): Laudo {
+export function construirLaudo(analise: AnaliseRevisao): Laudo {
   const porId = new Map<number, Problema>();
   for (const p of analise.problemas) {
     if (p.paragrafo === 0) continue; // problema do documento inteiro vai ao resumo, não à lista
@@ -91,7 +86,6 @@ export function construirLaudo(
 
   return {
     geradoEm: new Date(),
-    estadoFluxo,
     metricas: {
       paragrafos: analise.manuscrito.paragrafos.length,
       palavras: analise.manuscrito.totalPalavras,
@@ -133,7 +127,6 @@ export function laudoComoTexto(laudo: Laudo, tituloLaudo = "Laudo NormaReview AI
   l.push("");
 
   l.push(`Gerado em . . . . . . . ${rotuloGeradoEm(laudo.geradoEm)}`);
-  l.push(`Etapa do fluxo . . . . . ${ROTULO_ESTADO[laudo.estadoFluxo]}`);
   const s = laudo.metricas;
   l.push(`Tamanho. . . . . . . . . ${s.paragrafos} parágrafo(s) · ${s.palavras} palavra(s) · ${s.caracteres} caractere(s)`);
   l.push("");
@@ -185,7 +178,7 @@ export function laudoComoTexto(laudo: Laudo, tituloLaudo = "Laudo NormaReview AI
   return l.join("\n");
 }
 
-/** Gera o laudo a partir de texto bruto e estado do fluxo (usado pela tela). */
-export function gerarLaudo(bruto: string, estadoFluxo: EstadoFluxo): Laudo {
-  return construirLaudo(iniciarRevisao(bruto), estadoFluxo);
+/** Gera o laudo a partir do texto bruto (usado pela tela). */
+export function gerarLaudo(bruto: string): Laudo {
+  return construirLaudo(iniciarRevisao(bruto));
 }

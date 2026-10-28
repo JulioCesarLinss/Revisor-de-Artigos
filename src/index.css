@@ -550,24 +550,6 @@ body {
   padding: 8px 12px;
 }
 
-.diff-rotulo {
-  display: block;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: 4px;
-}
-
-.diff-antes {
-  color: var(--crimson);
-}
-
-.diff-depois {
-  color: var(--emerald);
-}
-
 .sugestao-diff p {
   margin: 0;
   font-family: var(--font-serif);
@@ -701,7 +683,7 @@ body {
   white-space: nowrap;
 }
 
-/* ---------- Tela /historico (Sprint 4 — versões e rastro) ---------- */
+/* ---------- Tela /historico (rastro de alterações) ---------- */
 .historico-main {
   max-width: 900px;
   margin: 0 auto;
@@ -818,86 +800,6 @@ body {
 }
 
 /* Linha do tempo de versões */
-.historico-timeline {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.historico-timeline li {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  padding: 10px 0 10px 22px;
-  border-bottom: 1px dashed var(--slate-200);
-  font-size: 12.5px;
-}
-
-.historico-timeline li:last-child {
-  border-bottom: none;
-}
-
-.historico-timeline li::before {
-  content: "";
-  position: absolute;
-  left: 5px;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: var(--slate-200);
-}
-
-.historico-timeline li:first-child::before {
-  top: 50%;
-}
-
-.historico-timeline li:last-child::before {
-  bottom: 50%;
-}
-
-.historico-timeline-marca {
-  position: absolute;
-  left: 0;
-  width: 11px;
-  height: 11px;
-  border-radius: 999px;
-  background: var(--cobalt);
-  border: 2px solid #fff;
-  box-shadow: 0 0 0 1px var(--slate-300);
-}
-
-.historico-timeline-estado {
-  font-family: var(--font-ui);
-  font-weight: 700;
-  color: var(--ink);
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.historico-timeline-atual {
-  font-family: var(--font-mono);
-  font-size: 9.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--cobalt-dark);
-  background: #eff6ff;
-  border-radius: 999px;
-  padding: 2px 8px;
-}
-
-.historico-timeline-dados {
-  color: var(--slate-600);
-}
-
-.historico-timeline .historico-quando {
-  margin-left: auto;
-}
 
 /* Filtros por origem */
 .historico-filtros {
@@ -965,155 +867,6 @@ body {
   display: flex;
   justify-content: space-between;
   margin-top: 8px;
-}
-
-/* ---------- Sprint 4: fluxo guiado ---------- */
-.fluxo-barra {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  background: #fff;
-  border: 1px solid var(--slate-200);
-  border-radius: var(--radius);
-  padding: 10px 14px;
-  box-shadow: var(--shadow-sm);
-}
-
-.fluxo-etapa {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--font-ui);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--slate-400);
-}
-
-.fluxo-etapa.ativa {
-  color: var(--ink-soft);
-}
-
-.fluxo-etapa.atual {
-  color: var(--cobalt-dark);
-}
-
-.fluxo-num {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--slate-100);
-  border: 1px solid var(--slate-200);
-  font-size: 10.5px;
-}
-
-.fluxo-etapa.ativa .fluxo-num {
-  background: #eff6ff;
-  border-color: #bfdbfe;
-  color: var(--cobalt-dark);
-}
-
-.fluxo-etapa + .fluxo-etapa::before {
-  content: "→";
-  margin-right: 10px;
-  color: var(--slate-300);
-}
-
-.fluxo-acoes {
-  margin-left: auto;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-/* H2 — linguagem do domínio: "✓ Documento pronto para exportação" como
-   chip de status, mesmo padrão dos badges de severidade. */
-.fluxo-fim {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--emerald);
-  background: var(--emerald-bg);
-  border-radius: 999px;
-  padding: 3px 12px;
-}
-
-/* ---------- Comparação lado a lado ---------- */
-.comparacao-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.comparacao-cabecalho {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  font-size: 12.5px;
-  color: var(--slate-600);
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  border-radius: 8px;
-  padding: 8px 12px;
-}
-
-.comparacao-cabecalho strong {
-  font-family: var(--font-ui);
-  color: var(--cobalt-dark);
-}
-
-.comparacao-quando {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  color: var(--slate-500);
-}
-
-.comparacao-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.comparacao-par {
-  display: grid;
-  grid-template-columns: 32px 1fr 1fr;
-  gap: 10px;
-  border-radius: 8px;
-  padding: 8px 10px;
-}
-
-.comparacao-par.mudou {
-  background: var(--amber-bg);
-}
-
-.comparacao-par.igual {
-  opacity: 0.72;
-}
-
-.comparacao-num {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--slate-500);
-  padding-top: 14px;
-}
-
-.comparacao-col p {
-  margin: 0;
-  font-family: var(--font-serif);
-  font-size: 12.5px;
-  line-height: 1.6;
-  color: var(--ink-soft);
-}
-
-.comparacao-acoes {
-  display: flex;
-  justify-content: flex-end;
 }
 
 /* ---------- Feedback no histórico ---------- */
@@ -1221,16 +974,6 @@ button .atalho-tecla {
 /* ---------- Heurística 8 — design estético e minimalista ---------- */
 /* Alternador para revelar parágrafos idênticos na comparação; a difusão
    padrão deixa a vista focada só no que mudou. */
-.comparacao-ocultos {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  font-family: var(--font-ui);
-  font-size: 11.5px;
-  color: var(--slate-500);
-}
 
 /* ---------- Heurística 9 — reconhecer, diagnosticar e recuperar erros ---------- */
 /* Estende o .ia-erro existente: estrutura de relatório (o quê → por quê →

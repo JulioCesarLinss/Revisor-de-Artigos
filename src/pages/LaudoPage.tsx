@@ -7,7 +7,6 @@ import {
   rotuloGeradoEm,
   type Laudo,
 } from "../laudo/gerar";
-import { ROTULO_ESTADO } from "../workspace/fluxo";
 import { carregarWorkspace, type EstadoWorkspace } from "../workspace/armazenamento";
 
 const ROTULO_SEVERIDADE = {
@@ -30,7 +29,7 @@ export default function LaudoPage() {
   const laudo = useMemo<Laudo | null>(() => {
     if (!workspace || workspace.bruto.trim().length === 0) return null;
     try {
-      return gerarLaudo(workspace.bruto, workspace.estadoFluxo);
+      return gerarLaudo(workspace.bruto);
     } catch {
       return null; // dado corrompido nunca quebra a tela (H9)
     }
@@ -82,8 +81,7 @@ export default function LaudoPage() {
         <div>
           <h2>Laudo ABNT</h2>
           <p>
-            Apuração normativa do manuscrito • etapa {ROTULO_ESTADO[laudo.estadoFluxo]} do fluxo •{" "}
-            {laudo.metricas.paragrafos} parágrafo(s) · {laudo.metricas.palavras} palavra(s)
+            Apuração normativa do manuscrito • {laudo.metricas.paragrafos} parágrafo(s) · {laudo.metricas.palavras} palavra(s)
           </p>
         </div>
         <div className="laudo-acoes">
@@ -138,7 +136,6 @@ export default function LaudoPage() {
             <li><strong>{laudo.metricas.paragrafos}</strong> parágrafo(s)</li>
             <li><strong>{laudo.metricas.palavras}</strong> palavra(s)</li>
             <li><strong>{laudo.metricas.caracteres}</strong> caractere(s)</li>
-            <li><strong>{ROTULO_ESTADO[laudo.estadoFluxo]}</strong> — etapa do fluxo</li>
           </ul>
         </section>
 
@@ -197,7 +194,7 @@ export default function LaudoPage() {
 
         <footer className="laudo-folha-rodape">
           <span>
-            Emissão: {rotuloGeradoEm(laudo.geradoEm)} · Etapa: {ROTULO_ESTADO[laudo.estadoFluxo]}
+            Emissão: {rotuloGeradoEm(laudo.geradoEm)}
           </span>
           <span className="laudo-veredito-cor" style={{ background: corSeveridade(laudo.maiorSeveridade ?? "observacao") }} />
         </footer>

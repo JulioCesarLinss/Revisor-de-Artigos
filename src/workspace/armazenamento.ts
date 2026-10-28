@@ -1,11 +1,14 @@
-import { ORDEM_FLUXO, type EstadoFluxo, type VersaoSnapshot } from "./fluxo";
 import type { OrigemAlteracao, RegistroAlteracao } from "./historico";
 
 /**
- * Persistência local do workspace de revisão (texto, histórico, versões e
- * feedback) — permite que a tela /historico mostre dados reais e que o
- * rascunho sobreviva à troca de rotas. Sem backend: armazenamento no
- * dispositivo, com storage injetável para os testes.
+ * Persistência local do workspace de revisão (texto atual, texto original,
+ * histórico de alterações e feedback) — permite que a tela /historico mostre
+ * dados reais e que o rascunho sobreviva à troca de rotas. Sem backend:
+ * armazenamento no dispositivo, com storage injetável para os testes.
+ *
+ * Sem cópias do texto por etapa: o workspace fica leve (localStorage e o
+ * documento do Firestore). Dados antigos com `versoes`/`estadoFluxo` ainda
+ * carregam — esses campos são simplesmente ignorados.
  */
 
 export type Armazenamento = {
@@ -21,8 +24,6 @@ export interface EstadoWorkspace {
   /** Texto do arquivo original enviado (null quando nada foi anexado). */
   textoOriginal?: string | null;
   historico: RegistroAlteracao[];
-  versoes: VersaoSnapshot[];
-  estadoFluxo: EstadoFluxo;
   feedbacks: Record<number, boolean>;
 }
 
@@ -50,19 +51,6 @@ function ehRegistro(v: unknown): v is RegistroAlteracao {
   );
 }
 
-function ehVersao(v: unknown): v is VersaoSnapshot {
-  if (typeof v !== "object" || v === null) return false;
-  const s = v as Partial<VersaoSnapshot>;
-  return (
-    typeof s.id === "number" &&
-    typeof s.estado === "string" &&
-    ORDEM_FLUXO.includes(s.estado as EstadoFluxo) &&
-    typeof s.bruto === "string" &&
-    typeof s.totalProblemas === "number" &&
-    typeof s.quando === "string"
-  );
-}
-
 /** Valida a forma lida do storage; nunca lança — dado inválido vira null. */
 export function validarWorkspace(dados: unknown): EstadoWorkspace | null {
   if (typeof dados !== "object" || dados === null) return null;
@@ -74,8 +62,7 @@ export function validarWorkspace(dados: unknown): EstadoWorkspace | null {
     typeof d.textoOriginal !== "string"
   )
     return null;
-  if (!Array.isArray(d.historico) || !Array.isArray(d.versoes)) return null;
-  if (typeof d.estadoFluxo !== "string" || !ORDEM_FLUXO.includes(d.estadoFluxo as EstadoFluxo)) return null;
+  if (!Array.isArray(d.historico)) return null;
   if (typeof d.feedbacks !== "object" || d.feedbacks === null) return null;
 
   const feedbacks: Record<number, boolean> = {};
@@ -84,12 +71,11 @@ export function validarWorkspace(dados: unknown): EstadoWorkspace | null {
     if (Number.isInteger(id) && typeof v === "boolean") feedbacks[id] = v;
   }
 
+  // Só os campos atuais: `versoes`/`estadoFluxo` de dados antigos ficam para trás.
   return {
     bruto: d.bruto,
     textoOriginal: d.textoOriginal ?? null,
     historico: d.historico.filter(ehRegistro),
-    versoes: d.versoes.filter(ehVersao),
-    estadoFluxo: d.estadoFluxo as EstadoFluxo,
     feedbacks,
   };
 }
@@ -127,29 +113,19 @@ export function limparWorkspace(st?: Armazenamento): void {
   }
 }
 
-/**
- * Limpa apenas o rastro (alterações, versões e feedback), preservando o
- * manuscrito — e a etapa volta a "Rascunho" (o rastro é o que define o
- * avanço no fluxo guiado; sem ele, a condução recomeça).
- */
+/** Limpa apenas o rastro (alterações e feedback), preservando o manuscrito. */
 export function limparHistoricoWorkspace(st?: Armazenamento): EstadoWorkspace | null {
   const atual = carregarWorkspace(st);
   if (!atual) return null;
-  const limpo: EstadoWorkspace = {
-    ...atual,
-    historico: [],
-    versoes: [],
-    feedbacks: {},
-    estadoFluxo: "rascunho",
-  };
+  const limpo: EstadoWorkspace = { ...atual, historico: [], feedbacks: {} };
   salvarWorkspace(limpo, st);
   return limpo;
 }
 
 /**
- * Volta ao texto original do arquivo enviado: restaura `bruto`, zera o
- * rastro e a etapa recomeça em "Rascunho". null quando não há original nem
- * workspace — a tela decide como avisar o usuário.
+ * Volta ao texto original do arquivo enviado: restaura `bruto` e zera o
+ * rastro. null quando não há original nem workspace — a tela decide como
+ * avisar o usuário.
  */
 export function restaurarOriginalWorkspace(st?: Armazenamento): EstadoWorkspace | null {
   const atual = carregarWorkspace(st);
@@ -158,8 +134,6 @@ export function restaurarOriginalWorkspace(st?: Armazenamento): EstadoWorkspace 
     bruto: atual.textoOriginal,
     textoOriginal: atual.textoOriginal,
     historico: [],
-    versoes: [],
-    estadoFluxo: "rascunho",
     feedbacks: {},
   };
   salvarWorkspace(restaurado, st);
