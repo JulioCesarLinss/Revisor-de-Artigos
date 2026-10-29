@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { iniciarSessao } from "../sessao";
 import { PERFIS } from "../perfil/perfil";
+import { REGRAS_SENHA, faltandoRegras } from "../auth/senha";
 import { cadastrar as cadastrarFirebase, entrar as entrarFirebase } from "../firebase/auth";
 import { configurado as firebaseConfigurado } from "../firebase/config";
 
@@ -56,6 +57,13 @@ export default function LoginPage() {
   const cadastrar = async (e: FormEvent) => {
     e.preventDefault();
     setErroAuth(null);
+    // Regras de senha valem antes de qualquer coisa (inclusive no modo local):
+    // o checklist embaixo do campo mostra o que ainda falta.
+    const pendentes = faltandoRegras(senhaCadastro);
+    if (pendentes.length > 0) {
+      setErroAuth(`A senha ainda não atende às regras: ${pendentes.join(", ")}.`);
+      return;
+    }
     if (!firebaseConfigurado) {
       iniciarSessao(false);
       navegar("/revisar");
@@ -212,12 +220,22 @@ export default function LoginPage() {
                   <input
                     id="reg-senha"
                     type="password"
-                    required
-                    minLength={8}
                     placeholder="Mínimo 8 caracteres"
                     value={senhaCadastro}
                     onChange={(e) => setSenhaCadastro(e.target.value)}
+                    aria-describedby="regras-senha"
                   />
+                  {/* Checklist das regras: acende item a item enquanto digita. */}
+                  <ul className="login-regras" id="regras-senha">
+                    {REGRAS_SENHA.map((regra) => (
+                      <li
+                        key={regra.rotulo}
+                        className={`login-regra ${regra.atende(senhaCadastro) ? "ok" : ""}`}
+                      >
+                        {regra.rotulo}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
                 <div className="login-campo">
                   <label htmlFor="reg-confirmar">Confirmar senha</label>

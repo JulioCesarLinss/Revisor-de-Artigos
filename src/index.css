@@ -1540,6 +1540,41 @@ button .atalho-tecla {
   border-color: var(--ink-soft);
 }
 
+/* Regras de senha no cadastro: checklist que acende item a item enquanto o
+   usuário digita (H9 — o erro é diagnóstico + caminho de recuperação). */
+.login-regras {
+  list-style: none;
+  margin: 7px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 3px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--slate-400);
+}
+
+.login-regra {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.login-regra::before {
+  content: "○";
+  flex: none;
+  color: var(--slate-300);
+}
+
+.login-regra.ok {
+  color: var(--emerald);
+}
+
+.login-regra.ok::before {
+  content: "✓";
+  color: var(--emerald);
+}
+
 .login-grid-senhas {
   display: grid;
   grid-template-columns: 1fr 1fr;
