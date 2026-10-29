@@ -137,11 +137,20 @@ export default function RevisarPage() {
   // Diagnóstico com Gemini (DC-03): só pelo botão próprio do painel — o texto
   // sai para o Google apenas quando o usuário pede. A análise local roda antes,
   // então uma falha da IA não atrasa o fluxo.
-  const [diagnostico, setDiagnostico] = useState<ResultadoDiagnostico | null>(null);
+  // O diagnóstico vem do workspace salvo: ele sobrevive à troca de abas
+  // (esta tela desmonta ao navegar) até um novo pedido, outro arquivo ou exclusão.
+  const [diagnostico, setDiagnostico] = useState<ResultadoDiagnostico | null>(salvo?.diagnostico ?? null);
   const [analisandoGemini, setAnalisandoGemini] = useState(false);
   // Texto que gerou o diagnóstico atual: se o manuscrito mudar, o painel avisa.
-  const [textoDiagnosticado, setTextoDiagnosticado] = useState<string | null>(null);
+  const [textoDiagnosticado, setTextoDiagnosticado] = useState<string | null>(salvo?.textoDiagnosticado ?? null);
   const geminiOcupado = useRef(false);
+
+  /** Exclui o diagnóstico atual (mantém o manuscrito e a análise normativa). */
+  const excluirDiagnostico = useCallback(() => {
+    setDiagnostico(null);
+    setTextoDiagnosticado(null);
+    setStatusSistema("Diagnóstico do Gemini excluído.");
+  }, []);
 
   const pedirDiagnostico = useCallback(async (paragrafos: ParagrafoNumerado[], texto: string) => {
     if (geminiAtivo === false || geminiOcupado.current) return; // uma consulta por vez
@@ -196,8 +205,8 @@ export default function RevisarPage() {
   // Persiste o workspace a cada mudança: /historico lê daqui e o rascunho
   // sobrevive à navegação entre rotas.
   useEffect(() => {
-    salvarWorkspace({ bruto, textoOriginal, historico, feedbacks });
-  }, [bruto, textoOriginal, historico, feedbacks]);
+    salvarWorkspace({ bruto, textoOriginal, historico, feedbacks, diagnostico, textoDiagnosticado });
+  }, [bruto, textoOriginal, historico, feedbacks, diagnostico, textoDiagnosticado]);
 
   // Com Firebase, carrega da nuvem quando o dispositivo local está vazio
   // (primeiro acesso deste dispositivo à conta).
@@ -211,6 +220,8 @@ export default function RevisarPage() {
       setTextoOriginal(nuvem.textoOriginal ?? null);
       setHistorico(nuvem.historico ?? []);
       setFeedbacks(nuvem.feedbacks ?? {});
+      setDiagnostico(nuvem.diagnostico ?? null);
+      setTextoDiagnosticado(nuvem.textoDiagnosticado ?? null);
     });
   }, [uid, bruto]);
 
@@ -218,12 +229,12 @@ export default function RevisarPage() {
   // cada tecla). O localStorage continua sendo a fonte imediata/offline.
   useEffect(() => {
     if (!uid) return;
-    const estado = { bruto, textoOriginal, historico, feedbacks };
+    const estado = { bruto, textoOriginal, historico, feedbacks, diagnostico, textoDiagnosticado };
     const t = setTimeout(() => {
       void salvarWorkspaceNuvem(uid, estado);
     }, 1200);
     return () => clearTimeout(t);
-  }, [uid, bruto, textoOriginal, historico, feedbacks]);
+  }, [uid, bruto, textoOriginal, historico, feedbacks, diagnostico, textoDiagnosticado]);
 
   /**
    * Heurística 7 (Nielsen) — flexibilidade e eficiência de uso: acelerador de
@@ -659,6 +670,7 @@ export default function RevisarPage() {
           desatualizado={diagnostico !== null && textoDiagnosticado !== null && textoDiagnosticado !== bruto}
           onPedir={pedirGemini}
           onFocar={focar}
+          onExcluir={excluirDiagnostico}
         />
 
         {analise && <PainelSecoes secoes={analise.secoes} onFocarSecao={(indices) => {

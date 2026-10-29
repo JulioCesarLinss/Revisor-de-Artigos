@@ -15,6 +15,8 @@ interface Props {
   onPedir: () => void;
   /** Navega até o parágrafo apontado no manuscrito. */
   onFocar: (paragrafo: number) => void;
+  /** Descarta o diagnóstico exibido (o manuscrito não é tocado). */
+  onExcluir: () => void;
 }
 
 const ROTULO_SEVERIDADE = { alta: "Alta", media: "Média", baixa: "Baixa" } as const;
@@ -27,7 +29,16 @@ const CLASSE_SEVERIDADE = { alta: "critico", media: "advertencia", baixa: "obser
  * local, nunca no lugar dela (DC-02), e nunca quebrando o fluxo (DC-03).
  * O texto só sai para o Google quando o usuário clica — e o aviso diz isso.
  */
-export function PainelGemini({ configurado, carregando, resultado, podePedir, desatualizado, onPedir, onFocar }: Props) {
+export function PainelGemini({
+  configurado,
+  carregando,
+  resultado,
+  podePedir,
+  desatualizado,
+  onPedir,
+  onFocar,
+  onExcluir,
+}: Props) {
   const falha = resultado !== null && !resultado.ok;
   const sucesso = resultado !== null && resultado.ok;
 
@@ -134,6 +145,19 @@ export function PainelGemini({ configurado, carregando, resultado, podePedir, de
             </ul>
           )}
         </>
+      )}
+      {/* O resultado fica até o usuário pedir um novo, trocar de arquivo ou excluir. */}
+      {!carregando && resultado !== null && (
+        <div className="gemini-acoes">
+          <button
+            className="btn"
+            type="button"
+            onClick={onExcluir}
+            title="Remove este diagnóstico da tela; o manuscrito e a análise normativa continuam"
+          >
+            Excluir diagnóstico
+          </button>
+        </div>
       )}
     </div>
   );

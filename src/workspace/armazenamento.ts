@@ -1,4 +1,5 @@
 import type { OrigemAlteracao, RegistroAlteracao } from "./historico";
+import type { ResultadoDiagnostico } from "../ai/gemini";
 
 /**
  * Persistência local do workspace de revisão (texto atual, texto original,
@@ -25,6 +26,14 @@ export interface EstadoWorkspace {
   textoOriginal?: string | null;
   historico: RegistroAlteracao[];
   feedbacks: Record<number, boolean>;
+  /**
+   * Último diagnóstico do Gemini pedido na tela /revisar. Fica aqui para
+   * sobreviver à troca de abas (o componente desmonta ao navegar) até o
+   * usuário pedir um novo diagnóstico, carregar outro arquivo ou excluí-lo.
+   */
+  diagnostico?: ResultadoDiagnostico | null;
+  /** Texto que gerou o diagnóstico acima (base do aviso "o texto mudou"). */
+  textoDiagnosticado?: string | null;
 }
 
 function armazenamentoPadrao(): Armazenamento | null {
@@ -37,6 +46,32 @@ function armazenamentoPadrao(): Armazenamento | null {
 
 function ehOrigem(v: unknown): v is OrigemAlteracao {
   return v === "manual" || v === "ia";
+}
+
+function ehSeveridade(v: unknown): boolean {
+  return v === "alta" || v === "media" || v === "baixa";
+}
+
+/** Valida a forma de um apontamento do Gemini lido do storage. */
+function ehApontamento(v: unknown): boolean {
+  if (typeof v !== "object" || v === null) return false;
+  const a = v as Record<string, unknown>;
+  return (
+    typeof a.paragrafo === "number" &&
+    typeof a.categoria === "string" &&
+    typeof a.descricao === "string" &&
+    typeof a.sugestao === "string" &&
+    ehSeveridade(a.severidade)
+  );
+}
+
+/** Valida a forma do diagnóstico lido do storage; nunca lança. */
+function ehDiagnostico(v: unknown): v is ResultadoDiagnostico {
+  if (typeof v !== "object" || v === null) return false;
+  const d = v as Record<string, unknown>;
+  if (d.ok === false) return typeof d.motivo === "string";
+  if (d.ok !== true || typeof d.resumo !== "string" || typeof d.truncado !== "boolean") return false;
+  return Array.isArray(d.diagnosticos) && d.diagnosticos.every(ehApontamento);
 }
 
 function ehRegistro(v: unknown): v is RegistroAlteracao {
@@ -77,6 +112,9 @@ export function validarWorkspace(dados: unknown): EstadoWorkspace | null {
     textoOriginal: d.textoOriginal ?? null,
     historico: d.historico.filter(ehRegistro),
     feedbacks,
+    // Diagnóstico malformado é descartado (nunca derruba o manuscrito).
+    diagnostico: ehDiagnostico(d.diagnostico) ? d.diagnostico : null,
+    textoDiagnosticado: typeof d.textoDiagnosticado === "string" ? d.textoDiagnosticado : null,
   };
 }
 

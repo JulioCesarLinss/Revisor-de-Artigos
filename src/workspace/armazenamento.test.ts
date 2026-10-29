@@ -106,6 +106,40 @@ describe("workspace/armazenamento — persistência", () => {
     expect(carregado?.textoOriginal).toBe("TEXTO DO ARQUIVO\n\nPUBLICADO.");
   });
 
+  test("diagnóstico do Gemini é salvo e recarregado junto do workspace", () => {
+    const st = storageFalso();
+    const diagnostico: EstadoWorkspace["diagnostico"] = {
+      ok: true,
+      resumo: "Texto com pontos de atenção.",
+      truncado: false,
+      diagnosticos: [
+        { paragrafo: 2, categoria: "Clareza", descricao: "Frase longa.", sugestao: "Quebre em duas.", severidade: "media" },
+      ],
+    };
+    salvarWorkspace({ ...WORKSPACE, diagnostico, textoDiagnosticado: WORKSPACE.bruto }, st);
+
+    const carregado = carregarWorkspace(st);
+    expect(carregado?.diagnostico).toEqual(diagnostico);
+    expect(carregado?.textoDiagnosticado).toBe(WORKSPACE.bruto);
+  });
+
+  test("diagnóstico malformado é descartado sem perder o manuscrito", () => {
+    const st = storageFalso();
+    st.setItem(
+      CHAVE_WORKSPACE,
+      JSON.stringify({
+        ...WORKSPACE,
+        diagnostico: { ok: true, resumo: 42, diagnosticos: "lixo" },
+        textoDiagnosticado: 7,
+      }),
+    );
+
+    const carregado = carregarWorkspace(st);
+    expect(carregado?.bruto).toBe(WORKSPACE.bruto);
+    expect(carregado?.diagnostico).toBeNull();
+    expect(carregado?.textoDiagnosticado).toBeNull();
+  });
+
   test("restaurarOriginalWorkspace volta ao texto do arquivo e zera o rastro", () => {
     const st = storageFalso();
     salvarWorkspace({ ...WORKSPACE, bruto: "Texto editado depois." }, st);
