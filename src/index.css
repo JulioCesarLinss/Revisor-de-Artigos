@@ -234,11 +234,27 @@ body {
   gap: 12px;
   position: sticky;
   top: 24px;
+  /*
+   * Coluna de resultados com rolagem própria: o painel grudado no topo pode
+   * ficar mais alto que a janela — sem limite, os últimos erros só aparecem
+   * quando a página inteira chega ao fim. Agora rola dentro da coluna.
+   * `overscroll-behavior: contain` evita que a rolagem dos erros empurre a
+   * página atrás.
+   */
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* Respiro para a barra de rolagem não colar na borda dos cards. */
+  padding: 4px;
 }
 
 @media (max-width: 1000px) {
   .inspector {
     position: static;
+    /* Abaixo de 1000px as colunas empilham: quem rola é a página. */
+    max-height: none;
+    overflow: visible;
+    padding: 0;
   }
 }
 
