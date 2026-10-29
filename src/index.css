@@ -1525,26 +1525,19 @@ button .atalho-tecla {
   cursor: pointer;
 }
 
-.btn-login-primario {
+/* Entrar e Cadastrar compartilham a mesma cor (o primário do app):
+   as duas ações do card de autenticação ficam alinhadas. */
+.btn-login-primario,
+.btn-login-secundario {
   background: var(--ink);
   border-color: var(--ink);
   color: #fff;
 }
 
-.btn-login-primario:hover {
+.btn-login-primario:hover,
+.btn-login-secundario:hover {
   background: var(--ink-soft);
   border-color: var(--ink-soft);
-}
-
-.btn-login-secundario {
-  background: var(--cobalt);
-  border-color: var(--cobalt);
-  color: #fff;
-}
-
-.btn-login-secundario:hover {
-  background: var(--cobalt-dark);
-  border: 1px solid var(--cobalt-dark);
 }
 
 .login-grid-senhas {
