@@ -1,13 +1,18 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { Intervalo } from "../rules/types";
 
 interface Props {
   valor: string;
   onChange: (valor: string) => void;
-  /** Trecho destacado (posições no texto bruto); null = sem destaque. */
-  destaque?: { inicio: number; fim: number } | null;
-  /** O usuário clicou dentro do trecho destacado: o destaque deve sumir. */
-  onLimparDestaque?: () => void;
+  /** Trechos destacados (posições no texto bruto), em ordem e sem sobreposição. */
+  destaques?: Intervalo[];
+  /** Muda a cada "Localizar": leva a tela até o primeiro trecho. */
+  pedidoDestaque?: number;
+  /** O usuário clicou dentro de um trecho destacado: a marca dele deve sumir. */
+  onRemoverDestaque?: (trecho: Intervalo) => void;
 }
+
+const SEM_DESTAQUES: Intervalo[] = [];
 
 /** Largura de uma folha A4 a 96dpi (210mm). */
 const LARGURA_FOLHA_PX = 794;
@@ -84,11 +89,17 @@ function iguais(a: string[], b: string[]): boolean {
  * absoluta após repaginar.
  *
  * Destaque: textarea não pinta parte do texto, então cada folha tem por trás
- * uma camada espelho (mesma tipografia, texto invisível) com o trecho em
+ * uma camada espelho (mesma tipografia, texto invisível) com os trechos em
  * <mark>. O textarea é transparente e fica por cima — o usuário edita
  * normalmente e vê o fundo amarelo no lugar certo.
  */
-export function ManuscritoPaginado({ valor, onChange, destaque = null, onLimparDestaque }: Props) {
+export function ManuscritoPaginado({
+  valor,
+  onChange,
+  destaques = SEM_DESTAQUES,
+  pedidoDestaque,
+  onRemoverDestaque,
+}: Props) {
   const medidorRef = useRef<HTMLDivElement | null>(null);
   const editoresRef = useRef<(HTMLTextAreaElement | null)[]>([]);
   const camadasRef = useRef<(HTMLDivElement | null)[]>([]);
@@ -159,13 +170,12 @@ export function ManuscritoPaginado({ valor, onChange, destaque = null, onLimparD
     });
   });
 
-  // Novo destaque: leva a folha até o trecho (centralizado na tela).
-  const inicioDestaque = destaque?.inicio ?? null;
-  const fimDestaque = destaque?.fim ?? null;
+  // Novo "Localizar": leva a folha até o primeiro trecho (centralizado na tela).
+  // Só no pedido: uma marca que some enquanto o usuário digita não rola a página.
   useEffect(() => {
-    if (inicioDestaque === null) return;
+    if (pedidoDestaque === undefined) return;
     marcaRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [inicioDestaque, fimDestaque]);
+  }, [pedidoDestaque]);
 
   const inicioDaPagina = (pagina: number): number => {
     let inicio = 0;
@@ -210,20 +220,19 @@ export function ManuscritoPaginado({ valor, onChange, destaque = null, onLimparD
     aplicar(montar(pagina, novo));
   };
 
-  /** Clique dentro do trecho destacado apaga o destaque. */
+  /** Clique dentro de um trecho destacado apaga só a marca dele. */
   const clicar = (pagina: number, el: HTMLTextAreaElement) => {
-    if (!destaque || !onLimparDestaque) return;
     const posicao = inicioDaPagina(pagina) + el.selectionStart;
-    if (posicao >= destaque.inicio && posicao <= destaque.fim) onLimparDestaque();
+    const trecho = destaques.find((t) => posicao >= t.inicio && posicao <= t.fim);
+    if (trecho) onRemoverDestaque?.(trecho);
   };
 
-  /** Camada espelho da folha: o texto da folha com o trecho destacado em <mark>. */
+  /** Camada espelho da folha: o texto da folha com os trechos destacados em <mark>. */
   const camada = (pagina: number, texto: string) => {
-    if (!destaque) return null;
     const ini = inicioDaPagina(pagina);
-    const de = Math.max(destaque.inicio - ini, 0);
-    const ate = Math.min(destaque.fim - ini, texto.length);
-    if (ate <= de) return null; // o trecho não está nesta folha
+    const naFolha = destaques.filter((t) => t.fim > ini && t.inicio < ini + texto.length);
+    if (naFolha.length === 0) return null;
+    let lido = 0;
     return (
       <div
         className="folha-texto folha-destaque-camada"
@@ -232,17 +241,27 @@ export function ManuscritoPaginado({ valor, onChange, destaque = null, onLimparD
           camadasRef.current[pagina] = el;
         }}
       >
-        {texto.slice(0, de)}
-        <mark
-          className="folha-destaque"
-          ref={(el) => {
-            // A folha onde o trecho começa é a que recebe a rolagem.
-            if (destaque.inicio >= ini) marcaRef.current = el;
-          }}
-        >
-          {texto.slice(de, ate)}
-        </mark>
-        {texto.slice(ate)}
+        {naFolha.map((t) => {
+          const de = Math.max(t.inicio - ini, 0);
+          const ate = Math.min(t.fim - ini, texto.length);
+          const antes = texto.slice(lido, de);
+          lido = ate;
+          return (
+            <Fragment key={t.inicio}>
+              {antes}
+              <mark
+                className="folha-destaque"
+                ref={(el) => {
+                  // O primeiro trecho, na folha onde ele começa, recebe a rolagem.
+                  if (el && t === destaques[0] && t.inicio >= ini) marcaRef.current = el;
+                }}
+              >
+                {texto.slice(de, ate)}
+              </mark>
+            </Fragment>
+          );
+        })}
+        {texto.slice(lido)}
       </div>
     );
   };

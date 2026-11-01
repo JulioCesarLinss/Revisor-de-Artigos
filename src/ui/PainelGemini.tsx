@@ -1,4 +1,4 @@
-import type { ResultadoDiagnostico } from "../ai/gemini";
+import type { DiagnosticoGemini, ResultadoDiagnostico } from "../ai/gemini";
 
 interface Props {
   /** Verdadeiro quando o Gemini está disponível (chave no servidor). */
@@ -13,8 +13,8 @@ interface Props {
   desatualizado: boolean;
   /** Reanalisa pelas regras e pede o diagnóstico com o manuscrito atual. */
   onPedir: () => void;
-  /** Navega até o parágrafo apontado no manuscrito. */
-  onFocar: (paragrafo: number) => void;
+  /** Navega até o trecho apontado no manuscrito. */
+  onFocar: (diagnostico: DiagnosticoGemini) => void;
   /** Descarta o diagnóstico exibido (o manuscrito não é tocado). */
   onExcluir: () => void;
 }
@@ -135,7 +135,7 @@ export function PainelGemini({
                   )}
                   {d.paragrafo > 0 && !desatualizado && (
                     <div className="problema-acoes">
-                      <button className="btn" type="button" onClick={() => onFocar(d.paragrafo)}>
+                      <button className="btn" type="button" onClick={() => onFocar(d)}>
                         Localizar no manuscrito
                       </button>
                     </div>

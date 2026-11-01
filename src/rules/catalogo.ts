@@ -1,5 +1,5 @@
 import type { Manuscrito } from "../document/types.js";
-import { trechoDe, type Problema, type Regra } from "./types.js";
+import { trechoDe, type Intervalo, type Problema, type Regra } from "./types.js";
 
 const LIMITE_CARACTERES_PARAGRAFO = 600;
 const MINIMO_CARACTERES_PARA_PONTUACAO_FINAL = 40;
@@ -24,6 +24,7 @@ function problema(
   detalhe: string,
   trecho: string,
   acao?: Problema["acao"],
+  posicoes?: Intervalo[],
 ): Problema {
   return {
     id: `${regra.id}-p${paragrafo}`,
@@ -35,7 +36,27 @@ function problema(
     paragrafo,
     trecho,
     acao,
+    posicoes,
   };
+}
+
+/** Posições de todas as ocorrências de um padrão (com flag g) no parágrafo. */
+function ocorrencias(texto: string, padrao: RegExp): Intervalo[] {
+  return [...texto.matchAll(padrao)].map((m) => {
+    const inicio = m.index ?? 0;
+    return { inicio, fim: inicio + m[0].length };
+  });
+}
+
+/** Só as citações entre aspas longas o bastante para exigir a página. */
+function citacoesLongas(texto: string): Intervalo[] {
+  return ocorrencias(texto, CITACAO_ENTRE_ASPAS).filter(({ inicio, fim }) =>
+    ehCitacaoLonga(texto.slice(inicio, fim)),
+  );
+}
+
+function ehCitacaoLonga(citacao: string): boolean {
+  return citacao.replace(/[“”"]/g, "").trim().split(/\s+/).filter(Boolean).length >= MINIMO_PALAVRAS_CITACAO_LONGA;
 }
 
 /**
@@ -61,6 +82,7 @@ export const CATALOGO: Regra[] = [
             "Verifique o espaçamento antes dos sinais de pontuação.",
             trechoDe(p.texto),
             "removerEspacosPontuacao",
+            ocorrencias(p.texto, /\s+[,.;:!?]/g),
           ),
         ),
   },
@@ -104,6 +126,8 @@ export const CATALOGO: Regra[] = [
             p.index,
             "Revise a abertura e o fechamento das aspas.",
             trechoDe(p.texto),
+            undefined,
+            ocorrencias(p.texto, /["“”]/g),
           ),
         ),
   },
@@ -128,6 +152,7 @@ export const CATALOGO: Regra[] = [
             "Confirme se a frase termina onde deveria.",
             trechoDe(p.texto),
             "adicionarPontoFinal",
+            ocorrencias(p.texto, /\S+$/g), // falta pontuação: marca onde a frase para
           ),
         ),
   },
@@ -147,6 +172,8 @@ export const CATALOGO: Regra[] = [
             p.index,
             "Prefira negrito ou itálico para destaque.",
             trechoDe(p.texto),
+            undefined,
+            ocorrencias(p.texto, /\b[A-ZÀ-Ü]{3,}\b/g),
           ),
         ),
   },
@@ -185,6 +212,8 @@ export const CATALOGO: Regra[] = [
             p.index,
             "Use o formato (AUTOR, ano) nas citações autor-data.",
             trechoDe(p.texto),
+            undefined,
+            ocorrencias(p.texto, new RegExp(CITACAO_SEM_VIRGULA.source, "g")),
           ),
         ),
   },
@@ -199,10 +228,7 @@ export const CATALOGO: Regra[] = [
       m.paragrafos
         .filter((p) => {
           const citacoes = p.texto.match(CITACAO_ENTRE_ASPAS) ?? [];
-          const longa = citacoes.some(
-            (c) => c.replace(/[“”"]/g, "").trim().split(/\s+/).filter(Boolean).length >= MINIMO_PALAVRAS_CITACAO_LONGA,
-          );
-          return longa && !INDICACAO_PAGINA.test(p.texto);
+          return citacoes.some(ehCitacaoLonga) && !INDICACAO_PAGINA.test(p.texto);
         })
         .map((p) =>
           problema(
@@ -210,6 +236,8 @@ export const CATALOGO: Regra[] = [
             p.index,
             "Indique a página da fonte citada (ex.: “...”, p. 112).",
             trechoDe(p.texto),
+            undefined,
+            citacoesLongas(p.texto),
           ),
         ),
   },
@@ -249,6 +277,7 @@ export const CATALOGO: Regra[] = [
             "Revise o espaçamento entre as palavras.",
             trechoDe(p.texto),
             "colapsarEspacos",
+            ocorrencias(p.texto, /(?<=\S)[ \t]{2,}(?=\S)/g),
           ),
         ),
   },

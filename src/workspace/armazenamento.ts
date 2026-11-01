@@ -57,6 +57,7 @@ function ehApontamento(v: unknown): boolean {
   const a = v as Record<string, unknown>;
   return (
     typeof a.paragrafo === "number" &&
+    (a.trecho === undefined || typeof a.trecho === "string") &&
     typeof a.categoria === "string" &&
     typeof a.descricao === "string" &&
     typeof a.sugestao === "string" &&

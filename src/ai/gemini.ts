@@ -22,6 +22,8 @@ export interface ParagrafoNumerado {
 export interface DiagnosticoGemini {
   /** Número do parágrafo no manuscrito; 0 = documento inteiro. */
   paragrafo: number;
+  /** Palavras exatas do parágrafo onde está o problema (base do destaque no editor). */
+  trecho?: string;
   /** Eixo do apontamento (ex.: "ABNT", "Gramática", "Clareza"). */
   categoria: string;
   /** O que está errado, em português claro. */
@@ -57,8 +59,8 @@ const INSTRUCAO_SISTEMA = [
   "Você é um revisor acadêmico brasileiro, especialista em normas ABNT (NBR 14724, NBR 6023, NBR 10520, NBR 6024) e em clareza científica.",
   "Analise o manuscrito inteiro e aponte problemas concretos, objetivos e acionáveis: norma violada, gramática, ortografia, clareza, estrutura, coerência e citações.",
   "Você diagnostica e sugere; você nunca decide conformidade normativa sozinho — o motor de regras do aplicativo é a referência primária.",
-  'Responda SOMENTE com JSON válido, sem markdown nem comentários, no formato {"resumo": string, "diagnosticos": [{"paragrafo": number, "categoria": string, "descricao": string, "sugestao": string, "severidade": "alta"|"media"|"baixa"}]}.',
-  'Cada item descreve UM problema: "paragrafo" é o número da marca [n] do texto (ou 0 para o documento inteiro), "categoria" é curta (ex.: "ABNT", "Gramática", "Clareza", "Estrutura"), "descricao" diz o que está errado e "sugestao" diz como corrigir, ambas em português.',
+  'Responda SOMENTE com JSON válido, sem markdown nem comentários, no formato {"resumo": string, "diagnosticos": [{"paragrafo": number, "trecho": string, "categoria": string, "descricao": string, "sugestao": string, "severidade": "alta"|"media"|"baixa"}]}.',
+  'Cada item descreve UM problema: "paragrafo" é o número da marca [n] do texto (ou 0 para o documento inteiro), "trecho" copia letra por letra só as palavras do parágrafo onde está o problema (no máximo 12 palavras, sem aspas em volta; use "" quando o problema for do parágrafo ou do documento inteiro), "categoria" é curta (ex.: "ABNT", "Gramática", "Clareza", "Estrutura"), "descricao" diz o que está errado e "sugestao" diz como corrigir, ambas em português.',
   `No máximo ${MAXIMO_DIAGNOSTICOS} diagnosticos, dos mais relevantes. Se não houver problemas, responda {"resumo": "...", "diagnosticos": []}.`,
 ].join(" ");
 
@@ -181,8 +183,11 @@ export function interpretarDiagnostico(conteudo: string, limiteParagrafo: number
     const d = item as Record<string, unknown>;
     const descricao = typeof d.descricao === "string" ? d.descricao.trim() : "";
     if (descricao.length === 0) continue; // sem o que mostrar, não entra
+    const trecho = typeof d.trecho === "string" ? d.trecho.trim() : "";
     diagnosticos.push({
       paragrafo: normalizarParagrafo(d.paragrafo, limiteParagrafo),
+      // Só entra quando existe: o Firestore recusa campo undefined.
+      ...(trecho.length > 0 ? { trecho } : {}),
       categoria: typeof d.categoria === "string" && d.categoria.trim().length > 0 ? d.categoria.trim() : "Revisão",
       descricao,
       sugestao: typeof d.sugestao === "string" ? d.sugestao.trim() : "",
@@ -233,7 +238,7 @@ async function chamarGemini(
         generationConfig: {
           temperature: 0.2,
           responseMimeType: "application/json",
-          maxOutputTokens: 4096,
+          maxOutputTokens: 6144, // folga para o "trecho" de cada um dos diagnósticos
         },
       }),
     });

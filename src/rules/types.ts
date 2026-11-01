@@ -7,6 +7,12 @@ export type Categoria = "estrutura" | "formatacao";
 /** Ação determinística disponível para o usuário — nunca inferência de IA. */
 export type AcaoRapida = "removerEspacosPontuacao" | "adicionarPontoFinal" | "colapsarEspacos";
 
+/** Faixa de caracteres em um texto; `fim` é exclusivo. */
+export interface Intervalo {
+  inicio: number;
+  fim: number;
+}
+
 /** Campos mínimos de um problema (DC-08 em docs/03-decisoes-tecnologias.md). */
 export interface Problema {
   id: string;
@@ -20,6 +26,8 @@ export interface Problema {
   /** Excerto localizável do trecho. */
   trecho: string;
   acao?: AcaoRapida;
+  /** Onde está o erro dentro do parágrafo; ausente quando é o parágrafo todo. */
+  posicoes?: Intervalo[];
 }
 
 /** Uma regra deve ser legível e testável isoladamente, sem consultar a UI. */

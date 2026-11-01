@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { statusIA, sugerirReescrita } from "../ai/assistente";
 import { diagnosticarComGemini, geminiConfigurado } from "../ai/geminiCliente";
-import type { ParagrafoNumerado, ResultadoDiagnostico } from "../ai/gemini";
+import type { DiagnosticoGemini, ParagrafoNumerado, ResultadoDiagnostico } from "../ai/gemini";
 import { carregarConfigIA, salvarConfigIA } from "../perfil/perfil";
 import type { ConfiguracaoIA, SugestaoIA } from "../ai/types";
 import { aplicarCorrecao } from "../document/acoes";
@@ -10,7 +10,7 @@ import { aplicarSugestao } from "../document/aplicarSugestao";
 import { lerArquivo, type ResultadoUpload } from "../document/arquivo";
 import { importarTexto } from "../document/importar.js";
 import { iniciarRevisao, type AnaliseRevisao } from "../review/orquestrar";
-import type { Problema } from "../rules/types";
+import type { Intervalo, Problema } from "../rules/types";
 import { PainelGemini } from "../ui/PainelGemini";
 import { PainelHistorico } from "../ui/PainelHistorico";
 import { ManuscritoPaginado } from "../ui/ManuscritoPaginado";
@@ -19,6 +19,7 @@ import { PainelSugestao } from "../ui/PainelSugestao";
 import { ProblemaCard } from "../ui/ProblemaCard";
 import { Resumo } from "../ui/Resumo";
 import { registrar, type RegistroAlteracao } from "../workspace/historico";
+import { ajustarTrechos, localizarTrecho, unirTrechos } from "../workspace/destaques.js";
 import { posicoesParagrafos } from "../workspace/paragrafos";
 import { desempilhar, empilhar } from "../workspace/desfazer";
 import { gerarDocx, MIME_DOCX, nomeExportado } from "../exportar/docx";
@@ -32,10 +33,11 @@ const ATRASO_REANALISE_MS = 500;
 /** Teclas digitadas com menos que isso de intervalo viram um único passo do "Desfazer". */
 const PAUSA_NOVO_PASSO_MS = 1000;
 
-/** Parágrafo destacado no editor; `total` invalida o destaque se parágrafos surgirem/sumirem. */
+/** Marcas no editor: valem para `texto`; `pedido` muda a cada "Localizar" (leva a tela até elas). */
 interface Destaque {
-  paragrafo: number;
-  total: number;
+  texto: string;
+  trechos: Intervalo[];
+  pedido: number;
 }
 
 /** Tela /revisar — editor de revisão interativa (conteúdo original do App). */
@@ -65,22 +67,56 @@ export default function RevisarPage() {
     salvo && salvo.bruto.trim().length > 0 ? iniciarRevisao(salvo.bruto) : null,
   );
 
-  // Destaque no editor: "Localizar" (avisos, seções, Gemini, ou o /historico
-  // via navegação) marca o parágrafo; clicar dentro dele apaga a marca.
+  // Destaque no editor: "Localizar" marca os erros do parágrafo (ou o parágrafo,
+  // nas seções, no /historico e nos avisos sobre ele todo). Cada marca é
+  // independente: clicar nela ou alterá-la apaga só ela.
   const posicoes = useMemo(() => posicoesParagrafos(bruto), [bruto]);
+  const pedidosLocalizar = useRef(1);
   const [destaque, setDestaque] = useState<Destaque | null>(() => {
     const alvo = (location.state as { alvo?: number } | null)?.alvo;
-    return typeof alvo === "number" && alvo > 0 ? { paragrafo: alvo, total: posicoes.length } : null;
+    const paragrafo = typeof alvo === "number" ? posicoes[alvo - 1] : undefined;
+    return paragrafo ? { texto: bruto, trechos: [paragrafo], pedido: pedidosLocalizar.current } : null;
   });
-  const focar = useCallback(
-    (paragrafo: number) => {
-      if (paragrafo > 0) setDestaque({ paragrafo, total: posicoes.length });
+
+  // O texto mudou (tecla, correção, Desfazer): a marca tocada some e as outras
+  // acompanham, ainda neste render, para nunca aparecerem fora do lugar.
+  if (destaque && destaque.texto !== bruto) {
+    const trechos = ajustarTrechos(destaque.trechos, destaque.texto, bruto);
+    setDestaque(trechos.length > 0 ? { ...destaque, texto: bruto, trechos } : null);
+  }
+
+  /** Marca posições relativas ao parágrafo; sem elas, o parágrafo inteiro. */
+  const marcar = useCallback(
+    (paragrafo: number, relativos?: Intervalo[]) => {
+      const alvo = posicoes[paragrafo - 1];
+      if (!alvo) return;
+      const trechos = relativos?.length
+        ? unirTrechos(relativos.map((r) => ({ inicio: alvo.inicio + r.inicio, fim: alvo.inicio + r.fim })))
+        : [{ inicio: alvo.inicio, fim: alvo.fim }];
+      pedidosLocalizar.current += 1;
+      setDestaque({ texto: bruto, trechos, pedido: pedidosLocalizar.current });
     },
-    [posicoes.length],
+    [posicoes, bruto],
   );
-  /** Trecho a destacar; some se o número de parágrafos mudou desde o clique. */
-  const trechoDestacado =
-    destaque && destaque.total === posicoes.length ? (posicoes[destaque.paragrafo - 1] ?? null) : null;
+
+  const focar = useCallback((paragrafo: number) => marcar(paragrafo), [marcar]);
+
+  /** Localizar um aviso: todos os erros do parágrafo, medidos no texto atual. */
+  const localizarProblema = useCallback(
+    (problema: Problema) => {
+      const atuais = iniciarRevisao(bruto).problemas.filter((p) => p.paragrafo === problema.paragrafo);
+      const clicado = atuais.find((p) => p.id === problema.id);
+      marcar(problema.paragrafo, clicado?.posicoes && atuais.flatMap((p) => p.posicoes ?? []));
+    },
+    [bruto, marcar],
+  );
+
+  const removerMarca = useCallback((trecho: Intervalo) => {
+    setDestaque((d) => {
+      const trechos = d ? d.trechos.filter((t) => t.inicio !== trecho.inicio) : [];
+      return d && trechos.length > 0 ? { ...d, trechos } : null;
+    });
+  }, []);
 
   // Sprint 3 — assistência IA (opcional; DC-03). A chave salva em /perfil
   // é carregada aqui, para não precisar ser digitada duas vezes.
@@ -145,6 +181,25 @@ export default function RevisarPage() {
   // Texto que gerou o diagnóstico atual: se o manuscrito mudar, o painel avisa.
   const [textoDiagnosticado, setTextoDiagnosticado] = useState<string | null>(salvo?.textoDiagnosticado ?? null);
   const geminiOcupado = useRef(false);
+
+  /** Localizar um apontamento: todos os do parágrafo cujo trecho está no texto. */
+  const localizarDiagnostico = useCallback(
+    (alvo: DiagnosticoGemini) => {
+      const pos = posicoes[alvo.paragrafo - 1];
+      if (!pos) return;
+      const paragrafo = bruto.slice(pos.inicio, pos.fim);
+      // Trecho ausente ou que a IA não copiou do texto: marca o parágrafo.
+      if (!localizarTrecho(paragrafo, alvo.trecho)) return marcar(alvo.paragrafo);
+      const doParagrafo = diagnostico?.ok
+        ? diagnostico.diagnosticos.filter((d) => d.paragrafo === alvo.paragrafo)
+        : [alvo];
+      marcar(
+        alvo.paragrafo,
+        doParagrafo.flatMap((d) => localizarTrecho(paragrafo, d.trecho) ?? []),
+      );
+    },
+    [posicoes, bruto, diagnostico, marcar],
+  );
 
   /** Exclui o diagnóstico atual (mantém o manuscrito e a análise normativa). */
   const excluirDiagnostico = useCallback(() => {
@@ -606,12 +661,13 @@ export default function RevisarPage() {
             void receberArquivo(e.dataTransfer.files?.[0]);
           }}
         >
-          {/* Folhas A4 editáveis; o parágrafo localizado aparece destacado. */}
+          {/* Folhas A4 editáveis; os erros localizados aparecem destacados. */}
           <ManuscritoPaginado
             valor={bruto}
             onChange={editar}
-            destaque={trechoDestacado}
-            onLimparDestaque={() => setDestaque(null)}
+            destaques={destaque?.trechos}
+            pedidoDestaque={destaque?.pedido}
+            onRemoverDestaque={removerMarca}
           />
         </div>
       </section>
@@ -665,7 +721,7 @@ export default function RevisarPage() {
           podePedir={bruto.trim().length > 0 && !processando && !analisandoGemini}
           desatualizado={diagnostico !== null && textoDiagnosticado !== null && textoDiagnosticado !== bruto}
           onPedir={pedirGemini}
-          onFocar={focar}
+          onFocar={localizarDiagnostico}
           onExcluir={excluirDiagnostico}
         />
 
@@ -706,7 +762,7 @@ export default function RevisarPage() {
             key={p.id}
             problema={p}
             onCorrigir={corrigir}
-            onLocalizar={() => focar(p.paragrafo)}
+            onLocalizar={() => localizarProblema(p)}
             onSugerir={estadoIA === "pronta" ? () => pedirSugestao(p) : undefined}
             sugerindo={carregandoSugestao === p.id}
             listarAcao={!analise.manuscrito.paragrafos.find((x) => x.index === p.paragrafo)?.ehTitulo}

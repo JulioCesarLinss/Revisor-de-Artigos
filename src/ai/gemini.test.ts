@@ -12,6 +12,29 @@ function resposta(diagnosticos: unknown[], resumo = "Texto com pontos de atenç�
   return JSON.stringify({ resumo, diagnosticos });
 }
 
+describe("ai/gemini — trecho do apontamento", () => {
+  test("guarda o trecho citado, sem espaços nas pontas", () => {
+    const r = interpretarDiagnostico(
+      resposta([{ paragrafo: 1, trecho: "  os dados foi  ", descricao: "Concordância.", severidade: "alta" }]),
+      3,
+    );
+    expect(r.ok && r.diagnosticos[0].trecho).toBe("os dados foi");
+  });
+
+  test("trecho vazio ou de outro tipo nem entra no objeto (o Firestore recusa undefined)", () => {
+    const r = interpretarDiagnostico(
+      resposta([
+        { paragrafo: 1, trecho: "", descricao: "Parágrafo confuso." },
+        { paragrafo: 1, trecho: 42, descricao: "Outro apontamento." },
+        { paragrafo: 1, descricao: "Sem trecho." },
+      ]),
+      3,
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) for (const d of r.diagnosticos) expect("trecho" in d).toBe(false);
+  });
+});
+
 describe("ai/gemini — interpretarDiagnostico", () => {
   test("JSON válido vira diagnósticos prontos para a UI", () => {
     const conteudo = resposta([
