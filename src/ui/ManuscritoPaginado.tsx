@@ -98,28 +98,32 @@ export function ManuscritoPaginado({ valor, onChange, destaque = null, onLimparD
   const cursor = useRef<{ inicio: number; fim: number } | null>(null);
   const valorRef = useRef(valor);
   valorRef.current = valor;
+  /** Último texto paginado: o que veio da digitação não precisa ser medido de novo. */
+  const textoPaginado = useRef<string | null>(null);
 
-  // Repagina antes do paint (sem piscar a troca de fatias).
-  useLayoutEffect(() => {
-    const proximas = paginar(valor, medidorRef.current, editoresRef.current[0]?.clientWidth ?? 680);
+  const repaginar = (texto: string) => {
+    textoPaginado.current = texto;
+    const proximas = paginar(texto, medidorRef.current, editoresRef.current[0]?.clientWidth ?? 680);
     setPaginas((atuais) => (iguais(atuais, proximas) ? atuais : proximas));
+  };
+
+  // Texto que mudou por fora (arquivo, correção, Desfazer): repagina antes do
+  // paint (sem piscar a troca de fatias).
+  useLayoutEffect(() => {
+    if (textoPaginado.current !== valor) repaginar(valor);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [valor]);
 
   // Recalcula quando as fontes terminarem de carregar (métricas podem mudar).
   useEffect(() => {
     if (typeof document === "undefined" || !document.fonts) return;
-    document.fonts.ready
-      .then(() => {
-        const proximas = paginar(valorRef.current, medidorRef.current, editoresRef.current[0]?.clientWidth ?? 680);
-        setPaginas((atuais) => (iguais(atuais, proximas) ? atuais : proximas));
-      })
-      .catch(() => undefined);
+    document.fonts.ready.then(() => repaginar(valorRef.current)).catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Restaura o cursor absoluto na folha que o contém (executa a cada render,
   // para consumir a referência mesmo quando a paginação não muda).
-  useEffect(() => {
+  useLayoutEffect(() => {
     const alvo = cursor.current;
     if (!alvo) return;
     cursor.current = null;
@@ -172,6 +176,16 @@ export function ManuscritoPaginado({ valor, onChange, destaque = null, onLimparD
   const montar = (pagina: number, textoDaPagina: string): string =>
     paginas.map((p, i) => (i === pagina ? textoDaPagina : p)).join("");
 
+  /**
+   * Pagina junto com o aviso ao pai: as folhas e o texto mudam no mesmo render.
+   * Se as folhas viessem depois, o textarea voltaria por um instante ao texto
+   * antigo e, ao receber o novo, o navegador jogaria o cursor para o fim.
+   */
+  const aplicar = (novo: string) => {
+    repaginar(novo);
+    onChange(novo);
+  };
+
   const editar = (pagina: number, texto: string) => {
     const el = editoresRef.current[pagina];
     const ini = inicioDaPagina(pagina);
@@ -179,7 +193,7 @@ export function ManuscritoPaginado({ valor, onChange, destaque = null, onLimparD
       inicio: ini + (el?.selectionStart ?? texto.length),
       fim: ini + (el?.selectionEnd ?? texto.length),
     };
-    onChange(montar(pagina, texto));
+    aplicar(montar(pagina, texto));
   };
 
   const teclar = (pagina: number, e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -193,7 +207,7 @@ export function ManuscritoPaginado({ valor, onChange, destaque = null, onLimparD
       inicio: ini + el.selectionStart + inserido.length,
       fim: ini + el.selectionStart + inserido.length,
     };
-    onChange(montar(pagina, novo));
+    aplicar(montar(pagina, novo));
   };
 
   /** Clique dentro do trecho destacado apaga o destaque. */

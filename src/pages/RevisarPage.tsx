@@ -8,6 +8,7 @@ import type { ConfiguracaoIA, SugestaoIA } from "../ai/types";
 import { aplicarCorrecao } from "../document/acoes";
 import { aplicarSugestao } from "../document/aplicarSugestao";
 import { lerArquivo, type ResultadoUpload } from "../document/arquivo";
+import { importarTexto } from "../document/importar.js";
 import { iniciarRevisao, type AnaliseRevisao } from "../review/orquestrar";
 import type { Problema } from "../rules/types";
 import { PainelGemini } from "../ui/PainelGemini";
@@ -52,6 +53,8 @@ export default function RevisarPage() {
   const [erroUpload, setErroUpload] = useState<string | null>(null);
 
   const [bruto, setBruto] = useState(salvo?.bruto ?? "");
+  // Contadores da barra: vêm do texto atual, a cada tecla (não dependem do "Analisar").
+  const contagem = useMemo(() => importarTexto(bruto), [bruto]);
   /**
    * A análise começa no botão "Analisar"; a partir daí os avisos acompanham
    * as correções. Um texto restaurado (volta de outra tela) é trabalho em
@@ -101,8 +104,6 @@ export default function RevisarPage() {
   // Heurística 1 (Nielsen) — visibilidade do status do sistema
   const [ocupadoCom, setOcupadoCom] = useState<string | null>(null);
   const [statusSistema, setStatusSistema] = useState<string | null>(null);
-
-  const [feedbacks, setFeedbacks] = useState<Record<number, boolean>>(salvo?.feedbacks ?? {});
 
   /**
    * "Desfazer": estados anteriores do texto, só na memória desta tela (não vão
@@ -205,8 +206,8 @@ export default function RevisarPage() {
   // Persiste o workspace a cada mudança: /historico lê daqui e o rascunho
   // sobrevive à navegação entre rotas.
   useEffect(() => {
-    salvarWorkspace({ bruto, textoOriginal, historico, feedbacks, diagnostico, textoDiagnosticado });
-  }, [bruto, textoOriginal, historico, feedbacks, diagnostico, textoDiagnosticado]);
+    salvarWorkspace({ bruto, textoOriginal, historico, diagnostico, textoDiagnosticado });
+  }, [bruto, textoOriginal, historico, diagnostico, textoDiagnosticado]);
 
   // Com Firebase, carrega da nuvem quando o dispositivo local está vazio
   // (primeiro acesso deste dispositivo à conta).
@@ -219,7 +220,6 @@ export default function RevisarPage() {
       setBruto(nuvem.bruto);
       setTextoOriginal(nuvem.textoOriginal ?? null);
       setHistorico(nuvem.historico ?? []);
-      setFeedbacks(nuvem.feedbacks ?? {});
       setDiagnostico(nuvem.diagnostico ?? null);
       setTextoDiagnosticado(nuvem.textoDiagnosticado ?? null);
     });
@@ -229,12 +229,12 @@ export default function RevisarPage() {
   // cada tecla). O localStorage continua sendo a fonte imediata/offline.
   useEffect(() => {
     if (!uid) return;
-    const estado = { bruto, textoOriginal, historico, feedbacks, diagnostico, textoDiagnosticado };
+    const estado = { bruto, textoOriginal, historico, diagnostico, textoDiagnosticado };
     const t = setTimeout(() => {
       void salvarWorkspaceNuvem(uid, estado);
     }, 1200);
     return () => clearTimeout(t);
-  }, [uid, bruto, textoOriginal, historico, feedbacks, diagnostico, textoDiagnosticado]);
+  }, [uid, bruto, textoOriginal, historico, diagnostico, textoDiagnosticado]);
 
   /**
    * Heurística 7 (Nielsen) — flexibilidade e eficiência de uso: acelerador de
@@ -250,10 +250,6 @@ export default function RevisarPage() {
     window.addEventListener("keydown", aoTeclar);
     return () => window.removeEventListener("keydown", aoTeclar);
   }, [analisar, bruto, processando]);
-
-  const darFeedback = useCallback((historicoId: number, ajudou: boolean) => {
-    setFeedbacks((f) => ({ ...f, [historicoId]: ajudou }));
-  }, []);
 
   /** Digitação: um passo do "Desfazer" a cada pausa (não um por tecla). */
   const editar = useCallback(
@@ -478,10 +474,10 @@ export default function RevisarPage() {
 
         <div className="canvas-toolbar">
           <span className="stat">
-            <strong>{analise?.manuscrito.paragrafos.length ?? 0}</strong> parágrafos
+            <strong>{contagem.paragrafos.length}</strong> parágrafos
           </span>
           <span className="stat">
-            <strong>{analise?.manuscrito.totalPalavras ?? 0}</strong> palavras
+            <strong>{contagem.totalPalavras}</strong> palavras
           </span>
           <span style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
             {/* Desfazer: substitui as cópias por etapa (só em memória). */}
@@ -717,7 +713,7 @@ export default function RevisarPage() {
           />
         ))}
 
-        <PainelHistorico historico={historico} feedbacks={feedbacks} onFeedback={darFeedback} />
+        <PainelHistorico historico={historico} />
       </aside>
     </main>
   );

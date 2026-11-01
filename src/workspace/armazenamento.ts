@@ -2,14 +2,14 @@ import type { OrigemAlteracao, RegistroAlteracao } from "./historico";
 import type { ResultadoDiagnostico } from "../ai/gemini";
 
 /**
- * Persistência local do workspace de revisão (texto atual, texto original,
- * histórico de alterações e feedback) — permite que a tela /historico mostre
- * dados reais e que o rascunho sobreviva à troca de rotas. Sem backend:
- * armazenamento no dispositivo, com storage injetável para os testes.
+ * Persistência local do workspace de revisão (texto atual, texto original e
+ * histórico de alterações) — permite que a tela /historico mostre dados reais
+ * e que o rascunho sobreviva à troca de rotas. Sem backend: armazenamento no
+ * dispositivo, com storage injetável para os testes.
  *
  * Sem cópias do texto por etapa: o workspace fica leve (localStorage e o
- * documento do Firestore). Dados antigos com `versoes`/`estadoFluxo` ainda
- * carregam — esses campos são simplesmente ignorados.
+ * documento do Firestore). Dados antigos com `versoes`/`estadoFluxo`/`feedbacks`
+ * ainda carregam — esses campos são simplesmente ignorados.
  */
 
 export type Armazenamento = {
@@ -25,7 +25,6 @@ export interface EstadoWorkspace {
   /** Texto do arquivo original enviado (null quando nada foi anexado). */
   textoOriginal?: string | null;
   historico: RegistroAlteracao[];
-  feedbacks: Record<number, boolean>;
   /**
    * Último diagnóstico do Gemini pedido na tela /revisar. Fica aqui para
    * sobreviver à troca de abas (o componente desmonta ao navegar) até o
@@ -98,20 +97,12 @@ export function validarWorkspace(dados: unknown): EstadoWorkspace | null {
   )
     return null;
   if (!Array.isArray(d.historico)) return null;
-  if (typeof d.feedbacks !== "object" || d.feedbacks === null) return null;
 
-  const feedbacks: Record<number, boolean> = {};
-  for (const [k, v] of Object.entries(d.feedbacks)) {
-    const id = Number(k);
-    if (Number.isInteger(id) && typeof v === "boolean") feedbacks[id] = v;
-  }
-
-  // Só os campos atuais: `versoes`/`estadoFluxo` de dados antigos ficam para trás.
+  // Só os campos atuais: `versoes`/`estadoFluxo`/`feedbacks` de dados antigos ficam para trás.
   return {
     bruto: d.bruto,
     textoOriginal: d.textoOriginal ?? null,
     historico: d.historico.filter(ehRegistro),
-    feedbacks,
     // Diagnóstico malformado é descartado (nunca derruba o manuscrito).
     diagnostico: ehDiagnostico(d.diagnostico) ? d.diagnostico : null,
     textoDiagnosticado: typeof d.textoDiagnosticado === "string" ? d.textoDiagnosticado : null,
@@ -151,11 +142,11 @@ export function limparWorkspace(st?: Armazenamento): void {
   }
 }
 
-/** Limpa apenas o rastro (alterações e feedback), preservando o manuscrito. */
+/** Limpa apenas o rastro de alterações, preservando o manuscrito. */
 export function limparHistoricoWorkspace(st?: Armazenamento): EstadoWorkspace | null {
   const atual = carregarWorkspace(st);
   if (!atual) return null;
-  const limpo: EstadoWorkspace = { ...atual, historico: [], feedbacks: {} };
+  const limpo: EstadoWorkspace = { ...atual, historico: [] };
   salvarWorkspace(limpo, st);
   return limpo;
 }
@@ -172,7 +163,6 @@ export function restaurarOriginalWorkspace(st?: Armazenamento): EstadoWorkspace 
     bruto: atual.textoOriginal,
     textoOriginal: atual.textoOriginal,
     historico: [],
-    feedbacks: {},
   };
   salvarWorkspace(restaurado, st);
   return restaurado;

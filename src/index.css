@@ -935,39 +935,6 @@ body {
   margin-top: 8px;
 }
 
-/* ---------- Feedback no histórico ---------- */
-.historico-feedback {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10.5px;
-  color: var(--slate-500);
-}
-
-.historico-feedback button {
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  font-size: 12px;
-  padding: 0 2px;
-  border-radius: 4px;
-}
-
-.historico-feedback button:hover {
-  background: var(--slate-100);
-}
-
-.historico-feedback.registrado.positivo {
-  color: var(--emerald);
-  font-weight: 600;
-}
-
-.historico-feedback.registrado.negativo {
-  color: var(--slate-500);
-  font-weight: 600;
-}
-
 /* ---------- Heurística 6 — reconhecimento em vez de memorização ---------- */
 .resumo-legenda {
   margin: 0 0 10px;

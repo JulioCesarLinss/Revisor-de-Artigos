@@ -31,7 +31,6 @@ const WORKSPACE: EstadoWorkspace = {
     { id: 1, origem: "manual", descricao: "correção rápida aplicada", paragrafo: 1, quando: "10:00:00" },
     { id: 2, origem: "ia", descricao: "sugestão aceita (R001)", paragrafo: 2, quando: "10:05:00" },
   ],
-  feedbacks: { 1: true },
 };
 
 describe("workspace/armazenamento — persistência", () => {
@@ -42,10 +41,9 @@ describe("workspace/armazenamento — persistência", () => {
     expect(carregado).not.toBeNull();
     expect(carregado?.bruto).toBe(WORKSPACE.bruto);
     expect(carregado?.historico.length).toBe(2);
-    expect(carregado?.feedbacks[1]).toBe(true);
   });
 
-  test("dados antigos com etapas e versões ainda carregam, sem esses campos", () => {
+  test("dados antigos com etapas, versões e feedbacks ainda carregam, sem esses campos", () => {
     const st = storageFalso();
     st.setItem(
       CHAVE_WORKSPACE,
@@ -53,6 +51,7 @@ describe("workspace/armazenamento — persistência", () => {
         ...WORKSPACE,
         versoes: [{ id: 1, estado: "rascunho", bruto: "cópia pesada", totalProblemas: 3, quando: "10:01:00" }],
         estadoFluxo: "revisao",
+        feedbacks: { 1: true },
       }),
     );
     const carregado = carregarWorkspace(st);
@@ -60,6 +59,14 @@ describe("workspace/armazenamento — persistência", () => {
     expect(carregado?.historico.length).toBe(2);
     expect(carregado && "versoes" in carregado).toBe(false);
     expect(carregado && "estadoFluxo" in carregado).toBe(false);
+    expect(carregado && "feedbacks" in carregado).toBe(false);
+  });
+
+  test("workspace salvo sem feedbacks carrega normalmente", () => {
+    const st = storageFalso();
+    salvarWorkspace(WORKSPACE, st);
+    expect(JSON.parse(st.getItem(CHAVE_WORKSPACE)!)).not.toHaveProperty("feedbacks");
+    expect(carregarWorkspace(st)?.bruto).toBe(WORKSPACE.bruto);
   });
 
   test("ausente ou JSON corrompido devolve null, nunca lança", () => {
@@ -78,10 +85,8 @@ describe("workspace/armazenamento — persistência", () => {
     const parcial = validarWorkspace({
       ...WORKSPACE,
       historico: [WORKSPACE.historico[0], { id: 9, origem: "desconhecida" }, "lixo"],
-      feedbacks: { 1: true, abc: true, 2: "sim" },
     });
     expect(parcial?.historico.length).toBe(1); // só o registro válido
-    expect(parcial?.feedbacks).toEqual({ 1: true });
   });
 
   test("limparWorkspace descarta tudo; limparHistorico preserva o manuscrito", () => {
@@ -91,7 +96,6 @@ describe("workspace/armazenamento — persistência", () => {
     const limpo = limparHistoricoWorkspace(st);
     expect(limpo?.bruto).toBe(WORKSPACE.bruto);
     expect(limpo?.historico).toEqual([]);
-    expect(limpo?.feedbacks).toEqual({});
     expect(carregarWorkspace(st)?.bruto).toBe(WORKSPACE.bruto);
 
     limparWorkspace(st);
@@ -148,7 +152,6 @@ describe("workspace/armazenamento — persistência", () => {
     expect(restaurado?.bruto).toBe(WORKSPACE.textoOriginal!);
     expect(restaurado?.textoOriginal).toBe(WORKSPACE.textoOriginal!);
     expect(restaurado?.historico).toEqual([]);
-    expect(restaurado?.feedbacks).toEqual({});
     // Persistido: ao recarregar, continua restaurado.
     expect(carregarWorkspace(st)?.bruto).toBe(WORKSPACE.textoOriginal!);
   });

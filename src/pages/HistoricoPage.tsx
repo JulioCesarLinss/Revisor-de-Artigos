@@ -220,35 +220,23 @@ export default function HistoricoPage() {
               <p className="historico-nota">Nenhuma alteração com esta origem.</p>
             ) : (
               <ul className="historico-lista historico-lista-pagina">
-                {alteracoes.map((h) => {
-                  const fb = workspace!.feedbacks[h.id];
-                  return (
-                    <li key={h.id}>
-                      <span className={`historico-origem origem-${h.origem}`}>{ROTULO_ORIGEM[h.origem]}</span>
-                      <span className="historico-desc">
-                        ¶{h.paragrafo} — {descrever(h.descricao)}
-                      </span>
-                      <span className="historico-quando">{h.quando}</span>
-                      <span
-                        className={
-                          fb === undefined
-                            ? "historico-feedback"
-                            : `historico-feedback registrado ${fb ? "positivo" : "negativo"}`
-                        }
-                      >
-                        {fb === undefined ? "sem feedback" : fb ? "👍 ajudou" : "👎 não ajudou"}
-                      </span>
-                      <button
-                        className="btn historico-localizar"
-                        type="button"
-                        onClick={() => localizar(h.paragrafo)}
-                        title="Ir para o parágrafo no editor (fica destacado até você clicar nele)"
-                      >
-                        Localizar
-                      </button>
-                    </li>
-                  );
-                })}
+                {alteracoes.map((h) => (
+                  <li key={h.id}>
+                    <span className={`historico-origem origem-${h.origem}`}>{ROTULO_ORIGEM[h.origem]}</span>
+                    <span className="historico-desc">
+                      ¶{h.paragrafo} — {descrever(h.descricao)}
+                    </span>
+                    <span className="historico-quando">{h.quando}</span>
+                    <button
+                      className="btn historico-localizar"
+                      type="button"
+                      onClick={() => localizar(h.paragrafo)}
+                      title="Ir para o parágrafo no editor (fica destacado até você clicar nele)"
+                    >
+                      Localizar
+                    </button>
+                  </li>
+                ))}
               </ul>
             )}
           </section>
