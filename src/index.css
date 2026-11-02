@@ -180,6 +180,25 @@ body {
   color: var(--ink);
 }
 
+.formato-botoes {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.btn-formato {
+  width: 32px;
+  padding-inline: 0;
+  justify-content: center;
+  font-family: var(--font-serif);
+}
+
+.btn-formato[aria-pressed="true"],
+.btn-formato[aria-pressed="true"]:hover {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+
 .canvas-page {
   background: #fff;
   border-radius: var(--radius);
@@ -1113,7 +1132,8 @@ button .atalho-tecla {
   outline: none;
 }
 
-/* Miolo da folha: camada de destaque por trás, textarea transparente por cima. */
+/* Miolo da folha: por trás, a camada com o texto visível (estilos e destaques);
+   por cima, o textarea de letras transparentes (só o cursor e a seleção aparecem). */
 .folha-miolo {
   position: relative;
 }
@@ -1123,12 +1143,27 @@ button .atalho-tecla {
   inset: 0;
   height: 950px; /* mesma altura do textarea */
   overflow: hidden;
-  color: transparent; /* só o fundo do <mark> aparece */
   pointer-events: none;
+}
+
+/* Nenhum estilo pode mudar a largura das letras: o cursor do textarea depende dela. */
+.texto-negrito {
+  -webkit-text-stroke: 0.45px currentColor;
+}
+
+.texto-sublinhado {
+  text-decoration: underline;
+}
+
+.texto-inclinado {
+  display: inline-block;
+  transform: skewX(-10deg);
 }
 
 .folha-miolo .folha-texto-area {
   position: relative; /* acima da camada */
+  color: transparent;
+  caret-color: #1f2937;
   /* Sem barra visível: ela estreitaria o texto e as linhas quebrariam em
      lugares diferentes da camada de destaque (e do espelho de medição).
      A rolagem continua pela roda do mouse e pelo teclado. */
@@ -1139,8 +1174,17 @@ button .atalho-tecla {
   display: none;
 }
 
-.folha-destaque {
+.folha-miolo .folha-texto-area::placeholder {
+  color: var(--slate-400);
+}
+
+/* Translúcida: o texto visível está na camada, atrás da seleção. */
+.folha-miolo .folha-texto-area::selection {
   color: transparent;
+  background: rgba(59, 130, 246, 0.3);
+}
+
+.folha-destaque {
   background: #fde68a;
   border-radius: 3px;
   box-shadow: 0 0 0 2px #fde68a;

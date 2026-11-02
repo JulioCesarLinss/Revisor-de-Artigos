@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Intervalo } from "../rules/types";
+import { partesFormatadas, type TrechoFormatado } from "../workspace/formatacao.js";
 
 interface Props {
   valor: string;
@@ -10,9 +11,21 @@ interface Props {
   pedidoDestaque?: number;
   /** O usuário clicou dentro de um trecho destacado: a marca dele deve sumir. */
   onRemoverDestaque?: (trecho: Intervalo) => void;
+  /** Negrito, itálico e sublinhado (posições no texto bruto). */
+  formatacao?: TrechoFormatado[];
+  /** A seleção ou o cursor mudou (posições no texto bruto). */
+  onSelecao?: (inicio: number, fim: number) => void;
 }
 
 const SEM_DESTAQUES: Intervalo[] = [];
+const SEM_FORMATACAO: TrechoFormatado[] = [];
+/** Impede a quebra de linha entre uma palavra inclinada e o que está colado nela. */
+const SEM_QUEBRA = "⁠";
+
+/** Separa palavras e espaços nos pontos onde o texto pode quebrar de linha. */
+function pedacos(texto: string): string[] {
+  return texto.split(/(\s+|(?<=-))/).filter((p) => p.length > 0);
+}
 
 /** Largura de uma folha A4 a 96dpi (210mm). */
 const LARGURA_FOLHA_PX = 794;
@@ -83,15 +96,16 @@ function iguais(a: string[], b: string[]): boolean {
  * um único fluxo de texto dentro das folhas, sem bloco/caixa por parágrafo.
  * Cada folha tem um textarea invisível como "campo" (só texto); o texto bruto
  * é a fonte de verdade e é repaginado a cada tecla, de modo que o que não
- * cabe numa folha continua automaticamente na seguinte. Enter insere quebra
- * de parágrafo (linha em branco, como o modelo do documento); Shift+Enter,
- * quebra de linha dentro do parágrafo. O cursor é restaurado pela posição
- * absoluta após repaginar.
+ * cabe numa folha continua automaticamente na seguinte. Enter desce uma linha;
+ * dois Enter deixam a linha em branco que separa parágrafos. O cursor é
+ * restaurado pela posição absoluta após repaginar.
  *
- * Destaque: textarea não pinta parte do texto, então cada folha tem por trás
- * uma camada espelho (mesma tipografia, texto invisível) com os trechos em
- * <mark>. O textarea é transparente e fica por cima — o usuário edita
- * normalmente e vê o fundo amarelo no lugar certo.
+ * Destaque e formatação: textarea não pinta parte do texto, então cada folha
+ * tem por trás uma camada espelho, que é o texto que o usuário vê, com os
+ * trechos em <mark> e os estilos. O textarea fica por cima com as letras
+ * transparentes: só o cursor e a seleção aparecem. Por isso os estilos não podem
+ * mudar a largura das letras, ou o cursor se desalinharia: o negrito é um
+ * contorno, e o itálico é a letra normal inclinada (a fonte real tem outra largura).
  */
 export function ManuscritoPaginado({
   valor,
@@ -99,6 +113,8 @@ export function ManuscritoPaginado({
   destaques = SEM_DESTAQUES,
   pedidoDestaque,
   onRemoverDestaque,
+  formatacao = SEM_FORMATACAO,
+  onSelecao,
 }: Props) {
   const medidorRef = useRef<HTMLDivElement | null>(null);
   const editoresRef = useRef<(HTMLTextAreaElement | null)[]>([]);
@@ -206,20 +222,6 @@ export function ManuscritoPaginado({
     aplicar(montar(pagina, texto));
   };
 
-  const teclar = (pagina: number, e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
-    e.preventDefault(); // o texto é controlado: quem insere é o onChange abaixo
-    const el = e.currentTarget;
-    const ini = inicioDaPagina(pagina);
-    const inserido = e.shiftKey ? "\n" : "\n\n"; // Enter = parágrafo; Shift+Enter = linha
-    const novo = el.value.slice(0, el.selectionStart) + inserido + el.value.slice(el.selectionEnd);
-    cursor.current = {
-      inicio: ini + el.selectionStart + inserido.length,
-      fim: ini + el.selectionStart + inserido.length,
-    };
-    aplicar(montar(pagina, novo));
-  };
-
   /** Clique dentro de um trecho destacado apaga só a marca dele. */
   const clicar = (pagina: number, el: HTMLTextAreaElement) => {
     const posicao = inicioDaPagina(pagina) + el.selectionStart;
@@ -227,11 +229,44 @@ export function ManuscritoPaginado({
     if (trecho) onRemoverDestaque?.(trecho);
   };
 
-  /** Camada espelho da folha: o texto da folha com os trechos destacados em <mark>. */
+  /** Um pedaço do texto da folha (de `de` até `ate`) com seus estilos. */
+  const pintar = (ini: number, texto: string, de: number, ate: number) =>
+    partesFormatadas(texto.slice(de, ate), ini + de, formatacao).map((parte) => {
+      const classes = parte.estilos.map((e) => `texto-${e}`).join(" ");
+      if (!parte.estilos.includes("italico")) {
+        return (
+          <span key={parte.inicio} className={classes || undefined}>
+            {parte.texto}
+          </span>
+        );
+      }
+      // Inclinar exige caixas (inline-block); cada uma é um pedaço que não quebra,
+      // e o que encosta em outro trecho fica colado, como no textarea.
+      const antes = texto[parte.inicio - ini - 1];
+      const depois = texto[parte.inicio - ini + parte.texto.length];
+      return (
+        <Fragment key={parte.inicio}>
+          {antes && !/\s/.test(antes) && SEM_QUEBRA}
+          {pedacos(parte.texto).map((pedaco, i) =>
+            /^\s+$/.test(pedaco) ? (
+              <span key={i} className={classes}>
+                {pedaco}
+              </span>
+            ) : (
+              <span key={i} className={`${classes} texto-inclinado`}>
+                {pedaco}
+              </span>
+            ),
+          )}
+          {depois && !/\s/.test(depois) && SEM_QUEBRA}
+        </Fragment>
+      );
+    });
+
+  /** Camada espelho da folha: o texto visível, com estilos e trechos destacados em <mark>. */
   const camada = (pagina: number, texto: string) => {
     const ini = inicioDaPagina(pagina);
     const naFolha = destaques.filter((t) => t.fim > ini && t.inicio < ini + texto.length);
-    if (naFolha.length === 0) return null;
     let lido = 0;
     return (
       <div
@@ -244,11 +279,11 @@ export function ManuscritoPaginado({
         {naFolha.map((t) => {
           const de = Math.max(t.inicio - ini, 0);
           const ate = Math.min(t.fim - ini, texto.length);
-          const antes = texto.slice(lido, de);
+          const inicioAntes = lido;
           lido = ate;
           return (
             <Fragment key={t.inicio}>
-              {antes}
+              {pintar(ini, texto, inicioAntes, de)}
               <mark
                 className="folha-destaque"
                 ref={(el) => {
@@ -256,12 +291,12 @@ export function ManuscritoPaginado({
                   if (el && t === destaques[0] && t.inicio >= ini) marcaRef.current = el;
                 }}
               >
-                {texto.slice(de, ate)}
+                {pintar(ini, texto, de, ate)}
               </mark>
             </Fragment>
           );
         })}
-        {texto.slice(lido)}
+        {pintar(ini, texto, lido, texto.length)}
       </div>
     );
   };
@@ -270,8 +305,8 @@ export function ManuscritoPaginado({
     <div className="folhas-area">
       <p className="folhas-dica">
         Rascunho em folhas A4: o texto flui continuamente e continua na folha seguinte ao chegar ao fim.{" "}
-        <kbd className="atalho-tecla">Enter</kbd> novo parágrafo ·{" "}
-        <kbd className="atalho-tecla">Shift+Enter</kbd> quebra de linha.
+        <kbd className="atalho-tecla">Enter</kbd> desce uma linha · dois{" "}
+        <kbd className="atalho-tecla">Enter</kbd> novo parágrafo.
       </p>
 
       {/* Espelho oculto de medição — mesma tipografia e largura do miolo da folha. */}
@@ -297,8 +332,11 @@ export function ManuscritoPaginado({
               placeholder="Digite ou cole o manuscrito aqui…"
               spellCheck={false}
               onChange={(e) => editar(folhaIdx, e.target.value)}
-              onKeyDown={(e) => teclar(folhaIdx, e)}
               onClick={(e) => clicar(folhaIdx, e.currentTarget)}
+              onSelect={(e) => {
+                const ini = inicioDaPagina(folhaIdx);
+                onSelecao?.(ini + e.currentTarget.selectionStart, ini + e.currentTarget.selectionEnd);
+              }}
               onScroll={(e) => {
                 // Mantém a camada de destaque alinhada se o textarea rolar.
                 const camadaEl = camadasRef.current[folhaIdx];

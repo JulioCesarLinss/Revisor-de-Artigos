@@ -144,6 +144,26 @@ describe("workspace/armazenamento — persistência", () => {
     expect(carregado?.textoDiagnosticado).toBeNull();
   });
 
+  test("formatação é salva e recarregada; entradas malformadas e dados antigos não atrapalham", () => {
+    const st = storageFalso();
+    const formatacao: EstadoWorkspace["formatacao"] = [{ inicio: 0, fim: 4, estilo: "negrito" }];
+    salvarWorkspace({ ...WORKSPACE, formatacao }, st);
+    expect(carregarWorkspace(st)?.formatacao).toEqual(formatacao);
+
+    const parcial = validarWorkspace({
+      ...WORKSPACE,
+      formatacao: [formatacao[0], { inicio: 1, fim: 2, estilo: "piscando" }, { inicio: "x", fim: 2, estilo: "italico" }],
+    });
+    expect(parcial?.formatacao).toEqual(formatacao);
+    expect(validarWorkspace(WORKSPACE)?.formatacao).toEqual([]);
+  });
+
+  test("restaurarOriginalWorkspace volta ao texto do arquivo sem formatação", () => {
+    const st = storageFalso();
+    salvarWorkspace({ ...WORKSPACE, bruto: "Editado.", formatacao: [{ inicio: 0, fim: 4, estilo: "italico" }] }, st);
+    expect(restaurarOriginalWorkspace(st)?.formatacao ?? []).toEqual([]);
+  });
+
   test("restaurarOriginalWorkspace volta ao texto do arquivo e zera o rastro", () => {
     const st = storageFalso();
     salvarWorkspace({ ...WORKSPACE, bruto: "Texto editado depois." }, st);

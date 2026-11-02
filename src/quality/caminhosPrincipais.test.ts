@@ -44,7 +44,7 @@ describe("Sprint 5 — caminhos principais", () => {
     // desfazer todas as correções volta ao manuscrito importado
     let passo = desempilhar(pilha);
     while (passo) {
-      texto = passo.texto;
+      texto = passo.estado;
       passo = desempilhar(passo.pilha);
     }
     expect(texto).toBe(MANUSCRITO);

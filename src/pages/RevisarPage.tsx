@@ -19,7 +19,14 @@ import { PainelSugestao } from "../ui/PainelSugestao";
 import { ProblemaCard } from "../ui/ProblemaCard";
 import { Resumo } from "../ui/Resumo";
 import { registrar, type RegistroAlteracao } from "../workspace/historico";
-import { ajustarTrechos, localizarTrecho, unirTrechos } from "../workspace/destaques.js";
+import { ajustarTrechos, localizarApontamento, unirTrechos } from "../workspace/destaques.js";
+import {
+  ajustarFormatacao,
+  alternarEstilo,
+  estilosEm,
+  type Estilo,
+  type TrechoFormatado,
+} from "../workspace/formatacao.js";
 import { posicoesParagrafos } from "../workspace/paragrafos";
 import { desempilhar, empilhar } from "../workspace/desfazer";
 import { gerarDocx, MIME_DOCX, nomeExportado } from "../exportar/docx";
@@ -32,6 +39,19 @@ import { carregarWorkspaceNuvem, salvarWorkspaceNuvem } from "../firebase/persis
 const ATRASO_REANALISE_MS = 500;
 /** Teclas digitadas com menos que isso de intervalo viram um único passo do "Desfazer". */
 const PAUSA_NOVO_PASSO_MS = 1000;
+
+/** Texto e formatação juntos: um passo do "Desfazer", e a base de `trechos` no estado da tela. */
+interface TextoFormatado {
+  texto: string;
+  trechos: TrechoFormatado[];
+}
+
+const BOTOES_FORMATO: { estilo: Estilo; letra: string; rotulo: string; atalho: string; classe: string }[] = [
+  { estilo: "negrito", letra: "N", rotulo: "Negrito", atalho: "Ctrl+B", classe: "texto-negrito" },
+  { estilo: "italico", letra: "I", rotulo: "Itálico", atalho: "Ctrl+I", classe: "texto-inclinado" },
+  { estilo: "sublinhado", letra: "S", rotulo: "Sublinhado", atalho: "Ctrl+U", classe: "texto-sublinhado" },
+];
+const TECLAS_FORMATO: Record<string, Estilo> = { b: "negrito", i: "italico", u: "sublinhado" };
 
 /** Marcas no editor: valem para `texto`; `pedido` muda a cada "Localizar" (leva a tela até elas). */
 interface Destaque {
@@ -57,6 +77,26 @@ export default function RevisarPage() {
   const [bruto, setBruto] = useState(salvo?.bruto ?? "");
   // Contadores da barra: vêm do texto atual, a cada tecla (não dependem do "Analisar").
   const contagem = useMemo(() => importarTexto(bruto), [bruto]);
+
+  // Negrito, itálico e sublinhado. Mudança de texto que não veio da digitação
+  // (correção, sugestão): as faixas acompanham, ainda neste render.
+  const [formato, setFormato] = useState<TextoFormatado>({ texto: bruto, trechos: salvo?.formatacao ?? [] });
+  if (formato.texto !== bruto) {
+    setFormato({ texto: bruto, trechos: ajustarFormatacao(formato.trechos, formato.texto, bruto) });
+  }
+  /** Botões ligados: o que se digitar agora sai nesses estilos. */
+  const [estilosAtivos, setEstilosAtivos] = useState<Estilo[]>([]);
+  const selecao = useRef({ inicio: 0, fim: 0 });
+
+  /** Cursor ou seleção mudou: os botões passam a mostrar os estilos daquele ponto. */
+  const aoSelecionar = useCallback(
+    (inicio: number, fim: number) => {
+      if (selecao.current.inicio === inicio && selecao.current.fim === fim) return;
+      selecao.current = { inicio, fim };
+      setEstilosAtivos(estilosEm(formato.trechos, inicio, fim));
+    },
+    [formato.trechos],
+  );
   /**
    * A análise começa no botão "Analisar"; a partir daí os avisos acompanham
    * as correções. Um texto restaurado (volta de outra tela) é trabalho em
@@ -146,8 +186,24 @@ export default function RevisarPage() {
    * para o dispositivo nem para a nuvem). Correções e sugestões aceitas são um
    * passo cada; a digitação vira um passo a cada pausa de PAUSA_NOVO_PASSO_MS.
    */
-  const [pilhaDesfazer, setPilhaDesfazer] = useState<string[]>([]);
+  const [pilhaDesfazer, setPilhaDesfazer] = useState<TextoFormatado[]>([]);
   const ultimaTecla = useRef(0);
+
+  /** Com seleção, aplica na seleção; sem ela, vale para o que se digitar a seguir. */
+  const alternarFormato = useCallback(
+    (estilo: Estilo) => {
+      const { inicio, fim } = selecao.current;
+      if (fim > inicio) {
+        const trechos = alternarEstilo(formato.trechos, estilo, inicio, fim);
+        setPilhaDesfazer((p) => empilhar(p, formato));
+        setFormato({ texto: formato.texto, trechos });
+        setEstilosAtivos(estilosEm(trechos, inicio, fim));
+      } else {
+        setEstilosAtivos((a) => (a.includes(estilo) ? a.filter((e) => e !== estilo) : [...a, estilo]));
+      }
+    },
+    [formato],
+  );
 
   // Exportar: nome do arquivo anexado (base do nome exportado) e o menu aberto.
   const [nomeArquivo, setNomeArquivo] = useState<string | null>(null);
@@ -182,20 +238,20 @@ export default function RevisarPage() {
   const [textoDiagnosticado, setTextoDiagnosticado] = useState<string | null>(salvo?.textoDiagnosticado ?? null);
   const geminiOcupado = useRef(false);
 
-  /** Localizar um apontamento: todos os do parágrafo cujo trecho está no texto. */
+  /** Localizar um apontamento: todos os erros que a IA apontou no mesmo parágrafo. */
   const localizarDiagnostico = useCallback(
     (alvo: DiagnosticoGemini) => {
-      const pos = posicoes[alvo.paragrafo - 1];
-      if (!pos) return;
-      const paragrafo = bruto.slice(pos.inicio, pos.fim);
-      // Trecho ausente ou que a IA não copiou do texto: marca o parágrafo.
-      if (!localizarTrecho(paragrafo, alvo.trecho)) return marcar(alvo.paragrafo);
-      const doParagrafo = diagnostico?.ok
-        ? diagnostico.diagnosticos.filter((d) => d.paragrafo === alvo.paragrafo)
-        : [alvo];
+      const textos = posicoes.map((p) => bruto.slice(p.inicio, p.fim));
+      const achado = localizarApontamento(textos, alvo);
+      // Nada confiável no texto: marca o parágrafo que a IA citou.
+      if (!achado) return marcar(alvo.paragrafo);
+      const apontamentos = diagnostico?.ok ? diagnostico.diagnosticos : [alvo];
       marcar(
-        alvo.paragrafo,
-        doParagrafo.flatMap((d) => localizarTrecho(paragrafo, d.trecho) ?? []),
+        achado.paragrafo,
+        apontamentos.flatMap((d) => {
+          const local = localizarApontamento(textos, d);
+          return local?.paragrafo === achado.paragrafo ? [local.posicao] : [];
+        }),
       );
     },
     [posicoes, bruto, diagnostico, marcar],
@@ -261,8 +317,8 @@ export default function RevisarPage() {
   // Persiste o workspace a cada mudança: /historico lê daqui e o rascunho
   // sobrevive à navegação entre rotas.
   useEffect(() => {
-    salvarWorkspace({ bruto, textoOriginal, historico, diagnostico, textoDiagnosticado });
-  }, [bruto, textoOriginal, historico, diagnostico, textoDiagnosticado]);
+    salvarWorkspace({ bruto, textoOriginal, historico, formatacao: formato.trechos, diagnostico, textoDiagnosticado });
+  }, [bruto, textoOriginal, historico, formato.trechos, diagnostico, textoDiagnosticado]);
 
   // Com Firebase, carrega da nuvem quando o dispositivo local está vazio
   // (primeiro acesso deste dispositivo à conta).
@@ -273,6 +329,7 @@ export default function RevisarPage() {
     void carregarWorkspaceNuvem(uid).then((nuvem) => {
       if (!nuvem || bruto.trim().length > 0) return; // só preenche vazio
       setBruto(nuvem.bruto);
+      setFormato({ texto: nuvem.bruto, trechos: nuvem.formatacao ?? [] });
       setTextoOriginal(nuvem.textoOriginal ?? null);
       setHistorico(nuvem.historico ?? []);
       setDiagnostico(nuvem.diagnostico ?? null);
@@ -284,12 +341,12 @@ export default function RevisarPage() {
   // cada tecla). O localStorage continua sendo a fonte imediata/offline.
   useEffect(() => {
     if (!uid) return;
-    const estado = { bruto, textoOriginal, historico, diagnostico, textoDiagnosticado };
+    const estado = { bruto, textoOriginal, historico, formatacao: formato.trechos, diagnostico, textoDiagnosticado };
     const t = setTimeout(() => {
       void salvarWorkspaceNuvem(uid, estado);
     }, 1200);
     return () => clearTimeout(t);
-  }, [uid, bruto, textoOriginal, historico, diagnostico, textoDiagnosticado]);
+  }, [uid, bruto, textoOriginal, historico, formato.trechos, diagnostico, textoDiagnosticado]);
 
   /**
    * Heurística 7 (Nielsen) — flexibilidade e eficiência de uso: acelerador de
@@ -310,21 +367,25 @@ export default function RevisarPage() {
   const editar = useCallback(
     (novo: string) => {
       const agora = Date.now();
-      if (agora - ultimaTecla.current > PAUSA_NOVO_PASSO_MS) setPilhaDesfazer((p) => empilhar(p, bruto));
+      if (agora - ultimaTecla.current > PAUSA_NOVO_PASSO_MS) setPilhaDesfazer((p) => empilhar(p, formato));
       ultimaTecla.current = agora;
       setBruto(novo);
+      setFormato({ texto: novo, trechos: ajustarFormatacao(formato.trechos, formato.texto, novo, estilosAtivos) });
     },
-    [bruto],
+    [formato, estilosAtivos],
   );
 
   /** Volta o texto ao estado anterior à última alteração. */
   const desfazer = useCallback(() => {
     const passo = desempilhar(pilhaDesfazer);
     if (!passo) return;
+    const { texto } = passo.estado;
     setPilhaDesfazer(passo.pilha);
-    setBruto(passo.texto);
+    setBruto(texto);
+    setFormato(passo.estado);
+    setEstilosAtivos(estilosEm(passo.estado.trechos, selecao.current.inicio, selecao.current.fim));
     ultimaTecla.current = 0; // a próxima digitação abre um passo novo
-    if (acompanhando) setAnalise(passo.texto.trim().length > 0 ? iniciarRevisao(passo.texto) : null);
+    if (acompanhando) setAnalise(texto.trim().length > 0 ? iniciarRevisao(texto) : null);
     setStatusSistema("Última alteração desfeita.");
   }, [pilhaDesfazer, acompanhando]);
 
@@ -338,12 +399,12 @@ export default function RevisarPage() {
     setMenuExportar(false);
     const nome = nomeExportado(nomeArquivo);
     try {
-      baixarArquivo(gerarDocx(bruto), nome, MIME_DOCX);
+      baixarArquivo(gerarDocx(bruto, formato.trechos), nome, MIME_DOCX);
       setStatusSistema(`"${nome}" gerado com formatação ABNT básica.${avisoPendente}`);
     } catch {
       setStatusSistema("Não foi possível gerar o arquivo .docx. Tente novamente.");
     }
-  }, [bruto, nomeArquivo, avisoPendente]);
+  }, [bruto, formato.trechos, nomeArquivo, avisoPendente]);
 
   /** Copia o texto revisado para colar no Word ou no Google Docs. */
   const copiarTexto = useCallback(async () => {
@@ -397,6 +458,9 @@ export default function RevisarPage() {
     }
 
     setBruto(resultado.texto);
+    setFormato({ texto: resultado.texto, trechos: [] }); // a importação traz só o texto
+    setEstilosAtivos([]);
+    selecao.current = { inicio: 0, fim: 0 };
     setTextoOriginal(resultado.texto); // guarda o original do upload p/ "Voltar ao original"
     setDestaque(null); // o texto novo invalida um destaque antigo
     setDiagnostico(null); // o diagnóstico anterior pertencia ao texto anterior
@@ -413,7 +477,7 @@ export default function RevisarPage() {
     (problema: Problema) => {
       if (!problema.acao) return;
       const corrigido = aplicarCorrecao(bruto, problema.acao, problema.paragrafo);
-      setPilhaDesfazer((p) => empilhar(p, bruto));
+      setPilhaDesfazer((p) => empilhar(p, formato));
       setBruto(corrigido);
       setAnalise(iniciarRevisao(corrigido));
       setHistorico((h) =>
@@ -421,7 +485,7 @@ export default function RevisarPage() {
       );
       setStatusSistema(`Correção aplicada no parágrafo ${problema.paragrafo} — análise atualizada.`);
     },
-    [bruto],
+    [bruto, formato],
   );
 
   const pedirSugestao = useCallback(
@@ -455,7 +519,7 @@ export default function RevisarPage() {
     (textoFinal: string) => {
       if (!sugestaoAtiva) return;
       const novo = aplicarSugestao(bruto, sugestaoAtiva, textoFinal);
-      setPilhaDesfazer((p) => empilhar(p, bruto));
+      setPilhaDesfazer((p) => empilhar(p, formato));
       setBruto(novo);
       setAnalise(iniciarRevisao(novo));
       setHistorico((h) =>
@@ -468,7 +532,7 @@ export default function RevisarPage() {
       setStatusSistema(`Sugestão aceita no parágrafo ${sugestaoAtiva.paragrafo} — análise atualizada.`);
       setSugestaoAtiva(null);
     },
-    [bruto, sugestaoAtiva],
+    [bruto, formato, sugestaoAtiva],
   );
 
   /**
@@ -533,6 +597,23 @@ export default function RevisarPage() {
           </span>
           <span className="stat">
             <strong>{contagem.totalPalavras}</strong> palavras
+          </span>
+          <span className="formato-botoes" role="group" aria-label="Formatação do texto">
+            {BOTOES_FORMATO.map((b) => (
+              <button
+                key={b.estilo}
+                className="btn btn-formato"
+                type="button"
+                aria-label={b.rotulo}
+                aria-pressed={estilosAtivos.includes(b.estilo)}
+                title={`${b.rotulo} (${b.atalho}): aplica no texto selecionado ou no que você digitar a seguir`}
+                // Sem isto, o clique tiraria o foco do editor e o cursor sumiria.
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => alternarFormato(b.estilo)}
+              >
+                <span className={b.classe}>{b.letra}</span>
+              </button>
+            ))}
           </span>
           <span style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
             {/* Desfazer: substitui as cópias por etapa (só em memória). */}
@@ -645,6 +726,12 @@ export default function RevisarPage() {
         {/* Arrastar-e-soltar: só reage a arquivos, preserva o drag interno. */}
         <div
           className={`canvas-page ${arrastando ? "arrastando" : ""}`}
+          onKeyDown={(e) => {
+            const estilo = TECLAS_FORMATO[e.key.toLowerCase()];
+            if (!estilo || !(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey) return;
+            e.preventDefault(); // Ctrl+U abriria o código-fonte da página
+            alternarFormato(estilo);
+          }}
           onDragOver={(e) => {
             if (!e.dataTransfer.types.includes("Files")) return;
             e.preventDefault();
@@ -668,6 +755,8 @@ export default function RevisarPage() {
             destaques={destaque?.trechos}
             pedidoDestaque={destaque?.pedido}
             onRemoverDestaque={removerMarca}
+            formatacao={formato.trechos}
+            onSelecao={aoSelecionar}
           />
         </div>
       </section>

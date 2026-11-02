@@ -7,9 +7,9 @@ describe("workspace/desfazer", () => {
     pilha = empilhar(pilha, "v1");
     pilha = empilhar(pilha, "v2");
     const a = desempilhar(pilha);
-    expect(a?.texto).toBe("v2");
+    expect(a?.estado).toBe("v2");
     const b = desempilhar(a!.pilha);
-    expect(b?.texto).toBe("v1");
+    expect(b?.estado).toBe("v1");
     expect(desempilhar(b!.pilha)).toBeNull();
   });
 

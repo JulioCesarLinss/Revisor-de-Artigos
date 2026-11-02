@@ -1,11 +1,14 @@
 import { importarTexto } from "../document/importar.js";
+import { partesFormatadas, type ParteFormatada, type TrechoFormatado } from "../workspace/formatacao.js";
+import { posicoesParagrafos } from "../workspace/paragrafos.js";
 import { criarZip } from "./zip.js";
 
 /**
  * Exportação do manuscrito revisado em .docx, com formatação ABNT básica:
  * A4, margens 3 cm (superior/esquerda) e 2 cm (inferior/direita), Times New
  * Roman 12, espaçamento 1,5, texto justificado com recuo de 1,25 cm na
- * primeira linha e títulos (mesma heurística da análise) em negrito.
+ * primeira linha e títulos (mesma heurística da análise) em negrito, além do
+ * negrito, itálico e sublinhado aplicados no editor.
  * A formatação do Word original não volta: a importação guarda só o texto.
  */
 
@@ -27,9 +30,13 @@ function escapar(texto: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/** Texto de um parágrafo em runs: quebra de linha → <w:br/>, tabulação → <w:tab/>. */
-function runs(texto: string, negrito: boolean): string {
-  const propriedades = negrito ? "<w:rPr><w:b/><w:bCs/></w:rPr>" : "";
+/** Um trecho com os mesmos estilos em um run: quebra de linha → <w:br/>, tabulação → <w:tab/>. */
+function run({ texto, estilos }: ParteFormatada, ehTitulo: boolean): string {
+  const estilo =
+    (ehTitulo || estilos.includes("negrito") ? "<w:b/><w:bCs/>" : "") +
+    (estilos.includes("italico") ? "<w:i/><w:iCs/>" : "") +
+    (estilos.includes("sublinhado") ? '<w:u w:val="single"/>' : "");
+  const propriedades = estilo ? `<w:rPr>${estilo}</w:rPr>` : "";
   const conteudo = texto
     .replace(/\r/g, "")
     .split("\n")
@@ -43,11 +50,11 @@ function runs(texto: string, negrito: boolean): string {
   return `<w:r>${propriedades}${conteudo}</w:r>`;
 }
 
-function paragrafoXml(texto: string, ehTitulo: boolean): string {
+function paragrafoXml(partes: ParteFormatada[], ehTitulo: boolean): string {
   const propriedades = ehTitulo
     ? `<w:pPr><w:keepNext/><w:spacing w:before="${ESPACO_1_5}" w:after="${ESPACO_1_5}" w:line="${ESPACO_1_5}" w:lineRule="auto"/><w:jc w:val="left"/></w:pPr>`
     : `<w:pPr><w:spacing w:after="0" w:line="${ESPACO_1_5}" w:lineRule="auto"/><w:ind w:firstLine="${RECUO_1_25CM}"/><w:jc w:val="both"/></w:pPr>`;
-  return `<w:p>${propriedades}${runs(texto, ehTitulo)}</w:p>`;
+  return `<w:p>${propriedades}${partes.map((parte) => run(parte, ehTitulo)).join("")}</w:p>`;
 }
 
 const CABECALHO_XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
@@ -86,11 +93,16 @@ const STYLES =
   '<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style>' +
   "</w:styles>";
 
-/** Gera os bytes do .docx a partir do texto bruto do editor. */
-export function gerarDocx(bruto: string): Uint8Array {
+/** Gera os bytes do .docx a partir do texto bruto e da formatação do editor. */
+export function gerarDocx(bruto: string, formatacao: TrechoFormatado[] = []): Uint8Array {
   const paragrafos = importarTexto(bruto).paragrafos;
+  const posicoes = posicoesParagrafos(bruto);
   const corpo =
-    paragrafos.length > 0 ? paragrafos.map((p) => paragrafoXml(p.texto, p.ehTitulo === true)).join("") : "<w:p/>";
+    paragrafos.length > 0
+      ? paragrafos
+          .map((p, i) => paragrafoXml(partesFormatadas(p.texto, posicoes[i].inicio, formatacao), p.ehTitulo === true))
+          .join("")
+      : "<w:p/>";
 
   const documento =
     CABECALHO_XML +

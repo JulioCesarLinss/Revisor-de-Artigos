@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { ajustarTrechos, localizarTrecho, unirTrechos } from "./destaques";
+import { ajustarTrechos, localizarAproximado, localizarApontamento, localizarTrecho, unirTrechos } from "./destaques";
 
 /** Texto apontado por cada marca, para os testes lerem como o usuário vê. */
 const lidos = (texto: string, trechos: { inicio: number; fim: number }[]) =>
@@ -69,6 +69,58 @@ describe("workspace/destaques — cada erro tem a própria marca", () => {
       { inicio: 10, fim: 12 },
       { inicio: 12, fim: 14 },
     ]);
+  });
+});
+
+describe("workspace/destaques — apontamento da IA no manuscrito", () => {
+  const PARAGRAFOS = [
+    "COMPUTAÇÃO QUÂNTICA",
+    "RESUMO",
+    "A computação é fundamentada nos princípios mecânica quântica e empregam qubits.",
+    "Essas características ajudam a solucionar determinados problmas de maneira eficiente.",
+    "Os problemas restantes ficam para trabalhos futuros.",
+  ];
+  const lido = (r: ReturnType<typeof localizarApontamento>) =>
+    r && { paragrafo: r.paragrafo, texto: PARAGRAFOS[r.paragrafo - 1].slice(r.posicao.inicio, r.posicao.fim) };
+  const apontar = (paragrafo: number, trecho?: string, descricao = "Problema.", sugestao = "") =>
+    lido(localizarApontamento(PARAGRAFOS, { paragrafo, trecho, descricao, sugestao }));
+
+  test("trecho certo no parágrafo certo", () => {
+    expect(apontar(3, "princípios mecânica quântica")).toEqual({ paragrafo: 3, texto: "princípios mecânica quântica" });
+  });
+
+  test("número do parágrafo errado: acha o trecho no parágrafo vizinho", () => {
+    expect(apontar(3, "problmas")).toEqual({ paragrafo: 4, texto: "problmas" });
+  });
+
+  test("palavra já corrigida pela IA: acha o erro no parágrafo próximo, não o acerto mais longe", () => {
+    expect(apontar(4, "problemas")).toEqual({ paragrafo: 4, texto: "problmas" });
+    expect(apontar(3, "problemas")).toEqual({ paragrafo: 4, texto: "problmas" });
+  });
+
+  test("sem trecho (diagnóstico antigo): usa o termo citado na descrição", () => {
+    expect(apontar(3, undefined, "Erro de digitação na palavra 'problemas'.", "Corrija para 'problemas'.")).toEqual({
+      paragrafo: 4,
+      texto: "problmas",
+    });
+  });
+
+  test("sem trecho: usa a frase citada na sugestão, e ignora termo curto ('da')", () => {
+    expect(
+      apontar(3, "", "Falta da preposição 'da' entre os substantivos.", "Altere para 'princípios da mecânica quântica'."),
+    ).toEqual({ paragrafo: 3, texto: "princípios mecânica quântica" });
+  });
+
+  test("nada confiável: devolve null e a tela marca o parágrafo inteiro", () => {
+    expect(apontar(3, "frase que a IA inventou do nada")).toBeNull();
+    expect(apontar(3, undefined, "Parágrafo vago, sem citar palavras.", "Detalhe melhor.")).toBeNull();
+    expect(apontar(1, undefined, "Termo 'problemas' longe daqui.")).toBeNull();
+  });
+
+  test("busca aproximada não confunde palavras curtas nem muito diferentes", () => {
+    expect(localizarAproximado("Um texto para testar.", "pra")).toBeNull();
+    expect(localizarAproximado("Um texto para testar.", "contexto geral")).toBeNull();
+    expect(localizarAproximado("Termina em problmas, e segue.", "problemas")).toEqual({ inicio: 11, fim: 19 });
   });
 });
 

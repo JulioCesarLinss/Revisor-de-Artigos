@@ -65,6 +65,27 @@ describe("exportar/docx", () => {
     expect(documento).toContain("<w:br/>");
   });
 
+  test("negrito, itálico e sublinhado do editor saem no trecho certo, sem perder texto", async () => {
+    const pos = (trecho: string) => {
+      const inicio = MANUSCRITO.indexOf(trecho);
+      return { inicio, fim: inicio + trecho.length };
+    };
+    const zip = gerarDocx(MANUSCRITO, [
+      { ...pos("Primeiro"), estilo: "negrito" },
+      { ...pos("parágrafo do"), estilo: "italico" },
+      { ...pos("do texto"), estilo: "sublinhado" },
+    ]);
+    const documento = lerDoZip(zip, "word/document.xml")!;
+    const run = (props: string, texto: string) =>
+      `<w:r><w:rPr>${props}</w:rPr><w:t xml:space="preserve">${texto}</w:t></w:r>`;
+
+    expect(documento).toContain(run("<w:b/><w:bCs/>", "Primeiro"));
+    expect(documento).toContain(run("<w:i/><w:iCs/>", "parágrafo "));
+    expect(documento).toContain(run('<w:i/><w:iCs/><w:u w:val="single"/>', "do"));
+    expect(documento).toContain(run('<w:u w:val="single"/>', " texto"));
+    expect(await extrairTextoDocx(zip)).toBe(MANUSCRITO);
+  });
+
   test("texto vazio gera documento válido com um parágrafo vazio", () => {
     const documento = lerDoZip(gerarDocx(""), "word/document.xml")!;
     expect(documento).toContain("<w:p/>");

@@ -1,5 +1,6 @@
 import type { OrigemAlteracao, RegistroAlteracao } from "./historico";
 import type { ResultadoDiagnostico } from "../ai/gemini";
+import { ESTILOS, type TrechoFormatado } from "./formatacao.js";
 
 /**
  * Persistência local do workspace de revisão (texto atual, texto original e
@@ -25,6 +26,8 @@ export interface EstadoWorkspace {
   /** Texto do arquivo original enviado (null quando nada foi anexado). */
   textoOriginal?: string | null;
   historico: RegistroAlteracao[];
+  /** Negrito, itálico e sublinhado aplicados no editor (posições em `bruto`). */
+  formatacao?: TrechoFormatado[];
   /**
    * Último diagnóstico do Gemini pedido na tela /revisar. Fica aqui para
    * sobreviver à troca de abas (o componente desmonta ao navegar) até o
@@ -74,6 +77,16 @@ function ehDiagnostico(v: unknown): v is ResultadoDiagnostico {
   return Array.isArray(d.diagnosticos) && d.diagnosticos.every(ehApontamento);
 }
 
+function ehTrechoFormatado(v: unknown): v is TrechoFormatado {
+  if (typeof v !== "object" || v === null) return false;
+  const t = v as Partial<TrechoFormatado>;
+  return (
+    typeof t.inicio === "number" &&
+    typeof t.fim === "number" &&
+    ESTILOS.includes(t.estilo as TrechoFormatado["estilo"])
+  );
+}
+
 function ehRegistro(v: unknown): v is RegistroAlteracao {
   if (typeof v !== "object" || v === null) return false;
   const r = v as Partial<RegistroAlteracao>;
@@ -104,6 +117,7 @@ export function validarWorkspace(dados: unknown): EstadoWorkspace | null {
     bruto: d.bruto,
     textoOriginal: d.textoOriginal ?? null,
     historico: d.historico.filter(ehRegistro),
+    formatacao: Array.isArray(d.formatacao) ? d.formatacao.filter(ehTrechoFormatado) : [],
     // Diagnóstico malformado é descartado (nunca derruba o manuscrito).
     diagnostico: ehDiagnostico(d.diagnostico) ? d.diagnostico : null,
     textoDiagnosticado: typeof d.textoDiagnosticado === "string" ? d.textoDiagnosticado : null,
