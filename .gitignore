@@ -4,6 +4,12 @@ dist/
 .DS_Store
 .vercel
 
+# Artefatos do Playwright (relatórios, rastros, vídeos)
+test-results/
+playwright-report/
+blob-report/
+.resultados-e2e.json
+
 # Segredos e chaves de API — nunca versionar (repositório público)
 .env*
 # Exceção: o modelo sem valores (guia para criar o .env.local)
