@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import {
   chaveGemini,
+  contarApontamentos,
   executarDiagnostico,
   interpretarDiagnostico,
   recortarParagrafos,
@@ -118,6 +119,24 @@ describe("ai/gemini — interpretarDiagnostico", () => {
       // H9: motivo em português, sem vazar stacktrace ou JSON cru.
       expect(r.motivo).toContain("formato");
     }
+  });
+});
+
+describe("ai/gemini — contarApontamentos (resumo da análise)", () => {
+  test("conta total e cada severidade, inclusive lista vazia", () => {
+    const r = interpretarDiagnostico(
+      resposta([
+        { paragrafo: 1, descricao: "A", severidade: "alta" },
+        { paragrafo: 2, descricao: "B", severidade: "media" },
+        { paragrafo: 3, descricao: "C", severidade: "baixa" },
+        { paragrafo: 4, descricao: "D", severidade: "alta" },
+      ]),
+      10,
+    );
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(contarApontamentos(r.diagnosticos)).toEqual({ total: 4, altos: 2, medios: 1, baixos: 1 });
+    expect(contarApontamentos([])).toEqual({ total: 0, altos: 0, medios: 0, baixos: 0 });
   });
 });
 

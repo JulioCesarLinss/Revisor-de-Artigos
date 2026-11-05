@@ -301,6 +301,27 @@ body {
   gap: 8px;
 }
 
+.resumo-subtitulo {
+  margin: 0 0 6px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--slate-500);
+}
+
+/* Bloco do Gemini dentro do card: complementa as regras, nunca as substitui. */
+.resumo-gemini {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--slate-200);
+}
+
+.resumo-gemini .resumo-legenda {
+  margin: 8px 0 0;
+}
+
 .resumo-item {
   text-align: center;
   border-radius: 8px;

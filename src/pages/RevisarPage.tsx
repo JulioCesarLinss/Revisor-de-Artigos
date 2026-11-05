@@ -762,7 +762,7 @@ export default function RevisarPage() {
       </section>
 
       <aside className="inspector" aria-label="Resultado da análise">
-        <Resumo analise={analise} />
+        <Resumo analise={analise} diagnostico={diagnostico} />
 
         {/* Sprint 3 — configuração da assistência IA (opcional) */}
         <div className="resumo-card">

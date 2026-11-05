@@ -37,6 +37,28 @@ export type ResultadoDiagnostico =
   | { ok: true; resumo: string; diagnosticos: DiagnosticoGemini[]; truncado: boolean }
   | { ok: false; motivo: string };
 
+/**
+ * Contagem dos apontamentos por severidade — base do resumo da análise na tela
+ * de revisão, para que o card "Resumo da análise" também mostre o diagnóstico
+ * do Gemini (sempre ao lado das regras, nunca no lugar delas: DC-02).
+ */
+export function contarApontamentos(diagnosticos: DiagnosticoGemini[]): {
+  total: number;
+  altos: number;
+  medios: number;
+  baixos: number;
+} {
+  let altos = 0;
+  let medios = 0;
+  let baixos = 0;
+  for (const d of diagnosticos) {
+    if (d.severidade === "alta") altos++;
+    else if (d.severidade === "baixa") baixos++;
+    else medios++;
+  }
+  return { total: diagnosticos.length, altos, medios, baixos };
+}
+
 /** Ordem de tentativa: o primeiro é o mais barato; o segundo cobre instabilidade. */
 const MODELOS = ["gemini-flash-lite-latest", "gemini-flash-latest"];
 const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models";
