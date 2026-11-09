@@ -1,6 +1,6 @@
 # Revisor-de-Artigos
 
-Projeto de revisão acadêmica com foco em normas ABNT e assistência por IA.
+Projeto de revisão acadêmica com foco em normas ABNT e assistência por inteligência artificial.
 
 ## O que é
 
