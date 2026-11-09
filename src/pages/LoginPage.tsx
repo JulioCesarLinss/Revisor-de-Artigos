@@ -8,6 +8,82 @@ import { configurado as firebaseConfigurado } from "../firebase/config";
 
 type Aba = "login" | "cadastro";
 
+/** Ícones de traço da tela (herdam a cor do texto). */
+const ICONES = {
+  email: (
+    <>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="m3 7 9 6 9-6" />
+    </>
+  ),
+  cadeado: (
+    <>
+      <rect x="5" y="11" width="14" height="10" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </>
+  ),
+  pessoa: (
+    <>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21a8 8 0 0 1 16 0" />
+    </>
+  ),
+  olho: (
+    <>
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
+  olhoFechado: (
+    <>
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+      <circle cx="12" cy="12" r="3" />
+      <path d="M3 3l18 18" />
+    </>
+  ),
+  lupa: (
+    <>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m21 21-4.3-4.3" />
+    </>
+  ),
+  documento: (
+    <>
+      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+      <path d="M14 3v5h5M9 13h6M9 17h4" />
+    </>
+  ),
+  brilho: (
+    <>
+      <path d="M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7-4.7-1.8 4.7-1.8z" />
+      <path d="M19 15l.8 2.2 2.2.8-2.2.8L19 21l-.8-2.2-2.2-.8 2.2-.8z" />
+    </>
+  ),
+};
+
+function Icone({ nome, className }: { nome: keyof typeof ICONES; className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {ICONES[nome]}
+    </svg>
+  );
+}
+
+const RECURSOS: { icone: keyof typeof ICONES; titulo: string; texto: string }[] = [
+  { icone: "lupa", titulo: "Revisão inteligente", texto: "Encontre erros e melhore seu texto" },
+  { icone: "documento", titulo: "Formatação ABNT", texto: "Deixe seu trabalho no padrão correto" },
+  { icone: "brilho", titulo: "Assistência com IA", texto: "Receba sugestões personalizadas" },
+];
+
 /**
  * Tela /login — RF01 (login/cadastro), guiada pelo mockup de referência e pelo
  * design system Academic Modernist. Autentica via Firebase quando configurado;
@@ -87,16 +163,28 @@ export default function LoginPage() {
   return (
     <main className="login-main" id="conteudo">
       <div className="login-grid">
-        {/* Coluna institucional — visual storytelling do mockup */}
+        {/* Coluna institucional: o que o produto faz, em segundos */}
         <section className="login-hero" aria-label="Sobre o NormaReview AI">
-          <p className="login-hero-chip">Padrão ABNT NBR · Validação rápida</p>
           <h2 className="login-hero-titulo">
-            Rigor acadêmico, <span>velocidade de IA.</span>
+            <span className="login-hero-titulo-base">Mais rigor acadêmico,</span>
+            <span className="login-hero-titulo-destaque">com a ajuda da IA.</span>
           </h2>
           <p className="login-hero-texto">
-            Acesse a plataforma de formatação, checagem cruzada de citações e conformidade técnica para teses,
-            dissertações e artigos científicos.
+            Aprimore seus textos acadêmicos com IA!
+            <br />
+            Revise, organize e formate dentro das normas ABNT.
+            <br />
+            Torne sua escrita mais clara, objetiva e profissional.
           </p>
+          <ul className="login-recursos">
+            {RECURSOS.map((r) => (
+              <li key={r.titulo} className="login-recurso">
+                <Icone nome={r.icone} className="login-recurso-icone" />
+                <h3>{r.titulo}</h3>
+                <p>{r.texto}</p>
+              </li>
+            ))}
+          </ul>
         </section>
 
         {/* Card de autenticação com abas Entrar / Criar conta */}
@@ -132,25 +220,29 @@ export default function LoginPage() {
             <form className="login-form" onSubmit={entrar}>
               <div className="login-campo">
                 <label htmlFor="login-email">E-mail institucional ou pessoal</label>
-                <input
-                  id="login-email"
-                  type="email"
-                  required
-                  placeholder="ex: marcelo.silva@ufrj.br"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
+                <div className="login-entrada">
+                  <Icone nome="email" className="login-entrada-icone" />
+                  <input
+                    id="login-email"
+                    type="email"
+                    required
+                    placeholder="exemplo@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
                 <p className="login-campo-dica">Preferencialmente o domínio institucional (.edu, .br etc.)</p>
               </div>
 
               <div className="login-campo">
                 <label htmlFor="login-senha">Senha de acesso</label>
-                <div className="login-senha-wrap">
+                <div className="login-entrada login-senha-wrap">
+                  <Icone nome="cadeado" className="login-entrada-icone" />
                   <input
                     id="login-senha"
                     type={mostrarSenha ? "text" : "password"}
                     required
-                    placeholder="Digite sua senha cadastrada"
+                    placeholder="Insira sua senha"
                     value={senha}
                     onChange={(e) => setSenha(e.target.value)}
                   />
@@ -158,9 +250,11 @@ export default function LoginPage() {
                     type="button"
                     className="login-senha-toggle"
                     onClick={() => setMostrarSenha((v) => !v)}
+                    aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
+                    aria-pressed={mostrarSenha}
                     title={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
                   >
-                    {mostrarSenha ? "ocultar" : "mostrar"}
+                    <Icone nome={mostrarSenha ? "olhoFechado" : "olho"} />
                   </button>
                 </div>
               </div>
@@ -184,34 +278,40 @@ export default function LoginPage() {
               )}
 
               <button className="btn-login btn-login-primario" type="submit" disabled={processando}>
-                {processando ? "Entrando…" : "Entrar no NormaReview"}
+                {processando ? "Entrando…" : "Entrar na conta"}
               </button>
             </form>
           ) : (
             <form className="login-form" onSubmit={cadastrar}>
               <div className="login-campo">
                 <label htmlFor="reg-nome">Nome completo do autor(a) ou revisor(a)</label>
-                <input
-                  id="reg-nome"
-                  type="text"
-                  required
-                  placeholder="ex: Dr. Marcelo da Silva Junior"
-                  value={nome}
-                  onChange={(e) => setNome(e.target.value)}
-                />
+                <div className="login-entrada">
+                  <Icone nome="pessoa" className="login-entrada-icone" />
+                  <input
+                    id="reg-nome"
+                    type="text"
+                    required
+                    placeholder="ex: Dr. Marcelo da Silva Junior"
+                    value={nome}
+                    onChange={(e) => setNome(e.target.value)}
+                  />
+                </div>
                 <p className="login-campo-dica">Usado na padronização ABNT de folhas de rosto e referências.</p>
               </div>
 
               <div className="login-campo">
                 <label htmlFor="reg-email">E-mail institucional ou pessoal</label>
-                <input
-                  id="reg-email"
-                  type="email"
-                  required
-                  placeholder="ex: ana.costa@usp.br"
-                  value={emailCadastro}
-                  onChange={(e) => setEmailCadastro(e.target.value)}
-                />
+                <div className="login-entrada">
+                  <Icone nome="email" className="login-entrada-icone" />
+                  <input
+                    id="reg-email"
+                    type="email"
+                    required
+                    placeholder="exemplo@email.com"
+                    value={emailCadastro}
+                    onChange={(e) => setEmailCadastro(e.target.value)}
+                  />
+                </div>
               </div>
 
               <div className="login-grid-senhas">

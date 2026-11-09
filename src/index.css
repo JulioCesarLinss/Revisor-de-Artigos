@@ -113,6 +113,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  color: #fff; /* sem isto, o nome herdava o azul de link e sumia no fundo escuro */
   text-decoration: none; /* sem sublinhado no wordmark da marca */
 }
 
@@ -1376,200 +1377,345 @@ button .atalho-tecla {
 }
 
 /* ---------- Tela /login (RF01) ---------- */
+/* Paleta da entrada: azul-marinho → índigo, com azul vivo no destaque.
+   Medidas em --u: 87% do modelo (que tem 1914px de largura) e
+   proporcionalmente menos em telas menores — a tela encolhe inteira, como o
+   modelo; os textos têm um mínimo para continuar legíveis. */
+:root {
+  --entrada-marinho: #0b1a4f;
+  --entrada-indigo: #2a1b96;
+  --entrada-gradiente: linear-gradient(90deg, #0f1d5c 0%, #1e1d82 55%, #2a1b96 100%);
+  --entrada-borda: #1e2a78;
+  --entrada-azul: #1d6ff2;
+  --entrada-fundo: #e6e7ef;
+  --u: min(0.87px, calc(100vw / 2200));
+}
+
+body:has(.login-main) {
+  background: var(--entrada-fundo);
+}
+
+.app-header-entrada {
+  background: linear-gradient(100deg, var(--entrada-marinho) 0%, #151f78 55%, var(--entrada-indigo) 100%);
+  padding: calc(34 * var(--u)) 24px;
+}
+
+.app-header-entrada .app-header-inner {
+  max-width: calc(1640 * var(--u));
+  justify-content: space-between;
+}
+
+.app-header-entrada .brand h1 {
+  font-size: max(24px, calc(44 * var(--u)));
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.app-header-entrada .brand h1 span {
+  color: #8b7cf6;
+}
+
+body:has(.login-main) .app-footer {
+  max-width: calc(1640 * var(--u));
+  padding: calc(32 * var(--u)) 0 calc(32 * var(--u));
+}
+
 .login-main {
-  max-width: 1280px;
+  max-width: calc(1640 * var(--u));
   margin: 0 auto;
-  padding: 24px;
+  padding: calc(48 * var(--u)) 0 calc(40 * var(--u));
 }
 
 .login-grid {
   display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  gap: 32px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, calc(642 * var(--u)));
+  gap: calc(64 * var(--u));
   align-items: start;
 }
 
 @media (max-width: 1000px) {
+  .login-main {
+    max-width: none;
+    padding: 24px;
+  }
+
   .login-grid {
     grid-template-columns: 1fr;
   }
 }
 
-.login-hero-chip {
-  display: inline-flex;
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--cobalt-dark);
-  background: #eff6ff;
-  border-radius: 999px;
-  padding: 4px 12px;
-  margin: 0 0 14px;
+.login-hero {
+  padding-top: calc(26 * var(--u));
 }
 
 .login-hero-titulo {
   font-family: var(--font-ui);
-  font-size: 34px;
-  font-weight: 700;
+  font-size: max(30px, calc(66 * var(--u)));
+  font-weight: 800;
   letter-spacing: -0.02em;
-  line-height: 1.15;
-  margin: 0 0 10px;
-  color: var(--ink);
+  line-height: 1.24;
+  margin: 0 0 calc(56 * var(--u));
 }
 
-.login-hero-titulo span {
-  color: var(--cobalt-dark);
-  font-size: 30px;
+.login-hero-titulo-base {
+  display: block;
+  background: linear-gradient(90deg, var(--entrada-marinho), var(--entrada-indigo));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.login-hero-titulo-destaque {
+  display: block;
+  color: var(--entrada-azul);
 }
 
 .login-hero-texto {
-  margin: 0 0 18px;
-  font-size: 15px;
-  line-height: 1.6;
-  color: var(--slate-600);
-  max-width: 44ch;
+  margin: 0 0 calc(96 * var(--u));
+  font-size: max(15px, calc(27 * var(--u)));
+  font-weight: 500;
+  line-height: 1.4;
+  color: #2b2f3a;
+}
+
+.login-recursos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: calc(36 * var(--u));
+  max-width: calc(815 * var(--u));
+}
+
+.login-recurso {
+  background: #fff;
+  border-radius: calc(12 * var(--u));
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+  padding: calc(26 * var(--u)) calc(16 * var(--u));
+  text-align: center;
+}
+
+.login-recurso-icone {
+  width: max(28px, calc(44 * var(--u)));
+  height: max(28px, calc(44 * var(--u)));
+  color: var(--entrada-borda);
+}
+
+.login-recurso h3 {
+  margin: calc(14 * var(--u)) 0 calc(8 * var(--u));
+  font-family: var(--font-ui);
+  font-size: max(14px, calc(19 * var(--u)));
+  font-weight: 700;
+  color: #111827;
+}
+
+.login-recurso p {
+  margin: 0;
+  font-size: max(12.5px, calc(16 * var(--u)));
+  line-height: 1.3;
+  color: #374151;
 }
 
 .login-card {
   background: #fff;
-  border: 1px solid var(--slate-200);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-md);
-  padding: 24px;
+  border-radius: max(16px, calc(28 * var(--u)));
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  padding: calc(42 * var(--u)) calc(48 * var(--u));
 }
 
+/* Caixa das abas em cinza: a aba inativa continua legível (contraste ~5,5:1). */
 .login-abas {
   display: flex;
-  background: var(--slate-100);
-  border-radius: 10px;
-  padding: 4px;
-  margin-bottom: 14px;
+  gap: calc(6 * var(--u));
+  width: min(100%, max(280px, calc(434 * var(--u))));
+  margin: 0 auto calc(40 * var(--u));
+  background: #d9dbe3;
+  border-radius: calc(12 * var(--u));
+  padding: calc(6 * var(--u));
 }
 
 .login-aba {
   flex: 1;
-  font-family: var(--font-ui);
-  font-size: 13px;
-  font-weight: 600;
-  padding: 8px 12px;
+  font-family: var(--font-body);
+  font-size: max(14px, calc(18 * var(--u)));
+  font-weight: 500;
+  padding: calc(12 * var(--u)) calc(16 * var(--u));
   border: none;
-  border-radius: 8px;
+  border-radius: calc(8 * var(--u));
   background: transparent;
-  color: var(--slate-500);
+  color: #4b5563;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.login-aba:not(.ativa):hover {
+  background: #cdd0d9;
+  color: #1f2937;
 }
 
 .login-aba.ativa {
-  background: #fff;
-  color: var(--ink);
-  box-shadow: var(--shadow-sm);
+  background: var(--entrada-gradiente);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(15, 29, 92, 0.25);
 }
 
 .login-contexto {
-  margin: 0 0 16px;
-  font-size: 13px;
+  margin: calc(-16 * var(--u)) 0 calc(24 * var(--u));
+  font-size: max(13px, calc(15 * var(--u)));
   line-height: 1.55;
-  color: var(--slate-600);
+  color: #4b5563;
 }
 
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: calc(22 * var(--u));
 }
 
 .login-campo label {
   display: block;
-  font-family: var(--font-ui);
-  font-size: 12.5px;
-  font-weight: 600;
-  margin-bottom: 5px;
+  font-family: var(--font-body);
+  font-size: max(13.5px, calc(16 * var(--u)));
+  font-weight: 500;
+  color: #1f2937;
+  margin-bottom: calc(8 * var(--u));
 }
 
 .login-campo input,
 .login-campo select {
   width: 100%;
-  border: 1px solid var(--slate-300);
-  border-radius: 8px;
-  padding: 9px 12px;
+  height: max(38px, calc(52 * var(--u)));
+  border: 1.5px solid var(--entrada-borda);
+  border-radius: calc(8 * var(--u));
+  padding: 0 calc(16 * var(--u));
   font-family: var(--font-body);
-  font-size: 13.5px;
+  font-size: max(14px, calc(16 * var(--u)));
   color: var(--ink);
   background: #fff;
 }
 
+.login-campo input::placeholder {
+  color: #6b7280;
+}
+
 .login-campo input:focus-visible,
 .login-campo select:focus-visible {
-  outline: 2px solid var(--cobalt);
-  outline-offset: 1px;
-  border-color: var(--cobalt);
+  outline: 3px solid rgba(67, 56, 202, 0.25);
+  outline-offset: 0;
+  border-color: #4338ca;
 }
 
 .login-campo-dica {
-  margin: 5px 0 0;
-  font-size: 11px;
-  color: var(--slate-500);
+  margin: calc(8 * var(--u)) 0 0;
+  font-size: max(11px, calc(13 * var(--u)));
+  color: #6b7280;
 }
 
-.login-senha-wrap {
+/* Campo com ícone à esquerda (e, na senha, o botão de mostrar à direita). */
+.login-entrada {
   position: relative;
+}
+
+.login-entrada-icone {
+  position: absolute;
+  left: calc(16 * var(--u));
+  top: 50%;
+  width: max(17px, calc(22 * var(--u)));
+  height: max(17px, calc(22 * var(--u)));
+  transform: translateY(-50%);
+  color: #6b7280;
+  pointer-events: none;
+}
+
+.login-campo .login-entrada input {
+  padding-left: calc(max(17px, calc(22 * var(--u))) + 2 * calc(16 * var(--u)));
+}
+
+.login-campo .login-senha-wrap input {
+  padding-right: max(44px, calc(56 * var(--u)));
 }
 
 .login-senha-toggle {
   position: absolute;
-  right: 10px;
+  right: calc(10 * var(--u));
   top: 50%;
   transform: translateY(-50%);
+  width: max(32px, calc(38 * var(--u)));
+  height: max(32px, calc(38 * var(--u)));
+  display: grid;
+  place-items: center;
   border: none;
+  border-radius: 6px;
   background: transparent;
-  font-family: var(--font-ui);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--slate-500);
+  color: #4b5563;
   cursor: pointer;
+}
+
+.login-senha-toggle svg {
+  width: max(19px, calc(24 * var(--u)));
+  height: max(19px, calc(24 * var(--u)));
+}
+
+.login-senha-toggle:hover {
+  background: var(--slate-100);
+  color: var(--ink);
 }
 
 .login-linha-lembre {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: calc(12 * var(--u));
   flex-wrap: wrap;
+  margin-top: calc(-6 * var(--u));
 }
 
 .login-lembrar {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-size: 12.5px;
-  color: var(--ink-soft);
+  gap: calc(12 * var(--u));
+  font-size: max(13.5px, calc(16 * var(--u)));
+  color: #1f2937;
+  cursor: pointer;
+}
+
+.login-lembrar input {
+  width: max(16px, calc(20 * var(--u)));
+  height: max(16px, calc(20 * var(--u)));
+  margin: 0;
+  accent-color: var(--entrada-borda);
+  cursor: pointer;
 }
 
 .btn-login {
   width: 100%;
-  font-family: var(--font-ui);
-  font-size: 14px;
-  font-weight: 700;
-  border-radius: 8px;
-  padding: 11px 16px;
-  border: 1px solid var(--ink);
+  min-height: max(42px, calc(60 * var(--u)));
+  font-family: var(--font-body);
+  font-size: max(15px, calc(18 * var(--u)));
+  font-weight: 500;
+  border-radius: calc(6 * var(--u));
+  padding: calc(14 * var(--u)) 16px;
+  border: none;
   cursor: pointer;
+  margin-top: calc(8 * var(--u));
 }
 
-/* Entrar e Cadastrar compartilham a mesma cor (o primário do app):
+/* Entrar e Cadastrar compartilham a mesma cor (o gradiente da entrada):
    as duas ações do card de autenticação ficam alinhadas. */
 .btn-login-primario,
 .btn-login-secundario {
-  background: var(--ink);
-  border-color: var(--ink);
+  background: var(--entrada-gradiente);
   color: #fff;
 }
 
 .btn-login-primario:hover,
 .btn-login-secundario:hover {
-  background: var(--ink-soft);
-  border-color: var(--ink-soft);
+  filter: brightness(1.18);
+}
+
+.btn-login:disabled {
+  opacity: 0.7;
+  cursor: wait;
 }
 
 /* Regras de senha no cadastro: checklist que acende item a item enquanto o
