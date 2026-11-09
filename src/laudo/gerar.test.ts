@@ -18,15 +18,14 @@ const MANUSCRITO = [
 
 describe("laudo/gerar", () => {
   test("laudo apura métricas, resumo e seções da análise", () => {
-    const laudo = gerarLaudo(MANUSCRITO, "revisao");
+    const laudo = gerarLaudo(MANUSCRITO);
     expect(laudo.metricas.paragrafos).toBe(6);
     expect(laudo.resumo.total).toBe(iniciarRevisao(MANUSCRITO).resumo.total);
     expect(laudo.secoes.some((s) => s.secao === "INTRODUÇÃO")).toBe(true);
-    expect(laudo.estadoFluxo).toBe("revisao");
   });
 
   test("achados ficam ordenados por parágrafo e sem problemas de documento inteiro", () => {
-    const laudo = gerarLaudo("Texto curtinho sem título suficiente", "rascunho");
+    const laudo = gerarLaudo("Texto curtinho sem título suficiente");
     for (const p of laudo.achados) expect(p.paragrafo).toBeGreaterThan(0);
     const indices = laudo.achados.map((p) => p.paragrafo);
     expect([...indices].sort((a, b) => a - b)).toEqual(indices);
@@ -35,6 +34,16 @@ describe("laudo/gerar", () => {
   test("severidade máxima dirige o encaminhamento", () => {
     expect(encaminhamento({ maiorSeveridade: "critico", resumo: { total: 1, criticos: 1, advertencias: 0, observacoes: 0 } }).titulo).toContain("correções críticas");
     expect(encaminhamento({ maiorSeveridade: null, resumo: { total: 0, criticos: 0, advertencias: 0, observacoes: 0 } }).titulo).toContain("conformidade");
+  });
+
+  test("rótulos do encaminhamento são palavras comuns (sem 'Advertencial'/'Empregável')", () => {
+    const resumo = { total: 0, criticos: 0, advertencias: 0, observacoes: 0 };
+    const titulos = (["critico", "advertencia", "observacao", null] as const).map(
+      (s) => encaminhamento({ maiorSeveridade: s, resumo }).titulo,
+    );
+    for (const t of titulos) expect(t).not.toMatch(/Advertencial|Empregável/);
+    expect(titulos[1]).toBe("Com ressalvas — ajustes recomendados antes da entrega");
+    expect(titulos[3]).toBe("Em conformidade — nenhuma pendência normativa");
   });
 
   test("texto do laudo contém cabeçalho, resumo e rodapé legíveis", () => {
@@ -47,7 +56,7 @@ describe("laudo/gerar", () => {
   });
 
   test("texto vazio produz laudo vazio sem travar a tela", () => {
-    const laudo = gerarLaudo("", "rascunho");
+    const laudo = gerarLaudo("");
     expect(laudo.metricas.paragrafos).toBe(0);
     // R006 (documento muito curto) é apontada como problema do documento
     // inteiro: entra no resumo, mas não na lista de achados por parágrafo.

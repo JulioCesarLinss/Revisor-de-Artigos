@@ -22,6 +22,8 @@ export interface ParagrafoNumerado {
 export interface DiagnosticoGemini {
   /** Número do parágrafo no manuscrito; 0 = documento inteiro. */
   paragrafo: number;
+  /** Palavras exatas do parágrafo onde está o problema (base do destaque no editor). */
+  trecho?: string;
   /** Eixo do apontamento (ex.: "ABNT", "Gramática", "Clareza"). */
   categoria: string;
   /** O que está errado, em português claro. */
@@ -35,10 +37,40 @@ export type ResultadoDiagnostico =
   | { ok: true; resumo: string; diagnosticos: DiagnosticoGemini[]; truncado: boolean }
   | { ok: false; motivo: string };
 
+/**
+ * Contagem dos apontamentos por severidade — base do resumo da análise na tela
+ * de revisão, para que o card "Resumo da análise" também mostre o diagnóstico
+ * do Gemini (sempre ao lado das regras, nunca no lugar delas: DC-02).
+ */
+export function contarApontamentos(diagnosticos: DiagnosticoGemini[]): {
+  total: number;
+  altos: number;
+  medios: number;
+  baixos: number;
+} {
+  let altos = 0;
+  let medios = 0;
+  let baixos = 0;
+  for (const d of diagnosticos) {
+    if (d.severidade === "alta") altos++;
+    else if (d.severidade === "baixa") baixos++;
+    else medios++;
+  }
+  return { total: diagnosticos.length, altos, medios, baixos };
+}
+
 /** Ordem de tentativa: o primeiro é o mais barato; o segundo cobre instabilidade. */
 const MODELOS = ["gemini-flash-lite-latest", "gemini-flash-latest"];
 const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models";
-const TIMEOUT_MS = 60_000;
+/**
+ * Prazo do diagnóstico inteiro (todas as tentativas). A função da Vercel é
+ * encerrada aos 60s (maxDuration em vercel.json): 50s deixa folga para a
+ * inicialização e a resposta.
+ */
+const PRAZO_TOTAL_MS = 50_000;
+/** Com menos que isso de prazo, não vale começar a próxima tentativa. */
+const MINIMO_NOVA_TENTATIVA_MS = 8_000;
+const MOTIVO_DEMORA = "O Gemini demorou demais para responder. Tente novamente em instantes.";
 /** Limpeza de envio (~9 mil tokens) — cobre artigos típicos sem estourar cota. */
 const MAXIMO_TEXTO = 36_000;
 const MAXIMO_DIAGNOSTICOS = 40;
@@ -49,8 +81,8 @@ const INSTRUCAO_SISTEMA = [
   "Você é um revisor acadêmico brasileiro, especialista em normas ABNT (NBR 14724, NBR 6023, NBR 10520, NBR 6024) e em clareza científica.",
   "Analise o manuscrito inteiro e aponte problemas concretos, objetivos e acionáveis: norma violada, gramática, ortografia, clareza, estrutura, coerência e citações.",
   "Você diagnostica e sugere; você nunca decide conformidade normativa sozinho — o motor de regras do aplicativo é a referência primária.",
-  'Responda SOMENTE com JSON válido, sem markdown nem comentários, no formato {"resumo": string, "diagnosticos": [{"paragrafo": number, "categoria": string, "descricao": string, "sugestao": string, "severidade": "alta"|"media"|"baixa"}]}.',
-  'Cada item descreve UM problema: "paragrafo" é o número da marca [n] do texto (ou 0 para o documento inteiro), "categoria" é curta (ex.: "ABNT", "Gramática", "Clareza", "Estrutura"), "descricao" diz o que está errado e "sugestao" diz como corrigir, ambas em português.',
+  'Responda SOMENTE com JSON válido, sem markdown nem comentários, no formato {"resumo": string, "diagnosticos": [{"paragrafo": number, "trecho": string, "categoria": string, "descricao": string, "sugestao": string, "severidade": "alta"|"media"|"baixa"}]}.',
+  'Cada item descreve UM problema: "paragrafo" é o número da marca [n] que abre o parágrafo onde o problema está (confira a marca; ou 0 para o documento inteiro), "trecho" copia letra por letra só as palavras desse parágrafo onde está o problema, mantendo o erro como ele aparece no texto, sem corrigi-lo (ex.: o texto tem "problmas", o trecho é "problmas"; no máximo 12 palavras, sem aspas em volta; use "" somente quando o problema for do parágrafo ou do documento inteiro), "categoria" é curta (ex.: "ABNT", "Gramática", "Clareza", "Estrutura"), "descricao" diz o que está errado e "sugestao" diz como corrigir, ambas em português.',
   `No máximo ${MAXIMO_DIAGNOSTICOS} diagnosticos, dos mais relevantes. Se não houver problemas, responda {"resumo": "...", "diagnosticos": []}.`,
 ].join(" ");
 
@@ -81,21 +113,43 @@ export function validarParagrafos(valor: unknown): ParagrafoNumerado[] | null {
   return paragrafos;
 }
 
-/** Numera os parágrafos como "[n] texto" e recorta no limite de envio. */
-function montarTexto(paragrafos: ParagrafoNumerado[]): { texto: string; truncado: boolean } {
-  const pedacos: string[] = [];
+/**
+ * Mantém só os parágrafos que cabem no limite de envio (cada um conta como
+ * "[n] texto" + separador). Usada no navegador, para o corpo de
+ * `POST /api/gemini` ficar pequeno, e no servidor, ao montar o texto.
+ */
+export function recortarParagrafos(paragrafos: ParagrafoNumerado[]): {
+  paragrafos: ParagrafoNumerado[];
+  truncado: boolean;
+} {
+  const cabem: ParagrafoNumerado[] = [];
   let total = 0;
   for (const p of paragrafos) {
-    const trecho = `[${p.index}] ${p.texto.trim()}`;
-    if (total + trecho.length + 2 > MAXIMO_TEXTO) {
+    const prefixo = `[${p.index}] `;
+    const texto = p.texto.trim();
+    if (total + prefixo.length + texto.length + 2 > MAXIMO_TEXTO) {
       // Só o primeiro parágrafo já estoura o limite: corta no meio dele.
-      if (pedacos.length === 0) return { texto: trecho.slice(0, MAXIMO_TEXTO), truncado: true };
-      return { texto: pedacos.join("\n\n"), truncado: true };
+      if (cabem.length === 0) {
+        return {
+          paragrafos: [{ index: p.index, texto: texto.slice(0, Math.max(0, MAXIMO_TEXTO - prefixo.length)) }],
+          truncado: true,
+        };
+      }
+      return { paragrafos: cabem, truncado: true };
     }
-    pedacos.push(trecho);
-    total += trecho.length + 2;
+    cabem.push({ index: p.index, texto });
+    total += prefixo.length + texto.length + 2;
   }
-  return { texto: pedacos.join("\n\n"), truncado: false };
+  return { paragrafos: cabem, truncado: false };
+}
+
+/** Numera os parágrafos como "[n] texto" e recorta no limite de envio. */
+function montarTexto(paragrafos: ParagrafoNumerado[]): { texto: string; truncado: boolean } {
+  const recorte = recortarParagrafos(paragrafos);
+  return {
+    texto: recorte.paragrafos.map((p) => `[${p.index}] ${p.texto}`).join("\n\n"),
+    truncado: recorte.truncado,
+  };
 }
 
 function normalizarSeveridade(valor: unknown): DiagnosticoGemini["severidade"] {
@@ -151,8 +205,11 @@ export function interpretarDiagnostico(conteudo: string, limiteParagrafo: number
     const d = item as Record<string, unknown>;
     const descricao = typeof d.descricao === "string" ? d.descricao.trim() : "";
     if (descricao.length === 0) continue; // sem o que mostrar, não entra
+    const trecho = typeof d.trecho === "string" ? d.trecho.trim() : "";
     diagnosticos.push({
       paragrafo: normalizarParagrafo(d.paragrafo, limiteParagrafo),
+      // Só entra quando existe: o Firestore recusa campo undefined.
+      ...(trecho.length > 0 ? { trecho } : {}),
       categoria: typeof d.categoria === "string" && d.categoria.trim().length > 0 ? d.categoria.trim() : "Revisão",
       descricao,
       sugestao: typeof d.sugestao === "string" ? d.sugestao.trim() : "",
@@ -188,9 +245,10 @@ async function chamarGemini(
   modelo: string,
   chave: string,
   texto: string,
+  prazoMs: number,
 ): Promise<{ ok: true; conteudo: string; semConteudo: boolean; estourou: boolean } | { ok: false; falha: Falha }> {
   const controle = new AbortController();
-  const timer = setTimeout(() => controle.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => controle.abort(), prazoMs);
   try {
     const resposta = await fetch(`${ENDPOINT}/${modelo}:generateContent`, {
       method: "POST",
@@ -202,7 +260,7 @@ async function chamarGemini(
         generationConfig: {
           temperature: 0.2,
           responseMimeType: "application/json",
-          maxOutputTokens: 4096,
+          maxOutputTokens: 6144, // folga para o "trecho" de cada um dos diagnósticos
         },
       }),
     });
@@ -225,7 +283,7 @@ async function chamarGemini(
     };
   } catch (erro) {
     if (erro instanceof Error && erro.name === "AbortError") {
-      return { ok: false, falha: { motivo: "O Gemini demorou mais de um minuto para responder. Tente novamente.", tentarProximo: false } };
+      return { ok: false, falha: { motivo: MOTIVO_DEMORA, tentarProximo: false } };
     }
     return { ok: false, falha: { motivo: "Não foi possível contactar o Gemini. Verifique sua conexão.", tentarProximo: false } };
   } finally {
@@ -237,21 +295,29 @@ async function chamarGemini(
  * Pede ao Gemini um diagnóstico do manuscrito inteiro. Nunca lança: qualquer
  * problema vira { ok: false } com motivo em português (H9 / DC-03).
  * A chave é passada pelo chamador (o servidor), nunca lida do navegador.
+ * Todas as tentativas dividem um prazo total (`prazoTotalMs`, trocável nos
+ * testes): a primeira usa o prazo inteiro; as seguintes, só o que sobrou.
  */
 export async function executarDiagnostico(
   paragrafos: ParagrafoNumerado[],
   chave: string,
+  prazoTotalMs: number = PRAZO_TOTAL_MS,
 ): Promise<ResultadoDiagnostico> {
   if (chave.trim().length === 0) {
-    return { ok: false, motivo: "O Gemini não está configurado no servidor: defina a variável GEMINI_API_KEY." };
+    return { ok: false, motivo: "O diagnóstico com Gemini não está disponível no momento." };
   }
 
   const { texto, truncado } = montarTexto(paragrafos);
   const limite = paragrafos.reduce((maior, p) => Math.max(maior, p.index), 0);
+  const fim = Date.now() + prazoTotalMs;
 
   let ultima: Falha = { motivo: MOTIVO_FORMATO, tentarProximo: false };
-  for (const modelo of MODELOS) {
-    const chamada = await chamarGemini(modelo, chave, texto);
+  for (const [tentativa, modelo] of MODELOS.entries()) {
+    const restante = fim - Date.now();
+    // Sem tempo para outra tentativa: devolve o motivo da anterior antes de a
+    // Vercel encerrar a função no meio (o que viraria um erro sem explicação).
+    if (tentativa > 0 && restante < MINIMO_NOVA_TENTATIVA_MS) return { ok: false, motivo: ultima.motivo };
+    const chamada = await chamarGemini(modelo, chave, texto, Math.max(restante, 0));
     if (!chamada.ok) {
       if (chamada.falha.tentarProximo) {
         ultima = chamada.falha;

@@ -59,19 +59,26 @@ export function PainelAjuda({ onFechar }: Props) {
             <h3>Fluxo de revisão</h3>
             <ol>
               <li>
-                <strong>Cole o manuscrito</strong> no canvas central (parágrafos separados por linha em branco;
-                títulos em CAIXA-ALTA criam seções no relatório).
+                <strong>Anexe ou cole o manuscrito</strong> no canvas central (parágrafos separados por linha em
+                branco; títulos em CAIXA-ALTA criam seções no relatório).
               </li>
               <li>
-                <strong>Clique em Analisar</strong> (ou use <kbd className="atalho-tecla">Ctrl+↵</kbd>) para verificar o texto contra o catálogo de regras.
+                <strong>Clique em Analisar</strong> (ou use <kbd className="atalho-tecla">Ctrl+↵</kbd>) para verificar
+                o texto contra o catálogo de regras. Daí em diante, os avisos acompanham suas correções.
               </li>
               <li>
                 <strong>Corrija os problemas</strong>: "Aplicar correção" resolve automaticamente; "Localizar no
-                manuscrito" leva ao trecho para edição manual.
+                manuscrito" destaca o parágrafo no editor — clique nele para editar e o destaque some. Cada aviso
+                resolvido sai da lista sozinho.
               </li>
               <li>
-                <strong>Avance no fluxo</strong> (Rascunho → Revisão → Final) para registrar versões e comparar
-                lado a lado; o histórico registra cada alteração.
+                <strong>Errou?</strong> "Desfazer" volta o texto ao estado anterior à última alteração. O histórico
+                registra cada correção e sugestão aceita.
+              </li>
+              <li>
+                <strong>Exporte</strong> o texto revisado: "Baixar .docx" gera um arquivo do Word com formatação ABNT
+                básica (Times New Roman 12, espaçamento 1,5, margens 3 e 2 cm); "Copiar texto" leva o texto para
+                colar onde quiser. A formatação do arquivo original não é mantida.
               </li>
             </ol>
           </div>
@@ -83,10 +90,7 @@ export function PainelAjuda({ onFechar }: Props) {
                 <kbd className="atalho-tecla">Ctrl+↵</kbd> analisar o manuscrito
               </li>
               <li>
-                <kbd className="atalho-tecla">Ctrl+Shift+↵</kbd> avançar etapa do fluxo
-              </li>
-              <li>
-                <kbd className="atalho-tecla">Esc</kbd> sair do modo revisar / fechar painéis
+                <kbd className="atalho-tecla">Esc</kbd> fechar painéis
               </li>
             </ul>
           </div>

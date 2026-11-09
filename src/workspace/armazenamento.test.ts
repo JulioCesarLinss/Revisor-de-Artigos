@@ -12,7 +12,6 @@ import {
   type EstadoWorkspace,
 } from "./armazenamento";
 import { registrar } from "./historico";
-import { registrarVersao } from "./fluxo";
 
 /** Storage em memória (mesma interface do localStorage) para os testes. */
 function storageFalso(): Armazenamento & { mapa: Map<string, string> } {
@@ -32,9 +31,6 @@ const WORKSPACE: EstadoWorkspace = {
     { id: 1, origem: "manual", descricao: "correção rápida aplicada", paragrafo: 1, quando: "10:00:00" },
     { id: 2, origem: "ia", descricao: "sugestão aceita (R001)", paragrafo: 2, quando: "10:05:00" },
   ],
-  versoes: [{ id: 1, estado: "rascunho", bruto: "texto", totalProblemas: 3, quando: "10:01:00" }],
-  estadoFluxo: "revisao",
-  feedbacks: { 1: true },
 };
 
 describe("workspace/armazenamento — persistência", () => {
@@ -45,9 +41,32 @@ describe("workspace/armazenamento — persistência", () => {
     expect(carregado).not.toBeNull();
     expect(carregado?.bruto).toBe(WORKSPACE.bruto);
     expect(carregado?.historico.length).toBe(2);
-    expect(carregado?.versoes.length).toBe(1);
-    expect(carregado?.estadoFluxo).toBe("revisao");
-    expect(carregado?.feedbacks[1]).toBe(true);
+  });
+
+  test("dados antigos com etapas, versões e feedbacks ainda carregam, sem esses campos", () => {
+    const st = storageFalso();
+    st.setItem(
+      CHAVE_WORKSPACE,
+      JSON.stringify({
+        ...WORKSPACE,
+        versoes: [{ id: 1, estado: "rascunho", bruto: "cópia pesada", totalProblemas: 3, quando: "10:01:00" }],
+        estadoFluxo: "revisao",
+        feedbacks: { 1: true },
+      }),
+    );
+    const carregado = carregarWorkspace(st);
+    expect(carregado?.bruto).toBe(WORKSPACE.bruto);
+    expect(carregado?.historico.length).toBe(2);
+    expect(carregado && "versoes" in carregado).toBe(false);
+    expect(carregado && "estadoFluxo" in carregado).toBe(false);
+    expect(carregado && "feedbacks" in carregado).toBe(false);
+  });
+
+  test("workspace salvo sem feedbacks carrega normalmente", () => {
+    const st = storageFalso();
+    salvarWorkspace(WORKSPACE, st);
+    expect(JSON.parse(st.getItem(CHAVE_WORKSPACE)!)).not.toHaveProperty("feedbacks");
+    expect(carregarWorkspace(st)?.bruto).toBe(WORKSPACE.bruto);
   });
 
   test("workspace ausente devolve null", () => {
@@ -64,28 +83,22 @@ describe("workspace/armazenamento — persistência", () => {
     expect(validarWorkspace(null)).toBeNull();
     expect(validarWorkspace("texto")).toBeNull();
     expect(validarWorkspace({ ...WORKSPACE, bruto: 42 })).toBeNull();
-    expect(validarWorkspace({ ...WORKSPACE, estadoFluxo: "extravagante" })).toBeNull();
     expect(validarWorkspace({ ...WORKSPACE, historico: "não é lista" })).toBeNull();
 
     const parcial = validarWorkspace({
       ...WORKSPACE,
       historico: [WORKSPACE.historico[0], { id: 9, origem: "desconhecida" }, "lixo"],
-      feedbacks: { 1: true, abc: true, 2: "sim" },
     });
     expect(parcial?.historico.length).toBe(1); // só o registro válido
-    expect(parcial?.feedbacks).toEqual({ 1: true });
   });
 
-  test("limparHistoricoWorkspace preserva o manuscrito e volta a Rascunho", () => {
+  test("limparHistoricoWorkspace preserva o manuscrito", () => {
     const st = storageFalso();
     salvarWorkspace(WORKSPACE, st);
 
     const limpo = limparHistoricoWorkspace(st);
     expect(limpo?.bruto).toBe(WORKSPACE.bruto);
-    expect(limpo?.estadoFluxo).toBe("rascunho"); // o rastro foi apagado: fluxo recomeça
     expect(limpo?.historico).toEqual([]);
-    expect(limpo?.versoes).toEqual([]);
-    expect(limpo?.feedbacks).toEqual({});
     expect(carregarWorkspace(st)?.bruto).toBe(WORKSPACE.bruto);
   });
 
@@ -105,30 +118,77 @@ describe("workspace/armazenamento — persistência", () => {
     expect(carregado?.textoOriginal).toBe("TEXTO DO ARQUIVO\n\nPUBLICADO.");
   });
 
+  test("diagnóstico do Gemini é salvo e recarregado junto do workspace", () => {
+    const st = storageFalso();
+    const diagnostico: EstadoWorkspace["diagnostico"] = {
+      ok: true,
+      resumo: "Texto com pontos de atenção.",
+      truncado: false,
+      diagnosticos: [
+        { paragrafo: 2, categoria: "Clareza", descricao: "Frase longa.", sugestao: "Quebre em duas.", severidade: "media" },
+      ],
+    };
+    salvarWorkspace({ ...WORKSPACE, diagnostico, textoDiagnosticado: WORKSPACE.bruto }, st);
+
+    const carregado = carregarWorkspace(st);
+    expect(carregado?.diagnostico).toEqual(diagnostico);
+    expect(carregado?.textoDiagnosticado).toBe(WORKSPACE.bruto);
+  });
+
+  test("diagnóstico malformado é descartado sem perder o manuscrito", () => {
+    const st = storageFalso();
+    st.setItem(
+      CHAVE_WORKSPACE,
+      JSON.stringify({
+        ...WORKSPACE,
+        diagnostico: { ok: true, resumo: 42, diagnosticos: "lixo" },
+        textoDiagnosticado: 7,
+      }),
+    );
+
+    const carregado = carregarWorkspace(st);
+    expect(carregado?.bruto).toBe(WORKSPACE.bruto);
+    expect(carregado?.diagnostico).toBeNull();
+    expect(carregado?.textoDiagnosticado).toBeNull();
+  });
+
+  test("formatação é salva e recarregada; entradas malformadas e dados antigos não atrapalham", () => {
+    const st = storageFalso();
+    const formatacao: EstadoWorkspace["formatacao"] = [{ inicio: 0, fim: 4, estilo: "negrito" }];
+    salvarWorkspace({ ...WORKSPACE, formatacao }, st);
+    expect(carregarWorkspace(st)?.formatacao).toEqual(formatacao);
+
+    const parcial = validarWorkspace({
+      ...WORKSPACE,
+      formatacao: [formatacao[0], { inicio: 1, fim: 2, estilo: "piscando" }, { inicio: "x", fim: 2, estilo: "italico" }],
+    });
+    expect(parcial?.formatacao).toEqual(formatacao);
+    expect(validarWorkspace(WORKSPACE)?.formatacao).toEqual([]);
+  });
+
+  test("restaurarOriginalWorkspace volta ao texto do arquivo sem formatação", () => {
+    const st = storageFalso();
+    salvarWorkspace({ ...WORKSPACE, bruto: "Editado.", formatacao: [{ inicio: 0, fim: 4, estilo: "italico" }] }, st);
+    expect(restaurarOriginalWorkspace(st)?.formatacao ?? []).toEqual([]);
+  });
+
   test("restaurarOriginalWorkspace volta ao texto do arquivo e zera o rastro", () => {
     const st = storageFalso();
-    salvarWorkspace(
-      { ...WORKSPACE, bruto: "Texto editado depois.", estadoFluxo: "final" },
-      st,
-    );
+    salvarWorkspace({ ...WORKSPACE, bruto: "Texto editado depois." }, st);
 
     const restaurado = restaurarOriginalWorkspace(st);
     expect(restaurado?.bruto).toBe(WORKSPACE.textoOriginal!);
     expect(restaurado?.textoOriginal).toBe(WORKSPACE.textoOriginal!);
-    expect(restaurado?.estadoFluxo).toBe("rascunho");
     expect(restaurado?.historico).toEqual([]);
-    expect(restaurado?.versoes).toEqual([]);
-    expect(restaurado?.feedbacks).toEqual({});
     // Persistido: ao recarregar, continua restaurado.
     expect(carregarWorkspace(st)?.bruto).toBe(WORKSPACE.textoOriginal!);
-    expect(carregarWorkspace(st)?.estadoFluxo).toBe("rascunho");
   });
 
   test("restaurarOriginalWorkspace devolve null quando não há arquivo original", () => {
     const st = storageFalso();
-    salvarWorkspace({ ...WORKSPACE, textoOriginal: null }, st);
+    salvarWorkspace({ ...WORKSPACE, bruto: "Texto atual.", textoOriginal: null }, st);
     expect(restaurarOriginalWorkspace(st)).toBeNull();
-    expect(carregarWorkspace(st)?.estadoFluxo).toBe("revisao"); // nada mudou
+    expect(carregarWorkspace(st)?.bruto).toBe("Texto atual."); // nada mudou
   });
 
   test("contarPorOrigem separa manual × IA", () => {
@@ -147,12 +207,5 @@ describe("workspace/armazenamento — ids após restauração", () => {
     expect(h.slice(0, -1).map((e) => e.id)).toEqual(restaurado.map((e) => e.id));
     expect(h[h.length - 1].id).toBeGreaterThan(restaurado[restaurado.length - 1].id);
     expect(new Set(h.map((e) => e.id)).size).toBe(h.length); // sem duplicatas
-  });
-
-  test("registrarVersao não colide com snapshots restaurados", () => {
-    const v = registrarVersao(WORKSPACE.versoes, { estado: "revisao", bruto: "x", totalProblemas: 1 });
-    expect(v.slice(0, -1).map((s) => s.id)).toEqual(WORKSPACE.versoes.map((s) => s.id));
-    expect(v[v.length - 1].id).toBeGreaterThan(WORKSPACE.versoes[WORKSPACE.versoes.length - 1].id);
-    expect(new Set(v.map((s) => s.id)).size).toBe(v.length);
   });
 });

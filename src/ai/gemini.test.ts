@@ -1,10 +1,40 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { chaveGemini, interpretarDiagnostico, validarParagrafos } from "./gemini";
+import {
+  chaveGemini,
+  contarApontamentos,
+  executarDiagnostico,
+  interpretarDiagnostico,
+  recortarParagrafos,
+  validarParagrafos,
+} from "./gemini";
 
 /** Monta a resposta em JSON como o Gemini devolveria. */
 function resposta(diagnosticos: unknown[], resumo = "Texto com pontos de atenção."): string {
   return JSON.stringify({ resumo, diagnosticos });
 }
+
+describe("ai/gemini — trecho do apontamento", () => {
+  test("guarda o trecho citado, sem espaços nas pontas", () => {
+    const r = interpretarDiagnostico(
+      resposta([{ paragrafo: 1, trecho: "  os dados foi  ", descricao: "Concordância.", severidade: "alta" }]),
+      3,
+    );
+    expect(r.ok && r.diagnosticos[0].trecho).toBe("os dados foi");
+  });
+
+  test("trecho vazio ou de outro tipo nem entra no objeto (o Firestore recusa undefined)", () => {
+    const r = interpretarDiagnostico(
+      resposta([
+        { paragrafo: 1, trecho: "", descricao: "Parágrafo confuso." },
+        { paragrafo: 1, trecho: 42, descricao: "Outro apontamento." },
+        { paragrafo: 1, descricao: "Sem trecho." },
+      ]),
+      3,
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) for (const d of r.diagnosticos) expect("trecho" in d).toBe(false);
+  });
+});
 
 describe("ai/gemini — interpretarDiagnostico", () => {
   test("JSON válido vira diagnósticos prontos para a UI", () => {
@@ -92,6 +122,24 @@ describe("ai/gemini — interpretarDiagnostico", () => {
   });
 });
 
+describe("ai/gemini — contarApontamentos (resumo da análise)", () => {
+  test("conta total e cada severidade, inclusive lista vazia", () => {
+    const r = interpretarDiagnostico(
+      resposta([
+        { paragrafo: 1, descricao: "A", severidade: "alta" },
+        { paragrafo: 2, descricao: "B", severidade: "media" },
+        { paragrafo: 3, descricao: "C", severidade: "baixa" },
+        { paragrafo: 4, descricao: "D", severidade: "alta" },
+      ]),
+      10,
+    );
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(contarApontamentos(r.diagnosticos)).toEqual({ total: 4, altos: 2, medios: 1, baixos: 1 });
+    expect(contarApontamentos([])).toEqual({ total: 0, altos: 0, medios: 0, baixos: 0 });
+  });
+});
+
 describe("ai/gemini — chave do servidor (GEMINI_API_KEY)", () => {
   let chaveAnterior: string | undefined;
 
@@ -151,5 +199,104 @@ describe("ai/gemini — validarParagrafos (corpo do POST /api/gemini)", () => {
 
   test("normaliza index fracionário e aceita texto vazio", () => {
     expect(validarParagrafos([{ index: 2.7, texto: "" }])).toEqual([{ index: 2, texto: "" }]);
+  });
+});
+
+describe("ai/gemini — recortarParagrafos (limite de envio)", () => {
+  test("texto curto passa inteiro, sem truncar", () => {
+    const r = recortarParagrafos([
+      { index: 1, texto: "  Primeiro.  " },
+      { index: 2, texto: "Segundo." },
+    ]);
+    expect(r.truncado).toBe(false);
+    expect(r.paragrafos).toEqual([
+      { index: 1, texto: "Primeiro." },
+      { index: 2, texto: "Segundo." },
+    ]);
+  });
+
+  test("manuscrito longo para no limite e marca truncado", () => {
+    const longo = Array.from({ length: 100 }, (_, i) => ({ index: i + 1, texto: "a".repeat(1000) }));
+    const r = recortarParagrafos(longo);
+    expect(r.truncado).toBe(true);
+    expect(r.paragrafos.length).toBeGreaterThan(0);
+    expect(r.paragrafos.length).toBeLessThan(100);
+    const total = r.paragrafos.reduce((soma, p) => soma + `[${p.index}] `.length + p.texto.length + 2, 0);
+    expect(total).toBeLessThanOrEqual(36_000);
+  });
+
+  test("um único parágrafo gigante é cortado no meio", () => {
+    const r = recortarParagrafos([{ index: 1, texto: "b".repeat(50_000) }]);
+    expect(r.truncado).toBe(true);
+    expect(r.paragrafos.length).toBe(1);
+    expect(`[1] ${r.paragrafos[0].texto}`.length).toBeLessThanOrEqual(36_000);
+  });
+});
+
+describe("ai/gemini — executarDiagnostico (tentativas e prazo)", () => {
+  const fetchOriginal = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = fetchOriginal;
+  });
+
+  const PARAGRAFOS = [{ index: 1, texto: "Texto do manuscrito." }];
+
+  /** Resposta de sucesso no formato da API do Gemini. */
+  function sucesso(): Response {
+    const conteudo = JSON.stringify({ resumo: "Tudo certo.", diagnosticos: [] });
+    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: conteudo }] } }] }), {
+      status: 200,
+    });
+  }
+
+  /** Troca o fetch global e registra as URLs chamadas. */
+  function simular(responder: (url: string, init?: RequestInit) => Promise<Response>): string[] {
+    const urls: string[] = [];
+    globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+      urls.push(String(url));
+      return responder(String(url), init);
+    }) as typeof fetch;
+    return urls;
+  }
+
+  test("instabilidade no primeiro modelo: tenta o segundo", async () => {
+    const urls = simular(async (url) => (url.includes("flash-lite") ? new Response("", { status: 503 }) : sucesso()));
+    const r = await executarDiagnostico(PARAGRAFOS, "chave");
+    expect(r.ok).toBe(true);
+    expect(urls.length).toBe(2);
+  });
+
+  test("chave recusada (401): não tenta outro modelo", async () => {
+    const urls = simular(async () => new Response("", { status: 401 }));
+    const r = await executarDiagnostico(PARAGRAFOS, "chave");
+    expect(r.ok).toBe(false);
+    expect(urls.length).toBe(1);
+  });
+
+  test("Gemini sem responder: desiste no prazo total com motivo legível", async () => {
+    const urls = simular(
+      (_url, init) =>
+        new Promise<Response>((_, rejeitar) => {
+          init?.signal?.addEventListener("abort", () => {
+            const erro = new Error("abortado");
+            erro.name = "AbortError";
+            rejeitar(erro);
+          });
+        }),
+    );
+    const inicio = Date.now();
+    const r = await executarDiagnostico(PARAGRAFOS, "chave", 50);
+    expect(Date.now() - inicio).toBeLessThan(2000);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.motivo).toContain("demorou demais");
+    expect(urls.length).toBe(1);
+  });
+
+  test("sem prazo para a segunda tentativa: devolve o motivo da primeira", async () => {
+    const urls = simular(async () => new Response("", { status: 503 }));
+    const r = await executarDiagnostico(PARAGRAFOS, "chave", 100);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.motivo).toContain("alta demanda");
+    expect(urls.length).toBe(1);
   });
 });

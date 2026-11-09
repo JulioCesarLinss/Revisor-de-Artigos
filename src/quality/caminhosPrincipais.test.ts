@@ -4,8 +4,7 @@ import { statusIA, sugerirReescrita } from "../ai/assistente";
 import { aplicarCorrecao } from "../document/acoes";
 import { aplicarSugestao } from "../document/aplicarSugestao";
 import { iniciarRevisao } from "../review/orquestrar";
-import { compararManuscritos } from "../workspace/diff";
-import { estadoInicial, proximoEstado, registrarVersao } from "../workspace/fluxo";
+import { desempilhar, empilhar } from "../workspace/desfazer";
 import { novoHistorico, registrar } from "../workspace/historico";
 
 /**
@@ -25,17 +24,6 @@ const MANUSCRITO = [
   "SILVA, M. Bioética médica. 2021",
 ].join("\n\n");
 
-/** Aplica as correções rápidas disponíveis até estabilizar (ou até o limite). */
-function aplicarCorrecoesDisponiveis(texto: string, limite = 10): string {
-  let atual = texto;
-  for (let i = 0; i < limite; i++) {
-    const alvo = iniciarRevisao(atual).problemas.find((p) => p.acao);
-    if (!alvo) break;
-    atual = aplicarCorrecao(atual, alvo.acao!, alvo.paragrafo);
-  }
-  return atual;
-}
-
 /** Exige que a IA tenha falhado e devolve o motivo, sem asserção condicional. */
 function motivoDaFalha(resultado: ResultadoSugestao): string {
   if (resultado.ok) throw new Error("esperava falha da IA, mas veio uma sugestão");
@@ -43,29 +31,32 @@ function motivoDaFalha(resultado: ResultadoSugestao): string {
 }
 
 describe("Sprint 5 — caminhos principais", () => {
-  test("caminho 1: importar → analisar → corrigir → reanalisar → avançar fluxo", () => {
-    let estado = estadoInicial();
-    expect(estado).toBe("rascunho");
-
+  test("caminho 1: importar → analisar → corrigir → reanalisar → desfazer", () => {
     const primeira = iniciarRevisao(MANUSCRITO);
     expect(primeira.resumo.total).toBeGreaterThan(0);
     expect(primeira.secoes.length).toBeGreaterThan(0);
 
-    // aplicar todas as correções rápidas disponíveis
-    const texto = aplicarCorrecoesDisponiveis(MANUSCRITO);
+    // aplicar todas as correções rápidas disponíveis, guardando o "Desfazer"
+    let texto = MANUSCRITO;
+    let pilha: string[] = [];
+    for (let i = 0; i < 10; i++) {
+      const analise = iniciarRevisao(texto);
+      const alvo = analise.problemas.find((p) => p.acao);
+      if (!alvo) break;
+      pilha = empilhar(pilha, texto);
+      texto = aplicarCorrecao(texto, alvo.acao!, alvo.paragrafo);
+    }
 
     const segunda = iniciarRevisao(texto);
     expect(segunda.resumo.total).toBeLessThan(primeira.resumo.total);
 
-    // avança no fluxo guiado com snapshots
-    const versoes = registrarVersao([], { estado, bruto: MANUSCRITO, totalProblemas: primeira.resumo.total });
-    estado = proximoEstado(estado)!;
-    const versoesFinais = registrarVersao(versoes, { estado, bruto: texto, totalProblemas: segunda.resumo.total });
-    expect(versoesFinais.length).toBe(2);
-
-    // comparação lado a lado entre as versões
-    const diff = compararManuscritos(MANUSCRITO, texto);
-    expect(diff.some((l) => l.mudou)).toBe(true);
+    // desfazer todas as correções volta ao manuscrito importado
+    let passo = desempilhar(pilha);
+    while (passo) {
+      texto = passo.estado;
+      passo = desempilhar(passo.pilha);
+    }
+    expect(texto).toBe(MANUSCRITO);
   });
 
   test("caminho 2: sugestão IA aceita com rastro no histórico", () => {

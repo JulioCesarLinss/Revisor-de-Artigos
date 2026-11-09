@@ -1,5 +1,6 @@
 import {
   getFirestore,
+  deleteDoc,
   doc,
   getDoc,
   setDoc,
@@ -12,7 +13,7 @@ import type { PerfilUsuario } from "../perfil/perfil";
 /**
  * Módulo `firebase/persistencia` — espelhamento dos dados do usuário no
  * Firestore, por uid (`usuarios/{uid}/...`). Projeto de arquivo único:
- * - `usuarios/{uid}/dados/workspace` → EstadoWorkspace (rascunho, histórico, versões)
+ * - `usuarios/{uid}/dados/workspace` → EstadoWorkspace (texto, original, histórico)
  * - `usuarios/{uid}/dados/perfil`    → PerfilUsuario
  *
  * Degradação elegante: sem Firebase configurado (ou sem uid), todas as
@@ -60,6 +61,31 @@ export async function carregarWorkspaceNuvem(uid: string): Promise<EstadoWorkspa
     return snap.exists() ? (snap.data() as Omit<EstadoWorkspace, "atualizadoEm">) : null;
   } catch {
     return null;
+  }
+}
+
+/** Sem conexão, o Firestore segura a promessa até voltar: desistimos antes. */
+const PRAZO_APAGAR_MS = 10_000;
+
+/**
+ * Apaga o workspace do usuário na nuvem ("Descartar tudo"). Sem isso, o
+ * /revisar recarregaria o manuscrito da nuvem ao ver o dispositivo vazio.
+ * O perfil não é tocado. Devolve false sem Firebase/uid, em erro ou sem
+ * confirmação do servidor dentro do prazo.
+ */
+export async function apagarWorkspaceNuvem(uid: string): Promise<boolean> {
+  const ref = caminhoUsuario(uid, "workspace");
+  if (!ref) return false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const prazo = new Promise<false>((resolver) => {
+      timer = setTimeout(() => resolver(false), PRAZO_APAGAR_MS);
+    });
+    return await Promise.race([deleteDoc(ref).then(() => true as const), prazo]);
+  } catch {
+    return false; // regras/rede: a tela avisa o usuário
+  } finally {
+    clearTimeout(timer);
   }
 }
 

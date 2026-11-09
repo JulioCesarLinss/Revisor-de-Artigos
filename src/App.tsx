@@ -31,6 +31,8 @@ export default function App() {
   const [ajudaAberta, setAjudaAberta] = useState(false);
   // Estado de sessão unificado: Firebase Auth quando configurado, senão local.
   const { pronto, autenticado } = useAutorizacao();
+  // A tela de entrada tem um cabeçalho de apresentação, sem navegação.
+  const naEntrada = location.pathname === "/login";
 
   // Sair encerra a sessão (Firebase + local), descarta o workspace e volta ao login.
   const sair = () => {
@@ -45,15 +47,14 @@ export default function App() {
       <a className="skip-link" href="#conteudo">
         Ir para o conteúdo
       </a>
-      <header className="app-header">
+      <header className={naEntrada ? "app-header app-header-entrada" : "app-header"}>
         <div className="app-header-inner">
           <Link to="/revisar" className="brand" title="Ir para a revisão">
             <h1>
               NormaReview <span>AI</span>
             </h1>
-            <p>Regras normativas como base confiável; IA como assistente opcional.</p>
-          </Link>
-          {autenticado && (
+            {!naEntrada && <p>Regras normativas como base confiável; IA como assistente opcional.</p>}
+          </Link>          {autenticado && (
             <nav className="app-nav" aria-label="Navegação do sistema">
               {CADEIA.map((e) => (
                 <Link

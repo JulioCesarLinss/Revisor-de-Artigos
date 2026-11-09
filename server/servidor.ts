@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { VERSAO_API, responderErro, responderJson, responderPreflight } from "./http";
 import { tratarRevisar } from "./revisar";
+import tratadorGemini from "../api/gemini";
 
 /**
  * Etapa 1 — roteador mínimo por tarefa (não por tela), conforme o CEREBRO.
@@ -29,10 +30,21 @@ export function tratarHealth({ res }: Contexto): void {
   responderJson(res, 200, { status: "ok", versao: VERSAO_API });
 }
 
+/**
+ * /api/gemini — o MESMO tratador da função da Vercel (api/gemini.ts), para o
+ * ambiente local se comportar como a produção: login obrigatório e chave
+ * (GEMINI_API_KEY) só no servidor.
+ */
+export function tratarGemini({ req, res }: Contexto): Promise<void> {
+  return tratadorGemini(req, res);
+}
+
 /** Registro de rotas — os próximos módulos (auth, ia, workspace) entram aqui. */
 export const rotas: Rota[] = [
   { metodo: "GET", caminho: "health", tratar: tratarHealth },
   { metodo: "POST", caminho: "revisar", tratar: tratarRevisar },
+  { metodo: "GET", caminho: "gemini", tratar: tratarGemini },
+  { metodo: "POST", caminho: "gemini", tratar: tratarGemini },
 ];
 
 /** Serve uma requisição pelo roteador (não cria servidor — só despacha). */

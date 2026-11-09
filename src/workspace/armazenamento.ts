@@ -1,11 +1,16 @@
-import { ORDEM_FLUXO, type EstadoFluxo, type VersaoSnapshot } from "./fluxo";
 import type { OrigemAlteracao, RegistroAlteracao } from "./historico";
+import type { ResultadoDiagnostico } from "../ai/gemini";
+import { ESTILOS, type TrechoFormatado } from "./formatacao.js";
 
 /**
- * Persistência local do workspace de revisão (texto, histórico, versões e
- * feedback) — permite que a tela /historico mostre dados reais e que o
- * rascunho sobreviva à troca de rotas. Sem backend: armazenamento no
+ * Persistência local do workspace de revisão (texto atual, texto original e
+ * histórico de alterações) — permite que a tela /historico mostre dados reais
+ * e que o rascunho sobreviva à troca de rotas. Sem backend: armazenamento no
  * dispositivo, com storage injetável para os testes.
+ *
+ * Sem cópias do texto por etapa: o workspace fica leve (localStorage e o
+ * documento do Firestore). Dados antigos com `versoes`/`estadoFluxo`/`feedbacks`
+ * ainda carregam — esses campos são simplesmente ignorados.
  */
 
 export type Armazenamento = {
@@ -21,9 +26,16 @@ export interface EstadoWorkspace {
   /** Texto do arquivo original enviado (null quando nada foi anexado). */
   textoOriginal?: string | null;
   historico: RegistroAlteracao[];
-  versoes: VersaoSnapshot[];
-  estadoFluxo: EstadoFluxo;
-  feedbacks: Record<number, boolean>;
+  /** Negrito, itálico e sublinhado aplicados no editor (posições em `bruto`). */
+  formatacao?: TrechoFormatado[];
+  /**
+   * Último diagnóstico do Gemini pedido na tela /revisar. Fica aqui para
+   * sobreviver à troca de abas (o componente desmonta ao navegar) até o
+   * usuário pedir um novo diagnóstico, carregar outro arquivo ou excluí-lo.
+   */
+  diagnostico?: ResultadoDiagnostico | null;
+  /** Texto que gerou o diagnóstico acima (base do aviso "o texto mudou"). */
+  textoDiagnosticado?: string | null;
 }
 
 function armazenamentoPadrao(): Armazenamento | null {
@@ -38,6 +50,43 @@ function ehOrigem(v: unknown): v is OrigemAlteracao {
   return v === "manual" || v === "ia";
 }
 
+function ehSeveridade(v: unknown): boolean {
+  return v === "alta" || v === "media" || v === "baixa";
+}
+
+/** Valida a forma de um apontamento do Gemini lido do storage. */
+function ehApontamento(v: unknown): boolean {
+  if (typeof v !== "object" || v === null) return false;
+  const a = v as Record<string, unknown>;
+  return (
+    typeof a.paragrafo === "number" &&
+    (a.trecho === undefined || typeof a.trecho === "string") &&
+    typeof a.categoria === "string" &&
+    typeof a.descricao === "string" &&
+    typeof a.sugestao === "string" &&
+    ehSeveridade(a.severidade)
+  );
+}
+
+/** Valida a forma do diagnóstico lido do storage; nunca lança. */
+function ehDiagnostico(v: unknown): v is ResultadoDiagnostico {
+  if (typeof v !== "object" || v === null) return false;
+  const d = v as Record<string, unknown>;
+  if (d.ok === false) return typeof d.motivo === "string";
+  if (d.ok !== true || typeof d.resumo !== "string" || typeof d.truncado !== "boolean") return false;
+  return Array.isArray(d.diagnosticos) && d.diagnosticos.every(ehApontamento);
+}
+
+function ehTrechoFormatado(v: unknown): v is TrechoFormatado {
+  if (typeof v !== "object" || v === null) return false;
+  const t = v as Partial<TrechoFormatado>;
+  return (
+    typeof t.inicio === "number" &&
+    typeof t.fim === "number" &&
+    ESTILOS.includes(t.estilo as TrechoFormatado["estilo"])
+  );
+}
+
 function ehRegistro(v: unknown): v is RegistroAlteracao {
   if (typeof v !== "object" || v === null) return false;
   const r = v as Partial<RegistroAlteracao>;
@@ -47,19 +96,6 @@ function ehRegistro(v: unknown): v is RegistroAlteracao {
     typeof r.descricao === "string" &&
     typeof r.paragrafo === "number" &&
     typeof r.quando === "string"
-  );
-}
-
-function ehVersao(v: unknown): v is VersaoSnapshot {
-  if (typeof v !== "object" || v === null) return false;
-  const s = v as Partial<VersaoSnapshot>;
-  return (
-    typeof s.id === "number" &&
-    typeof s.estado === "string" &&
-    ORDEM_FLUXO.includes(s.estado as EstadoFluxo) &&
-    typeof s.bruto === "string" &&
-    typeof s.totalProblemas === "number" &&
-    typeof s.quando === "string"
   );
 }
 
@@ -74,23 +110,17 @@ export function validarWorkspace(dados: unknown): EstadoWorkspace | null {
     typeof d.textoOriginal !== "string"
   )
     return null;
-  if (!Array.isArray(d.historico) || !Array.isArray(d.versoes)) return null;
-  if (typeof d.estadoFluxo !== "string" || !ORDEM_FLUXO.includes(d.estadoFluxo as EstadoFluxo)) return null;
-  if (typeof d.feedbacks !== "object" || d.feedbacks === null) return null;
+  if (!Array.isArray(d.historico)) return null;
 
-  const feedbacks: Record<number, boolean> = {};
-  for (const [k, v] of Object.entries(d.feedbacks)) {
-    const id = Number(k);
-    if (Number.isInteger(id) && typeof v === "boolean") feedbacks[id] = v;
-  }
-
+  // Só os campos atuais: `versoes`/`estadoFluxo`/`feedbacks` de dados antigos ficam para trás.
   return {
     bruto: d.bruto,
     textoOriginal: d.textoOriginal ?? null,
     historico: d.historico.filter(ehRegistro),
-    versoes: d.versoes.filter(ehVersao),
-    estadoFluxo: d.estadoFluxo as EstadoFluxo,
-    feedbacks,
+    formatacao: Array.isArray(d.formatacao) ? d.formatacao.filter(ehTrechoFormatado) : [],
+    // Diagnóstico malformado é descartado (nunca derruba o manuscrito).
+    diagnostico: ehDiagnostico(d.diagnostico) ? d.diagnostico : null,
+    textoDiagnosticado: typeof d.textoDiagnosticado === "string" ? d.textoDiagnosticado : null,
   };
 }
 
@@ -127,29 +157,19 @@ export function limparWorkspace(st?: Armazenamento): void {
   }
 }
 
-/**
- * Limpa apenas o rastro (alterações, versões e feedback), preservando o
- * manuscrito — e a etapa volta a "Rascunho" (o rastro é o que define o
- * avanço no fluxo guiado; sem ele, a condução recomeça).
- */
+/** Limpa apenas o rastro de alterações, preservando o manuscrito. */
 export function limparHistoricoWorkspace(st?: Armazenamento): EstadoWorkspace | null {
   const atual = carregarWorkspace(st);
   if (!atual) return null;
-  const limpo: EstadoWorkspace = {
-    ...atual,
-    historico: [],
-    versoes: [],
-    feedbacks: {},
-    estadoFluxo: "rascunho",
-  };
+  const limpo: EstadoWorkspace = { ...atual, historico: [] };
   salvarWorkspace(limpo, st);
   return limpo;
 }
 
 /**
- * Volta ao texto original do arquivo enviado: restaura `bruto`, zera o
- * rastro e a etapa recomeça em "Rascunho". null quando não há original nem
- * workspace — a tela decide como avisar o usuário.
+ * Volta ao texto original do arquivo enviado: restaura `bruto` e zera o
+ * rastro. null quando não há original nem workspace — a tela decide como
+ * avisar o usuário.
  */
 export function restaurarOriginalWorkspace(st?: Armazenamento): EstadoWorkspace | null {
   const atual = carregarWorkspace(st);
@@ -158,9 +178,6 @@ export function restaurarOriginalWorkspace(st?: Armazenamento): EstadoWorkspace 
     bruto: atual.textoOriginal,
     textoOriginal: atual.textoOriginal,
     historico: [],
-    versoes: [],
-    estadoFluxo: "rascunho",
-    feedbacks: {},
   };
   salvarWorkspace(restaurado, st);
   return restaurado;

@@ -1,52 +1,73 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { statusIA, sugerirReescrita } from "../ai/assistente";
 import { diagnosticarComGemini, geminiConfigurado } from "../ai/geminiCliente";
-import type { ParagrafoNumerado, ResultadoDiagnostico } from "../ai/gemini";
+import type { DiagnosticoGemini, ParagrafoNumerado, ResultadoDiagnostico } from "../ai/gemini";
 import { carregarConfigIA, salvarConfigIA } from "../perfil/perfil";
 import type { ConfiguracaoIA, SugestaoIA } from "../ai/types";
 import { aplicarCorrecao } from "../document/acoes";
 import { aplicarSugestao } from "../document/aplicarSugestao";
 import { lerArquivo, type ResultadoUpload } from "../document/arquivo";
+import { importarTexto } from "../document/importar.js";
 import { iniciarRevisao, type AnaliseRevisao } from "../review/orquestrar";
-import type { Problema } from "../rules/types";
+import type { Intervalo, Problema } from "../rules/types";
 import { PainelGemini } from "../ui/PainelGemini";
 import { PainelHistorico } from "../ui/PainelHistorico";
 import { ManuscritoPaginado } from "../ui/ManuscritoPaginado";
 import { PainelSecoes } from "../ui/PainelSecoes";
 import { PainelSugestao } from "../ui/PainelSugestao";
 import { ProblemaCard } from "../ui/ProblemaCard";
-import { RevisarView } from "../ui/RevisarView";
 import { Resumo } from "../ui/Resumo";
-import { BarraFluxo } from "../ui/BarraFluxo";
-import { ComparacaoView } from "../ui/ComparacaoView";
-import { tituloDaRegra } from "../ui/rotulos";
 import { registrar, type RegistroAlteracao } from "../workspace/historico";
+import { ajustarTrechos, localizarApontamento, unirTrechos } from "../workspace/destaques.js";
 import {
-  estadoInicial,
-  proximoEstado,
-  registrarVersao,
-  ROTULO_ESTADO,
-  type EstadoFluxo,
-  type VersaoSnapshot,
-} from "../workspace/fluxo";
+  ajustarFormatacao,
+  alternarEstilo,
+  estilosEm,
+  type Estilo,
+  type TrechoFormatado,
+} from "../workspace/formatacao.js";
+import { posicoesParagrafos } from "../workspace/paragrafos";
+import { desempilhar, empilhar } from "../workspace/desfazer";
+import { gerarDocx, MIME_DOCX, nomeExportado } from "../exportar/docx";
+import { baixarArquivo } from "../exportar/baixar";
 import { carregarWorkspace, salvarWorkspace } from "../workspace/armazenamento";
 import { useAutorizacao } from "../firebase/auth";
 import { carregarWorkspaceNuvem, salvarWorkspaceNuvem } from "../firebase/persistencia";
+
+/** Espera após a última tecla antes de reanalisar (as regras são instantâneas). */
+const ATRASO_REANALISE_MS = 500;
+/** Teclas digitadas com menos que isso de intervalo viram um único passo do "Desfazer". */
+const PAUSA_NOVO_PASSO_MS = 1000;
+
+/** Texto e formatação juntos: um passo do "Desfazer", e a base de `trechos` no estado da tela. */
+interface TextoFormatado {
+  texto: string;
+  trechos: TrechoFormatado[];
+}
+
+const BOTOES_FORMATO: { estilo: Estilo; letra: string; rotulo: string; atalho: string; classe: string }[] = [
+  { estilo: "negrito", letra: "N", rotulo: "Negrito", atalho: "Ctrl+B", classe: "texto-negrito" },
+  { estilo: "italico", letra: "I", rotulo: "Itálico", atalho: "Ctrl+I", classe: "texto-inclinado" },
+  { estilo: "sublinhado", letra: "S", rotulo: "Sublinhado", atalho: "Ctrl+U", classe: "texto-sublinhado" },
+];
+const TECLAS_FORMATO: Record<string, Estilo> = { b: "negrito", i: "italico", u: "sublinhado" };
+
+/** Marcas no editor: valem para `texto`; `pedido` muda a cada "Localizar" (leva a tela até elas). */
+interface Destaque {
+  texto: string;
+  trechos: Intervalo[];
+  pedido: number;
+}
 
 /** Tela /revisar — editor de revisão interativa (conteúdo original do App). */
 export default function RevisarPage() {
   // uid do Firebase (quando configurado) — chave da persistência na nuvem.
   const { uid } = useAutorizacao();
   // Workspace restaurado do dispositivo (uma única leitura, no primeiro render):
-  // o rascunho/versões sobrevivem à troca de rotas e alimentam /historico.
+  // o rascunho e o histórico sobrevivem à troca de rotas e alimentam /historico.
   const [salvo] = useState(carregarWorkspace);
   const location = useLocation();
-
-  /** Alvo vindo do /historico ("Localizar"): aplicado após a 1ª análise. */
-  const alvoPendente = useRef<number | null>(
-    (location.state as { alvo?: number } | null)?.alvo ?? null,
-  );
 
   // Upload de arquivo (aba Revisar): seletor + arrastar-e-soltar na folha.
   const inputFileRef = useRef<HTMLInputElement | null>(null);
@@ -54,8 +75,88 @@ export default function RevisarPage() {
   const [erroUpload, setErroUpload] = useState<string | null>(null);
 
   const [bruto, setBruto] = useState(salvo?.bruto ?? "");
-  const [analise, setAnalise] = useState<AnaliseRevisao | null>(null);
-  const [revisandoParagrafo, setRevisandoParagrafo] = useState<number | null>(null);
+  // Contadores da barra: vêm do texto atual, a cada tecla (não dependem do "Analisar").
+  const contagem = useMemo(() => importarTexto(bruto), [bruto]);
+
+  // Negrito, itálico e sublinhado. Mudança de texto que não veio da digitação
+  // (correção, sugestão): as faixas acompanham, ainda neste render.
+  const [formato, setFormato] = useState<TextoFormatado>({ texto: bruto, trechos: salvo?.formatacao ?? [] });
+  if (formato.texto !== bruto) {
+    setFormato({ texto: bruto, trechos: ajustarFormatacao(formato.trechos, formato.texto, bruto) });
+  }
+  /** Botões ligados: o que se digitar agora sai nesses estilos. */
+  const [estilosAtivos, setEstilosAtivos] = useState<Estilo[]>([]);
+  const selecao = useRef({ inicio: 0, fim: 0 });
+
+  /** Cursor ou seleção mudou: os botões passam a mostrar os estilos daquele ponto. */
+  const aoSelecionar = useCallback(
+    (inicio: number, fim: number) => {
+      if (selecao.current.inicio === inicio && selecao.current.fim === fim) return;
+      selecao.current = { inicio, fim };
+      setEstilosAtivos(estilosEm(formato.trechos, inicio, fim));
+    },
+    [formato.trechos],
+  );
+  /**
+   * A análise começa no botão "Analisar"; a partir daí os avisos acompanham
+   * as correções. Um texto restaurado (volta de outra tela) é trabalho em
+   * andamento e já chega analisado; um arquivo novo espera o clique.
+   */
+  const [acompanhando, setAcompanhando] = useState(() => !!salvo && salvo.bruto.trim().length > 0);
+  const [analise, setAnalise] = useState<AnaliseRevisao | null>(() =>
+    salvo && salvo.bruto.trim().length > 0 ? iniciarRevisao(salvo.bruto) : null,
+  );
+
+  // Destaque no editor: "Localizar" marca os erros do parágrafo (ou o parágrafo,
+  // nas seções, no /historico e nos avisos sobre ele todo). Cada marca é
+  // independente: clicar nela ou alterá-la apaga só ela.
+  const posicoes = useMemo(() => posicoesParagrafos(bruto), [bruto]);
+  const pedidosLocalizar = useRef(1);
+  const [destaque, setDestaque] = useState<Destaque | null>(() => {
+    const alvo = (location.state as { alvo?: number } | null)?.alvo;
+    const paragrafo = typeof alvo === "number" ? posicoes[alvo - 1] : undefined;
+    return paragrafo ? { texto: bruto, trechos: [paragrafo], pedido: pedidosLocalizar.current } : null;
+  });
+
+  // O texto mudou (tecla, correção, Desfazer): a marca tocada some e as outras
+  // acompanham, ainda neste render, para nunca aparecerem fora do lugar.
+  if (destaque && destaque.texto !== bruto) {
+    const trechos = ajustarTrechos(destaque.trechos, destaque.texto, bruto);
+    setDestaque(trechos.length > 0 ? { ...destaque, texto: bruto, trechos } : null);
+  }
+
+  /** Marca posições relativas ao parágrafo; sem elas, o parágrafo inteiro. */
+  const marcar = useCallback(
+    (paragrafo: number, relativos?: Intervalo[]) => {
+      const alvo = posicoes[paragrafo - 1];
+      if (!alvo) return;
+      const trechos = relativos?.length
+        ? unirTrechos(relativos.map((r) => ({ inicio: alvo.inicio + r.inicio, fim: alvo.inicio + r.fim })))
+        : [{ inicio: alvo.inicio, fim: alvo.fim }];
+      pedidosLocalizar.current += 1;
+      setDestaque({ texto: bruto, trechos, pedido: pedidosLocalizar.current });
+    },
+    [posicoes, bruto],
+  );
+
+  const focar = useCallback((paragrafo: number) => marcar(paragrafo), [marcar]);
+
+  /** Localizar um aviso: todos os erros do parágrafo, medidos no texto atual. */
+  const localizarProblema = useCallback(
+    (problema: Problema) => {
+      const atuais = iniciarRevisao(bruto).problemas.filter((p) => p.paragrafo === problema.paragrafo);
+      const clicado = atuais.find((p) => p.id === problema.id);
+      marcar(problema.paragrafo, clicado?.posicoes && atuais.flatMap((p) => p.posicoes ?? []));
+    },
+    [bruto, marcar],
+  );
+
+  const removerMarca = useCallback((trecho: Intervalo) => {
+    setDestaque((d) => {
+      const trechos = d ? d.trechos.filter((t) => t.inicio !== trecho.inicio) : [];
+      return d && trechos.length > 0 ? { ...d, trechos } : null;
+    });
+  }, []);
 
   // Sprint 3 — assistência IA (opcional; DC-03). A chave salva em /perfil
   // é carregada aqui, para não precisar ser digitada duas vezes.
@@ -80,11 +181,34 @@ export default function RevisarPage() {
   const [ocupadoCom, setOcupadoCom] = useState<string | null>(null);
   const [statusSistema, setStatusSistema] = useState<string | null>(null);
 
-  // Sprint 4 — fluxo de revisão guiada (restaurado do storage quando houver)
-  const [estadoFluxo, setEstadoFluxo] = useState<EstadoFluxo>(salvo?.estadoFluxo ?? estadoInicial());
-  const [versoes, setVersoes] = useState<VersaoSnapshot[]>(salvo?.versoes ?? []);
-  const [feedbacks, setFeedbacks] = useState<Record<number, boolean>>(salvo?.feedbacks ?? {});
-  const [mostrandoComparacao, setMostrandoComparacao] = useState(false);
+  /**
+   * "Desfazer": estados anteriores do texto, só na memória desta tela (não vão
+   * para o dispositivo nem para a nuvem). Correções e sugestões aceitas são um
+   * passo cada; a digitação vira um passo a cada pausa de PAUSA_NOVO_PASSO_MS.
+   */
+  const [pilhaDesfazer, setPilhaDesfazer] = useState<TextoFormatado[]>([]);
+  const ultimaTecla = useRef(0);
+
+  /** Com seleção, aplica na seleção; sem ela, vale para o que se digitar a seguir. */
+  const alternarFormato = useCallback(
+    (estilo: Estilo) => {
+      const { inicio, fim } = selecao.current;
+      if (fim > inicio) {
+        const trechos = alternarEstilo(formato.trechos, estilo, inicio, fim);
+        setPilhaDesfazer((p) => empilhar(p, formato));
+        setFormato({ texto: formato.texto, trechos });
+        setEstilosAtivos(estilosEm(trechos, inicio, fim));
+      } else {
+        setEstilosAtivos((a) => (a.includes(estilo) ? a.filter((e) => e !== estilo) : [...a, estilo]));
+      }
+    },
+    [formato],
+  );
+
+  // Exportar: nome do arquivo anexado (base do nome exportado) e o menu aberto.
+  const [nomeArquivo, setNomeArquivo] = useState<string | null>(null);
+  const [menuExportar, setMenuExportar] = useState(false);
+  const exportarRef = useRef<HTMLSpanElement | null>(null);
 
   const estadoIA = statusIA(configIA);
   // Gemini: a chave vive só no servidor (api/gemini) — aqui consultamos se ele
@@ -103,13 +227,44 @@ export default function RevisarPage() {
   // Ocupado quando há análise/versão em processamento ou sugestão IA pendente.
   const processando = ocupadoCom !== null || carregandoSugestao !== null;
 
-  // Diagnóstico com Gemini (DC-03): pedido só pelo botão "Analisar"; a análise
-  // local acima já terminou antes, então uma falha da IA não atrasa o fluxo.
-  const [diagnostico, setDiagnostico] = useState<ResultadoDiagnostico | null>(null);
+  // Diagnóstico com Gemini (DC-03): só pelo botão próprio do painel — o texto
+  // sai para o Google apenas quando o usuário pede. A análise local roda antes,
+  // então uma falha da IA não atrasa o fluxo.
+  // O diagnóstico vem do workspace salvo: ele sobrevive à troca de abas
+  // (esta tela desmonta ao navegar) até um novo pedido, outro arquivo ou exclusão.
+  const [diagnostico, setDiagnostico] = useState<ResultadoDiagnostico | null>(salvo?.diagnostico ?? null);
   const [analisandoGemini, setAnalisandoGemini] = useState(false);
+  // Texto que gerou o diagnóstico atual: se o manuscrito mudar, o painel avisa.
+  const [textoDiagnosticado, setTextoDiagnosticado] = useState<string | null>(salvo?.textoDiagnosticado ?? null);
   const geminiOcupado = useRef(false);
 
-  const pedirDiagnostico = useCallback(async (paragrafos: ParagrafoNumerado[]) => {
+  /** Localizar um apontamento: todos os erros que a IA apontou no mesmo parágrafo. */
+  const localizarDiagnostico = useCallback(
+    (alvo: DiagnosticoGemini) => {
+      const textos = posicoes.map((p) => bruto.slice(p.inicio, p.fim));
+      const achado = localizarApontamento(textos, alvo);
+      // Nada confiável no texto: marca o parágrafo que a IA citou.
+      if (!achado) return marcar(alvo.paragrafo);
+      const apontamentos = diagnostico?.ok ? diagnostico.diagnosticos : [alvo];
+      marcar(
+        achado.paragrafo,
+        apontamentos.flatMap((d) => {
+          const local = localizarApontamento(textos, d);
+          return local?.paragrafo === achado.paragrafo ? [local.posicao] : [];
+        }),
+      );
+    },
+    [posicoes, bruto, diagnostico, marcar],
+  );
+
+  /** Exclui o diagnóstico atual (mantém o manuscrito e a análise normativa). */
+  const excluirDiagnostico = useCallback(() => {
+    setDiagnostico(null);
+    setTextoDiagnosticado(null);
+    setStatusSistema("Diagnóstico do Gemini excluído.");
+  }, []);
+
+  const pedirDiagnostico = useCallback(async (paragrafos: ParagrafoNumerado[], texto: string) => {
     if (geminiAtivo === false || geminiOcupado.current) return; // uma consulta por vez
     geminiOcupado.current = true;
     setDiagnostico(null);
@@ -117,6 +272,7 @@ export default function RevisarPage() {
     try {
       const diagnosticado = await diagnosticarComGemini(paragrafos);
       setDiagnostico(diagnosticado);
+      setTextoDiagnosticado(texto);
       if (diagnosticado.ok) {
         setStatusSistema(`Diagnóstico do Gemini — ${diagnosticado.diagnosticos.length} apontamento(s).`);
       }
@@ -126,36 +282,43 @@ export default function RevisarPage() {
     }
   }, [geminiAtivo]);
 
-  const analisar = useCallback((comGemini = false) => {
-    setOcupadoCom("Analisando manuscrito…");
-    setRevisandoParagrafo(null);
-    setTimeout(() => {
-      const resultado = iniciarRevisao(bruto);
-      setAnalise(resultado);
-      setOcupadoCom(null);
-      setStatusSistema(`Análise concluída — ${resultado.resumo.total} problema(s) encontrado(s).`);
-      // Clique em "Analisar": a análise local e o diagnóstico do Gemini juntos.
-      if (comGemini) void pedirDiagnostico(resultado.manuscrito.paragrafos);
-      // "Localizar" vindo do /historico: abre o modo revisar no parágrafo alvo.
-      const alvo = alvoPendente.current;
-      if (alvo !== null) {
-        alvoPendente.current = null;
-        if (alvo > 0 && alvo <= resultado.manuscrito.paragrafos.length) setRevisandoParagrafo(alvo);
-      }
-    }, 0);
+  /**
+   * Botão do painel do Gemini: reanalisa pelas regras na hora, para a
+   * numeração dos parágrafos enviada bater com o texto atual (e o
+   * "Localizar" levar ao lugar certo), e então pede o diagnóstico.
+   */
+  const pedirGemini = useCallback(() => {
+    const resultado = iniciarRevisao(bruto);
+    setAnalise(resultado);
+    setAcompanhando(true);
+    void pedirDiagnostico(resultado.manuscrito.paragrafos, bruto);
   }, [bruto, pedirDiagnostico]);
+
+  /** Botão "Analisar" (ou Ctrl+Enter): verifica o texto e liga o acompanhamento. */
+  const analisar = useCallback(() => {
+    if (bruto.trim().length === 0) return;
+    const resultado = iniciarRevisao(bruto);
+    setAnalise(resultado);
+    setAcompanhando(true);
+    setStatusSistema(`Análise concluída — ${resultado.resumo.total} problema(s) encontrado(s).`);
+  }, [bruto]);
+
+  // Depois do "Analisar", os avisos acompanham o texto: pouco depois da última
+  // alteração (tecla, correção rápida, sugestão aceita), a análise é refeita e
+  // os avisos já resolvidos somem. Se a análise já é deste texto, nada a fazer.
+  useEffect(() => {
+    if (!acompanhando || (analise?.manuscrito.bruto ?? "") === bruto) return;
+    const t = setTimeout(() => {
+      setAnalise(bruto.trim().length > 0 ? iniciarRevisao(bruto) : null);
+    }, ATRASO_REANALISE_MS);
+    return () => clearTimeout(t);
+  }, [acompanhando, bruto, analise]);
 
   // Persiste o workspace a cada mudança: /historico lê daqui e o rascunho
   // sobrevive à navegação entre rotas.
   useEffect(() => {
-    salvarWorkspace({ bruto, textoOriginal, historico, versoes, estadoFluxo, feedbacks });
-  }, [bruto, textoOriginal, historico, versoes, estadoFluxo, feedbacks]);
-
-  // Sem manuscrito, o fluxo guiado volta ao início (a barra de etapas mostra
-  // "Rascunho" e o selo de exportação nem aparece) — inclusive na próxima visita.
-  useEffect(() => {
-    if (bruto.trim().length === 0 && estadoFluxo !== "rascunho") setEstadoFluxo("rascunho");
-  }, [bruto, estadoFluxo]);
+    salvarWorkspace({ bruto, textoOriginal, historico, formatacao: formato.trechos, diagnostico, textoDiagnosticado });
+  }, [bruto, textoOriginal, historico, formato.trechos, diagnostico, textoDiagnosticado]);
 
   // Com Firebase, carrega da nuvem quando o dispositivo local está vazio
   // (primeiro acesso deste dispositivo à conta).
@@ -166,11 +329,11 @@ export default function RevisarPage() {
     void carregarWorkspaceNuvem(uid).then((nuvem) => {
       if (!nuvem || bruto.trim().length > 0) return; // só preenche vazio
       setBruto(nuvem.bruto);
+      setFormato({ texto: nuvem.bruto, trechos: nuvem.formatacao ?? [] });
       setTextoOriginal(nuvem.textoOriginal ?? null);
       setHistorico(nuvem.historico ?? []);
-      setVersoes(nuvem.versoes ?? []);
-      setEstadoFluxo(nuvem.estadoFluxo ?? estadoInicial());
-      setFeedbacks(nuvem.feedbacks ?? {});
+      setDiagnostico(nuvem.diagnostico ?? null);
+      setTextoDiagnosticado(nuvem.textoDiagnosticado ?? null);
     });
   }, [uid, bruto]);
 
@@ -178,76 +341,100 @@ export default function RevisarPage() {
   // cada tecla). O localStorage continua sendo a fonte imediata/offline.
   useEffect(() => {
     if (!uid) return;
-    const estado = { bruto, textoOriginal, historico, versoes, estadoFluxo, feedbacks };
+    const estado = { bruto, textoOriginal, historico, formatacao: formato.trechos, diagnostico, textoDiagnosticado };
     const t = setTimeout(() => {
       void salvarWorkspaceNuvem(uid, estado);
     }, 1200);
     return () => clearTimeout(t);
-  }, [uid, bruto, historico, versoes, estadoFluxo, feedbacks]);
-
-  // Ao montar com texto restaurado, analisa uma vez (e aplica um alvo pendente).
-  const iniciado = useRef(false);
-  useEffect(() => {
-    if (iniciado.current) return;
-    iniciado.current = true;
-    if (bruto.trim().length > 0) analisar();
-  }, [analisar, bruto]);
-
-  const avancarFluxo = useCallback(() => {
-    const seguinte = proximoEstado(estadoFluxo);
-    if (!seguinte) return;
-    setOcupadoCom("Registrando versão…");
-    setTimeout(() => {
-      const analiseAtual = analise ?? iniciarRevisao(bruto);
-      setVersoes((v) => registrarVersao(v, { estado: estadoFluxo, bruto, totalProblemas: analiseAtual.resumo.total }));
-      setEstadoFluxo(seguinte);
-      setMostrandoComparacao(true);
-      setOcupadoCom(null);
-      setStatusSistema(`Versão "${ROTULO_ESTADO[estadoFluxo]}" registrada — comparando com "${ROTULO_ESTADO[seguinte]}".`);
-    }, 0);
-  }, [estadoFluxo, analise, bruto]);
-
-  const voltarFluxo = useCallback(() => {
-    const ordem: EstadoFluxo[] = ["rascunho", "revisao", "final"];
-    const i = ordem.indexOf(estadoFluxo);
-    if (i > 0) {
-      setEstadoFluxo(ordem[i - 1]);
-      setMostrandoComparacao(false);
-    }
-  }, [estadoFluxo]);
+  }, [uid, bruto, textoOriginal, historico, formato.trechos, diagnostico, textoDiagnosticado]);
 
   /**
-   * Heurística 7 (Nielsen) — flexibilidade e eficiência de uso: aceleradores de
-   * teclado para as ações repetidas (analisar, avançar no fluxo), ignorados
-   * enquanto o app está ocupado ou no modo "revisar" (evita conflito com Esc).
+   * Heurística 7 (Nielsen) — flexibilidade e eficiência de uso: acelerador de
+   * teclado para analisar (Ctrl+Enter), ignorado enquanto o app está ocupado.
    */
-  const podeAnalisar = bruto.trim().length > 0 && revisandoParagrafo === null && !processando;
-
   useEffect(() => {
     const aoTeclar = (e: KeyboardEvent) => {
-      if (!(e.ctrlKey || e.metaKey) || e.key !== "Enter") return;
-      if (processando || revisandoParagrafo !== null) return;
+      if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.key !== "Enter") return;
+      if (processando || bruto.trim().length === 0) return;
       e.preventDefault();
-      if (e.shiftKey) {
-        if (bruto.trim().length > 0 && estadoFluxo !== "final") avancarFluxo();
-      } else if (bruto.trim().length > 0) {
-        analisar(true);
-      }
+      analisar();
     };
     window.addEventListener("keydown", aoTeclar);
     return () => window.removeEventListener("keydown", aoTeclar);
-  }, [analisar, avancarFluxo, bruto, estadoFluxo, processando, revisandoParagrafo]);
+  }, [analisar, bruto, processando]);
 
-  const darFeedback = useCallback((historicoId: number, ajudou: boolean) => {
-    setFeedbacks((f) => ({ ...f, [historicoId]: ajudou }));
-  }, []);
+  /** Digitação: um passo do "Desfazer" a cada pausa (não um por tecla). */
+  const editar = useCallback(
+    (novo: string) => {
+      const agora = Date.now();
+      if (agora - ultimaTecla.current > PAUSA_NOVO_PASSO_MS) setPilhaDesfazer((p) => empilhar(p, formato));
+      ultimaTecla.current = agora;
+      setBruto(novo);
+      setFormato({ texto: novo, trechos: ajustarFormatacao(formato.trechos, formato.texto, novo, estilosAtivos) });
+    },
+    [formato, estilosAtivos],
+  );
 
-  const editar = useCallback((novo: string) => {
-    setBruto(novo);
-    setRevisandoParagrafo(null);
-  }, []);
+  /** Volta o texto ao estado anterior à última alteração. */
+  const desfazer = useCallback(() => {
+    const passo = desempilhar(pilhaDesfazer);
+    if (!passo) return;
+    const { texto } = passo.estado;
+    setPilhaDesfazer(passo.pilha);
+    setBruto(texto);
+    setFormato(passo.estado);
+    setEstilosAtivos(estilosEm(passo.estado.trechos, selecao.current.inicio, selecao.current.fim));
+    ultimaTecla.current = 0; // a próxima digitação abre um passo novo
+    if (acompanhando) setAnalise(texto.trim().length > 0 ? iniciarRevisao(texto) : null);
+    setStatusSistema("Última alteração desfeita.");
+  }, [pilhaDesfazer, acompanhando]);
 
-  /** Lê o arquivo no cliente, carrega o texto como novo rascunho e analisa. */
+  /** Lembra, no status, quantos avisos ainda havia no texto exportado. */
+  const avisoPendente = analise && analise.problemas.length > 0
+    ? ` Atenção: a análise ainda aponta ${analise.problemas.length} aviso(s).`
+    : "";
+
+  /** Baixa o texto revisado em .docx com formatação ABNT básica. */
+  const exportarDocx = useCallback(() => {
+    setMenuExportar(false);
+    const nome = nomeExportado(nomeArquivo);
+    try {
+      baixarArquivo(gerarDocx(bruto, formato.trechos), nome, MIME_DOCX);
+      setStatusSistema(`"${nome}" gerado com formatação ABNT básica.${avisoPendente}`);
+    } catch {
+      setStatusSistema("Não foi possível gerar o arquivo .docx. Tente novamente.");
+    }
+  }, [bruto, formato.trechos, nomeArquivo, avisoPendente]);
+
+  /** Copia o texto revisado para colar no Word ou no Google Docs. */
+  const copiarTexto = useCallback(async () => {
+    setMenuExportar(false);
+    try {
+      await navigator.clipboard.writeText(bruto);
+      setStatusSistema(`Texto copiado — cole no Word ou no Google Docs.${avisoPendente}`);
+    } catch {
+      setStatusSistema("O navegador não permitiu copiar. Selecione o texto no editor e use Ctrl+C.");
+    }
+  }, [bruto, avisoPendente]);
+
+  // Menu "Exportar": fecha ao clicar fora ou apertar Esc.
+  useEffect(() => {
+    if (!menuExportar) return;
+    const aoClicar = (e: MouseEvent) => {
+      if (!exportarRef.current?.contains(e.target as Node)) setMenuExportar(false);
+    };
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuExportar(false);
+    };
+    document.addEventListener("mousedown", aoClicar);
+    document.addEventListener("keydown", aoTeclar);
+    return () => {
+      document.removeEventListener("mousedown", aoClicar);
+      document.removeEventListener("keydown", aoTeclar);
+    };
+  }, [menuExportar]);
+
+  /** Lê o arquivo no cliente e carrega o texto como novo rascunho (a análise espera o "Analisar"). */
   const receberArquivo = useCallback(async (file: File | null | undefined) => {
     if (!file) return;
     setErroUpload(null);
@@ -271,33 +458,35 @@ export default function RevisarPage() {
     }
 
     setBruto(resultado.texto);
+    setFormato({ texto: resultado.texto, trechos: [] }); // a importação traz só o texto
+    setEstilosAtivos([]);
+    selecao.current = { inicio: 0, fim: 0 };
     setTextoOriginal(resultado.texto); // guarda o original do upload p/ "Voltar ao original"
-    setRevisandoParagrafo(null);
-    alvoPendente.current = null; // o texto novo invalida um alvo antigo
+    setDestaque(null); // o texto novo invalida um destaque antigo
     setDiagnostico(null); // o diagnóstico anterior pertencia ao texto anterior
-    setOcupadoCom("Analisando manuscrito…");
-    setTimeout(() => {
-      const analiseNova = iniciarRevisao(resultado.texto);
-      setAnalise(analiseNova);
-      setOcupadoCom(null);
-      setStatusSistema(
-        `Arquivo "${file.name}" carregado — ${analiseNova.resumo.total} problema(s) encontrado(s).`,
-      );
-    }, 0);
+    setTextoDiagnosticado(null);
+    setAnalise(null); // avisos do texto anterior não valem para o novo
+    setAcompanhando(false);
+    setPilhaDesfazer([]); // o "Desfazer" não atravessa para outro arquivo
+    setNomeArquivo(file.name);
+    setOcupadoCom(null);
+    setStatusSistema(`Arquivo "${file.name}" carregado — clique em Analisar para verificar o texto.`);
   }, []);
 
-  const corrigir = useCallback((problema: Problema) => {
-    if (!problema.acao) return;
-    setBruto((atual) => {
-      const corrigido = aplicarCorrecao(atual, problema.acao!, problema.paragrafo);
+  const corrigir = useCallback(
+    (problema: Problema) => {
+      if (!problema.acao) return;
+      const corrigido = aplicarCorrecao(bruto, problema.acao, problema.paragrafo);
+      setPilhaDesfazer((p) => empilhar(p, formato));
+      setBruto(corrigido);
       setAnalise(iniciarRevisao(corrigido));
-      return corrigido;
-    });
-    setHistorico((h) =>
-      registrar(h, { origem: "manual", descricao: "correção rápida aplicada", paragrafo: problema.paragrafo }),
-    );
-    setStatusSistema(`Correção aplicada no parágrafo ${problema.paragrafo} — análise atualizada.`);
-  }, []);
+      setHistorico((h) =>
+        registrar(h, { origem: "manual", descricao: "correção rápida aplicada", paragrafo: problema.paragrafo }),
+      );
+      setStatusSistema(`Correção aplicada no parágrafo ${problema.paragrafo} — análise atualizada.`);
+    },
+    [bruto, formato],
+  );
 
   const pedirSugestao = useCallback(
     async (problema: Problema) => {
@@ -329,11 +518,10 @@ export default function RevisarPage() {
   const aceitarSugestao = useCallback(
     (textoFinal: string) => {
       if (!sugestaoAtiva) return;
-      setBruto((atual) => {
-        const novo = aplicarSugestao(atual, sugestaoAtiva, textoFinal);
-        setAnalise(iniciarRevisao(novo));
-        return novo;
-      });
+      const novo = aplicarSugestao(bruto, sugestaoAtiva, textoFinal);
+      setPilhaDesfazer((p) => empilhar(p, formato));
+      setBruto(novo);
+      setAnalise(iniciarRevisao(novo));
       setHistorico((h) =>
         registrar(h, {
           origem: "ia",
@@ -344,7 +532,7 @@ export default function RevisarPage() {
       setStatusSistema(`Sugestão aceita no parágrafo ${sugestaoAtiva.paragrafo} — análise atualizada.`);
       setSugestaoAtiva(null);
     },
-    [sugestaoAtiva],
+    [bruto, formato, sugestaoAtiva],
   );
 
   /**
@@ -379,22 +567,6 @@ export default function RevisarPage() {
   return (
     <main className="app-main" id="conteudo">
       <section className="canvas-col" aria-label="Manuscrito em revisão">
-        <BarraFluxo
-          estado={estadoFluxo}
-          podeAvancar={bruto.trim().length > 0 && !processando}
-          onAvancar={avancarFluxo}
-          onVoltar={voltarFluxo}
-          processando={processando}
-          motivoBloqueio={
-            /* H9: o botão bloqueado diz por quê e como destravar. */
-            bruto.trim().length === 0
-              ? "O manuscrito está vazio — cole o texto antes de registrar uma versão."
-              : processando
-                ? "Aguarde: uma operação está em andamento."
-                : undefined
-          }
-        />
-
         {/* H1: a linha de status só existe quando há status a mostrar. */}
         {(carregandoSugestao !== null || ocupadoCom !== null || analisandoGemini || statusSistema) && (
           <p className="status-sistema" role="status" aria-live="polite">
@@ -419,25 +591,45 @@ export default function RevisarPage() {
           </p>
         )}
 
-        {mostrandoComparacao && estadoFluxo !== "rascunho" ? (
-          <div className="canvas-page">
-            <ComparacaoView versoes={versoes} estadoAtual={estadoFluxo} textoAtual={bruto} />
-            <div className="comparacao-acoes">
-              <button className="btn" type="button" onClick={() => setMostrandoComparacao(false)}>
-                Continuar {ROTULO_ESTADO[estadoFluxo]}
-              </button>
-            </div>
-          </div>
-        ) : (
-        <>
         <div className="canvas-toolbar">
           <span className="stat">
-            <strong>{analise?.manuscrito.paragrafos.length ?? 0}</strong> parágrafos
+            <strong>{contagem.paragrafos.length}</strong> parágrafos
           </span>
           <span className="stat">
-            <strong>{analise?.manuscrito.totalPalavras ?? 0}</strong> palavras
+            <strong>{contagem.totalPalavras}</strong> palavras
+          </span>
+          <span className="formato-botoes" role="group" aria-label="Formatação do texto">
+            {BOTOES_FORMATO.map((b) => (
+              <button
+                key={b.estilo}
+                className="btn btn-formato"
+                type="button"
+                aria-label={b.rotulo}
+                aria-pressed={estilosAtivos.includes(b.estilo)}
+                title={`${b.rotulo} (${b.atalho}): aplica no texto selecionado ou no que você digitar a seguir`}
+                // Sem isto, o clique tiraria o foco do editor e o cursor sumiria.
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => alternarFormato(b.estilo)}
+              >
+                <span className={b.classe}>{b.letra}</span>
+              </button>
+            ))}
           </span>
           <span style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+            {/* Desfazer: substitui as cópias por etapa (só em memória). */}
+            <button
+              className="btn"
+              type="button"
+              onClick={desfazer}
+              disabled={pilhaDesfazer.length === 0 || processando}
+              title={
+                pilhaDesfazer.length === 0
+                  ? "Nada para desfazer ainda"
+                  : `Desfaz a última alteração (${pilhaDesfazer.length} disponível(is))`
+              }
+            >
+              ↶ Desfazer
+            </button>
             {/* Anexar: pequeno botão ao lado de Analisar (substitui "Carregar exemplo"). */}
             <input
               ref={inputFileRef}
@@ -475,20 +667,48 @@ export default function RevisarPage() {
             <button
               className="btn btn-accent"
               type="button"
-              onClick={() => analisar(true)}
-              disabled={!podeAnalisar}
+              onClick={analisar}
+              disabled={bruto.trim().length === 0 || processando}
               aria-busy={processando || undefined}
               title={
                 /* H9: quando bloqueado, o botão explica por quê e como destravar. */
-                revisandoParagrafo !== null
-                  ? "Volte à edição (botão \"Voltar à edição\" ou tecla Esc) para analisar novamente"
-                  : bruto.trim().length === 0
-                    ? "Cole ou digite o texto do manuscrito para habilitar a análise"
-                    : "Verifica o manuscrito contra o catálogo de regras e pede um diagnóstico ao Gemini"
+                bruto.trim().length === 0
+                  ? "Anexe, cole ou digite o manuscrito para habilitar a análise"
+                  : "Verifica o manuscrito contra o catálogo de regras normativas; depois, os avisos acompanham suas correções"
               }
             >
               Analisar <kbd className="atalho-tecla" aria-hidden="true">Ctrl+↵</kbd>
             </button>
+            {/* Exportar: o fim da revisão — o texto corrigido sai do app. */}
+            <span className="exportar-wrap" ref={exportarRef}>
+              <button
+                className="btn btn-primary"
+                type="button"
+                onClick={() => setMenuExportar((aberto) => !aberto)}
+                disabled={bruto.trim().length === 0 || processando}
+                aria-haspopup="menu"
+                aria-expanded={menuExportar}
+                title={
+                  bruto.trim().length === 0
+                    ? "Anexe, cole ou digite o manuscrito para poder exportar"
+                    : "Baixar o texto revisado em .docx ou copiá-lo"
+                }
+              >
+                Exportar ▾
+              </button>
+              {menuExportar && (
+                <span className="exportar-menu" role="menu" aria-label="Exportar o texto revisado">
+                  <button type="button" role="menuitem" className="exportar-item" onClick={exportarDocx}>
+                    <strong>Baixar .docx</strong>
+                    <small>Word, com formatação ABNT básica</small>
+                  </button>
+                  <button type="button" role="menuitem" className="exportar-item" onClick={() => void copiarTexto()}>
+                    <strong>Copiar texto</strong>
+                    <small>Para colar no Word ou no Google Docs</small>
+                  </button>
+                </span>
+              )}
+            </span>
           </span>
         </div>
 
@@ -506,6 +726,12 @@ export default function RevisarPage() {
         {/* Arrastar-e-soltar: só reage a arquivos, preserva o drag interno. */}
         <div
           className={`canvas-page ${arrastando ? "arrastando" : ""}`}
+          onKeyDown={(e) => {
+            const estilo = TECLAS_FORMATO[e.key.toLowerCase()];
+            if (!estilo || !(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey) return;
+            e.preventDefault(); // Ctrl+U abriria o código-fonte da página
+            alternarFormato(estilo);
+          }}
           onDragOver={(e) => {
             if (!e.dataTransfer.types.includes("Files")) return;
             e.preventDefault();
@@ -522,30 +748,21 @@ export default function RevisarPage() {
             void receberArquivo(e.dataTransfer.files?.[0]);
           }}
         >
-          {revisandoParagrafo !== null && analise ? (
-            <RevisarView
-              manuscrito={analise.manuscrito}
-              alvo={revisandoParagrafo}
-              motivo={
-                /* H6: diz qual regra motivou o salto, sem exigir memorização. */
-                analise.problemas.find((p) => p.paragrafo === revisandoParagrafo)
-                  ? `problema: ${tituloDaRegra(analise.problemas.find((p) => p.paragrafo === revisandoParagrafo)!.regraId) ?? "verificação normativa"}`
-                  : undefined
-              }
-              onVoltar={() => setRevisandoParagrafo(null)}
-            />          ) : (
-            <>
-              {/* Rascunho paginado em folhas A4 (edição inline por parágrafo). */}
-              <ManuscritoPaginado valor={bruto} onChange={editar} />
-            </>
-          )}
+          {/* Folhas A4 editáveis; os erros localizados aparecem destacados. */}
+          <ManuscritoPaginado
+            valor={bruto}
+            onChange={editar}
+            destaques={destaque?.trechos}
+            pedidoDestaque={destaque?.pedido}
+            onRemoverDestaque={removerMarca}
+            formatacao={formato.trechos}
+            onSelecao={aoSelecionar}
+          />
         </div>
-        </>
-        )}
       </section>
 
       <aside className="inspector" aria-label="Resultado da análise">
-        <Resumo analise={analise} />
+        <Resumo analise={analise} diagnostico={diagnostico} />
 
         {/* Sprint 3 — configuração da assistência IA (opcional) */}
         <div className="resumo-card">
@@ -585,20 +802,21 @@ export default function RevisarPage() {
           {erroIA && renderErroIA()}
         </div>
 
-        {/* Diagnóstico do Gemini — resultado do clique em "Analisar". */}
+        {/* Diagnóstico do Gemini — só quando o usuário pede, no botão do painel. */}
         <PainelGemini
           configurado={geminiAtivo !== false}
           carregando={analisandoGemini}
           resultado={diagnostico}
-          onTentar={() => {
-            if (analise) void pedirDiagnostico(analise.manuscrito.paragrafos);
-          }}
-          onFocar={(n) => n > 0 && setRevisandoParagrafo(n)}
+          podePedir={bruto.trim().length > 0 && !processando && !analisandoGemini}
+          desatualizado={diagnostico !== null && textoDiagnosticado !== null && textoDiagnosticado !== bruto}
+          onPedir={pedirGemini}
+          onFocar={localizarDiagnostico}
+          onExcluir={excluirDiagnostico}
         />
 
         {analise && <PainelSecoes secoes={analise.secoes} onFocarSecao={(indices) => {
           const primeiro = indices[0];
-          if (primeiro) setRevisandoParagrafo(primeiro);
+          if (primeiro) focar(primeiro);
         }} />}
 
         {analise && analise.problemas.length === 0 && (
@@ -618,6 +836,14 @@ export default function RevisarPage() {
           />
         )}
 
+        {/* Contador que acompanha as correções: cai a cada aviso resolvido. */}
+        {analise && analise.problemas.length > 0 && (
+          <p className="avisos-restantes" role="status" aria-live="polite">
+            <strong>{analise.problemas.length}</strong>{" "}
+            {analise.problemas.length === 1 ? "aviso restante" : "avisos restantes"}
+          </p>
+        )}
+
         {/* Parágrafos marcados como título: o botão "Aplicar correção" não
             aparece — a correção determinística poderia estragar o título. */}
         {analise?.problemas.map((p) => (
@@ -625,14 +851,14 @@ export default function RevisarPage() {
             key={p.id}
             problema={p}
             onCorrigir={corrigir}
-            onLocalizar={() => p.paragrafo > 0 && setRevisandoParagrafo(p.paragrafo)}
+            onLocalizar={() => localizarProblema(p)}
             onSugerir={estadoIA === "pronta" ? () => pedirSugestao(p) : undefined}
             sugerindo={carregandoSugestao === p.id}
             listarAcao={!analise.manuscrito.paragrafos.find((x) => x.index === p.paragrafo)?.ehTitulo}
           />
         ))}
 
-        <PainelHistorico historico={historico} feedbacks={feedbacks} onFeedback={darFeedback} />
+        <PainelHistorico historico={historico} />
       </aside>
     </main>
   );

@@ -8,6 +8,59 @@ function porRegra(texto: string, regraId: string) {
   return avaliarManuscrito(importarTexto(texto)).filter((p) => p.regraId === regraId);
 }
 
+/** O que cada posição do problema aponta, lido do próprio parágrafo. */
+function marcados(texto: string, regraId: string): string[] {
+  const manuscrito = importarTexto(texto);
+  const achado = avaliarManuscrito(manuscrito).find((p) => p.regraId === regraId);
+  const paragrafo = manuscrito.paragrafos.find((p) => p.index === achado?.paragrafo);
+  return (achado?.posicoes ?? []).map(({ inicio, fim }) => (paragrafo?.texto ?? "").slice(inicio, fim));
+}
+
+describe("rules/catálogo — posição do erro no parágrafo", () => {
+  test("R001 aponta cada espaço com a pontuação", () => {
+    expect(marcados("Uma frase , com dois erros ; aqui mesmo.", "R001")).toEqual([" ,", " ;"]);
+  });
+
+  test("R003 aponta as aspas do parágrafo", () => {
+    expect(marcados("Ele disse “algo sem fechar aspas no fim da frase.", "R003")).toEqual(["“"]);
+  });
+
+  test("R004 aponta a última palavra do parágrafo sem pontuação", () => {
+    expect(marcados("Este parágrafo comprido termina sem nenhuma pontuação", "R004")).toEqual(["pontuação"]);
+  });
+
+  test("R005 aponta cada palavra em caixa-alta", () => {
+    expect(marcados("Texto com MUITAS PALAVRAS em CAIXA ALTA no meio.", "R005")).toEqual([
+      "MUITAS",
+      "PALAVRAS",
+      "CAIXA",
+      "ALTA",
+    ]);
+  });
+
+  test("R007 aponta só a citação sem vírgula", () => {
+    expect(marcados("Segundo (Silva 2021) e também (Souza, 2020) e (Lima 2019a).", "R007")).toEqual([
+      "(Silva 2021)",
+      "(Lima 2019a)",
+    ]);
+  });
+
+  test("R008 aponta só a citação longa", () => {
+    const longa = `“${"palavra ".repeat(20).trim()}”`;
+    expect(marcados(`Ele disse “pouco” e depois ${longa} sem página.`, "R008")).toEqual([longa]);
+  });
+
+  test("R010 aponta só os espaços repetidos", () => {
+    expect(marcados("Tem  dois e   três espaços.", "R010")).toEqual(["  ", "   "]);
+  });
+
+  test("R002, R006 e R009 valem para o trecho inteiro: sem posição", () => {
+    expect(marcados(`${"x".repeat(700)}\n\nCurto.`, "R002")).toEqual([]);
+    expect(marcados("Só um parágrafo.", "R006")).toEqual([]);
+    expect(marcados("SILVA, João. Título da obra sem data.", "R009")).toEqual([]);
+  });
+});
+
 describe("rules/catálogo", () => {
   test("todo problema tem os campos estruturados mínimos (DC-08)", () => {
     const problemas = avaliarManuscrito(

@@ -4,19 +4,41 @@ Projeto de revisão acadêmica com foco em normas ABNT e assistência por IA.
 
 ## O que é
 
-Ferramenta web para revisão de artigos e trabalhos acadêmicos: catálogo determinístico de regras com referência ABNT (NBR 10520/6023/14724), relatório de conformidade por seção, navegação ao trecho problema, correções com rastro, assistência IA opcional e fluxo guiado rascunho → revisão → versão final com comparação lado a lado.
+Ferramenta web para revisão de artigos e trabalhos acadêmicos: catálogo determinístico de regras com referência ABNT (NBR 10520/6023/14724), relatório de conformidade por seção, destaque do trecho problema no editor, correções com rastro e "Desfazer", assistência IA opcional e exportação do texto revisado em .docx (formatação ABNT básica).
 
 ## Como rodar
 
 ```bash
 bun install
-bun run dev        # http://localhost:5173
-bun test           # 53 testes
+bun test           # testes
 bun run typecheck
 bun run build      # produção em dist/
 ```
 
-Assistência IA (opcional): informe uma chave de API compatível OpenAI na própria interface, ou defina `VITE_OPENAI_API_KEY`.
+### Desenvolvimento local (igual à produção)
+
+1. Copie `.env.example` como `.env.local` e preencha os valores (o arquivo explica onde pegar cada um).
+   O `.env.local` nunca vai para o git.
+2. Abra **dois terminais** na pasta do projeto:
+
+   ```bash
+   bun run api   # terminal 1: API local em http://localhost:8787 (lê o .env.local)
+   bun run dev   # terminal 2: app em http://localhost:5173 (repassa /api para a API local)
+   ```
+
+3. Acesse http://localhost:5173.
+
+O que cada parte precisa:
+
+| Recurso | Precisa de |
+|---|---|
+| Regras, editor, Desfazer, exportação | nada (funciona sem `.env.local`, em modo local) |
+| Entrar com a conta real e salvar na nuvem | `VITE_FIREBASE_*` |
+| Diagnóstico com Gemini | `VITE_FIREBASE_*` (exige login) + `GEMINI_API_KEY` + `bun run api` rodando |
+
+A chave do Gemini (`GEMINI_API_KEY`) fica só no servidor — localmente no `bun run api`, em produção na Vercel — e nunca usa o prefixo `VITE_`.
+
+Assistente de reescrita (opcional): cada usuário informa a própria chave compatível com OpenAI no Perfil ou na tela de revisão; ela fica salva só no navegador.
 
 ## Objetivo inicial
 
