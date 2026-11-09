@@ -10,12 +10,12 @@ test.describe("Autenticação", () => {
   test("rota protegida sem sessão redireciona para o login", async ({ page }) => {
     await page.goto("/revisar");
     await expect(page).toHaveURL(/\/login$/);
-    await expect(page.getByRole("heading", { name: /Rigor acadêmico/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Mais rigor acadêmico/ })).toBeVisible();
   });
 
   test("formulário exige e-mail e senha antes de enviar", async ({ page }) => {
     await page.goto("/login");
-    await page.getByRole("button", { name: "Entrar no NormaReview" }).click();
+    await page.getByRole("button", { name: "Entrar na conta" }).click();
     // A validação nativa barra o envio: continua no login, sem entrar.
     await expect(page).toHaveURL(/\/login$/);
     await expect(page.getByRole("navigation", { name: "Navegação do sistema" })).toHaveCount(0);
@@ -27,10 +27,10 @@ test.describe("Autenticação", () => {
     await senha.fill(DADOS_TESTE.senha);
     await expect(senha).toHaveAttribute("type", "password");
 
-    await page.getByRole("button", { name: "mostrar" }).click();
+    await page.getByRole("button", { name: "Mostrar senha" }).click();
     await expect(senha).toHaveAttribute("type", "text");
 
-    await page.getByRole("button", { name: "ocultar" }).click();
+    await page.getByRole("button", { name: "Ocultar senha" }).click();
     await expect(senha).toHaveAttribute("type", "password");
   });
 
@@ -38,7 +38,7 @@ test.describe("Autenticação", () => {
     await page.goto("/login");
     await page.getByLabel("E-mail institucional ou pessoal").fill(DADOS_TESTE.email);
     await page.getByLabel("Senha de acesso").fill(DADOS_TESTE.senha);
-    await page.getByRole("button", { name: "Entrar no NormaReview" }).click();
+    await page.getByRole("button", { name: "Entrar na conta" }).click();
 
     await expect(page).toHaveURL(/\/revisar$/);
     await expect(page.getByRole("navigation", { name: "Navegação do sistema" })).toBeVisible();
@@ -49,7 +49,7 @@ test.describe("Autenticação", () => {
     await page.goto("/login");
     await page.getByLabel("E-mail institucional ou pessoal").fill(DADOS_TESTE.email);
     await page.getByLabel("Senha de acesso").fill(DADOS_TESTE.senha);
-    await page.getByRole("button", { name: "Entrar no NormaReview" }).click();
+    await page.getByRole("button", { name: "Entrar na conta" }).click();
     await expect(page).toHaveURL(/\/revisar$/);
 
     const semLembrar = await page.evaluate(() => ({
@@ -65,7 +65,7 @@ test.describe("Autenticação", () => {
     await page.getByLabel("E-mail institucional ou pessoal").fill(DADOS_TESTE.email);
     await page.getByLabel("Senha de acesso").fill(DADOS_TESTE.senha);
     await page.getByLabel("Lembrar de mim neste dispositivo").check();
-    await page.getByRole("button", { name: "Entrar no NormaReview" }).click();
+    await page.getByRole("button", { name: "Entrar na conta" }).click();
     await expect(page).toHaveURL(/\/revisar$/);
 
     expect(await page.evaluate(() => localStorage.getItem("normareview.sessao"))).toBe("1");
@@ -108,7 +108,7 @@ test.describe("Autenticação", () => {
     await page.getByLabel("E-mail institucional ou pessoal").fill(DADOS_TESTE.email);
     await page.getByLabel("Senha de acesso").fill(DADOS_TESTE.senha);
     await page.getByLabel("Lembrar de mim neste dispositivo").check();
-    await page.getByRole("button", { name: "Entrar no NormaReview" }).click();
+    await page.getByRole("button", { name: "Entrar na conta" }).click();
     await expect(page).toHaveURL(/\/revisar$/);
 
     await page.getByRole("button", { name: "Sair" }).click();

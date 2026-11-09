@@ -32,7 +32,7 @@ export async function entrar(page: Page, opcoes: { lembrar?: boolean } = {}): Pr
   await page.getByLabel("E-mail institucional ou pessoal").fill(DADOS_TESTE.email);
   await page.getByLabel("Senha de acesso").fill(DADOS_TESTE.senha);
   if (opcoes.lembrar) await page.getByLabel("Lembrar de mim neste dispositivo").check();
-  await page.getByRole("button", { name: "Entrar no NormaReview" }).click();
+  await page.getByRole("button", { name: "Entrar na conta" }).click();
   await expect(page).toHaveURL(/\/revisar$/);
 }
 
