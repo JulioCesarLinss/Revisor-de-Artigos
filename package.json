@@ -9,6 +9,7 @@
     "preview": "vite preview --host 0.0.0.0",
     "api": "bun server/index.ts",
     "test": "bun test",
+    "smells": "bun scripts/detectar-test-smells.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -50,9 +50,12 @@ describe("workspace/armazenamento — persistência", () => {
     expect(carregado?.feedbacks[1]).toBe(true);
   });
 
-  test("ausente ou JSON corrompido devolve null, nunca lança", () => {
+  test("workspace ausente devolve null", () => {
+    expect(carregarWorkspace(storageFalso())).toBeNull();
+  });
+
+  test("workspace com JSON corrompido devolve null, nunca lança", () => {
     const st = storageFalso();
-    expect(carregarWorkspace(st)).toBeNull();
     st.setItem(CHAVE_WORKSPACE, "{quebrado");
     expect(carregarWorkspace(st)).toBeNull();
   });
@@ -73,7 +76,7 @@ describe("workspace/armazenamento — persistência", () => {
     expect(parcial?.feedbacks).toEqual({ 1: true });
   });
 
-  test("limparWorkspace descarta tudo; limparHistorico preserva o manuscrito e volta a Rascunho", () => {
+  test("limparHistoricoWorkspace preserva o manuscrito e volta a Rascunho", () => {
     const st = storageFalso();
     salvarWorkspace(WORKSPACE, st);
 
@@ -84,6 +87,11 @@ describe("workspace/armazenamento — persistência", () => {
     expect(limpo?.versoes).toEqual([]);
     expect(limpo?.feedbacks).toEqual({});
     expect(carregarWorkspace(st)?.bruto).toBe(WORKSPACE.bruto);
+  });
+
+  test("limparWorkspace descarta tudo do storage", () => {
+    const st = storageFalso();
+    salvarWorkspace(WORKSPACE, st);
 
     limparWorkspace(st);
     expect(carregarWorkspace(st)).toBeNull();

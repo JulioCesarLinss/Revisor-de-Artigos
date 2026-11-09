@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { extensaoDe, extrairTextoDocx, lerArquivo } from "./arquivo";
+import { extensaoDe, extrairTextoDocx, lerArquivo, type ResultadoUpload } from "./arquivo";
 
 /* ---------- montagem de um .docx mínimo (ZIP) para os testes ---------- */
 
@@ -64,6 +64,20 @@ const XML = [
 
 const XML_ESPERADO = "INTRODUÇÃO\n\nTexto & acentuação: ção, í, “aspas”.\n\nParágrafo três.";
 
+/* ---------- leitura do resultado sem condicional no teste ---------- */
+
+/** Exige sucesso e devolve o texto: falha alto em vez de pular a asserção. */
+function textoDe(resultado: ResultadoUpload): string {
+  if (!resultado.ok) throw new Error(`esperava leitura bem-sucedida, veio: ${resultado.motivo}`);
+  return resultado.texto;
+}
+
+/** Exige recusa e devolve o motivo legível. */
+function motivoDe(resultado: ResultadoUpload): string {
+  if (resultado.ok) throw new Error("esperava recusa, mas a leitura funcionou");
+  return resultado.motivo;
+}
+
 /* ---------- testes ---------- */
 
 describe("document/arquivo — extensões", () => {
@@ -81,46 +95,46 @@ describe("document/arquivo — leitura de manuscritos", () => {
     const bytes = new Uint8Array([0xef, 0xbb, 0xbf, ...new TextEncoder().encode("Parágrafo de exemplo.")]);
     const r = await lerArquivo({ nome: "texto.txt", bytes });
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.texto).toBe("Parágrafo de exemplo.");
+    expect(textoDe(r)).toBe("Parágrafo de exemplo.");
   });
 
   test("arquivo .txt vazio é recusado com motivo", async () => {
     const r = await lerArquivo({ nome: "vazio.txt", bytes: new Uint8Array() });
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.motivo).toContain("vazio");
+    expect(motivoDe(r)).toContain("vazio");
   });
 
   test(".pdf é recusado com orientação legível (não quebra o fluxo)", async () => {
     const r = await lerArquivo({ nome: "tese.pdf", bytes: new Uint8Array([37, 80, 68, 70]) });
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.motivo).toContain(".pdf");
+    expect(motivoDe(r)).toContain(".pdf");
   });
 
   test("extensão desconhecida é recusada com a lista de formatos", async () => {
     const r = await lerArquivo({ nome: "imagem.png", bytes: new Uint8Array([1, 2, 3]) });
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.motivo).toContain(".docx");
+    expect(motivoDe(r)).toContain(".docx");
   });
 
   test(".docx com ZIP stored (método 0) extrai os parágrafos", async () => {
     const bytes = await montarDocx(XML, 0);
     const r = await lerArquivo({ nome: "tcc.docx", bytes });
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.texto).toBe(XML_ESPERADO);
+    expect(textoDe(r)).toBe(XML_ESPERADO);
   });
 
   test(".docx com ZIP deflate (método 8) extrai os parágrafos", async () => {
     const bytes = await montarDocx(XML, 8);
     const r = await lerArquivo({ nome: "dissertacao.docx", bytes });
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.texto).toBe(XML_ESPERADO);
+    expect(textoDe(r)).toBe(XML_ESPERADO);
   });
 
   test(".docx corrompido não lança — vira motivo legível", async () => {
     const lixo = new TextEncoder().encode("isto nao é um zip de verdade, só lixo");
     const r = await lerArquivo({ nome: "quebrado.docx", bytes: lixo });
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.motivo.length).toBeGreaterThan(0);
+    expect(motivoDe(r).length).toBeGreaterThan(0);
   });
 
   test("extrairTextoDocx lança diretamente para arquivo inválido", async () => {

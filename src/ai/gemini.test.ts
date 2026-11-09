@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { chaveGemini, interpretarDiagnostico, validarParagrafos } from "./gemini";
 
 /** Monta a resposta em JSON como o Gemini devolveria. */
@@ -93,27 +93,28 @@ describe("ai/gemini — interpretarDiagnostico", () => {
 });
 
 describe("ai/gemini — chave do servidor (GEMINI_API_KEY)", () => {
+  let chaveAnterior: string | undefined;
+
+  // Fixture de ambiente: cada teste ajusta a variável e o afterEach restaura.
+  beforeEach(() => {
+    chaveAnterior = process.env.GEMINI_API_KEY;
+  });
+
+  afterEach(() => {
+    if (chaveAnterior === undefined) delete process.env.GEMINI_API_KEY;
+    else process.env.GEMINI_API_KEY = chaveAnterior;
+  });
+
   test("lê GEMINI_API_KEY do processo, sem prefixo VITE_ e sem espaços", () => {
-    const anterior = process.env.GEMINI_API_KEY;
     process.env.GEMINI_API_KEY = "  gemini-local-123  ";
-    try {
-      expect(chaveGemini()).toBe("gemini-local-123");
-    } finally {
-      if (anterior === undefined) delete process.env.GEMINI_API_KEY;
-      else process.env.GEMINI_API_KEY = anterior;
-    }
+    expect(chaveGemini()).toBe("gemini-local-123");
   });
 
   test("sem GEMINI_API_KEY o Gemini fica desconfigurado, mesmo com chave VITE_ no ambiente", () => {
-    const anterior = process.env.GEMINI_API_KEY;
     delete process.env.GEMINI_API_KEY;
-    try {
-      // O ambiente de teste tem VITE_GEMINI_API_KEY (chave de cliente): ela
-      // não pode mais acionar o Gemini — isso é o que mantém a chave fora do bundle.
-      expect(chaveGemini()).toBe("");
-    } finally {
-      if (anterior !== undefined) process.env.GEMINI_API_KEY = anterior;
-    }
+    // O ambiente de teste tem VITE_GEMINI_API_KEY (chave de cliente): ela
+    // não pode mais acionar o Gemini — isso é o que mantém a chave fora do bundle.
+    expect(chaveGemini()).toBe("");
   });
 });
 

@@ -34,9 +34,12 @@ describe("perfil/perfil — persistência local", () => {
     expect(carregado?.perfil).toBe("docente");
   });
 
-  test("perfil ausente ou corrompido devolve null, nunca quebra", () => {
+  test("perfil ausente devolve null", () => {
+    expect(carregarPerfil(storageFalso())).toBeNull();
+  });
+
+  test("perfil corrompido devolve null, nunca quebra", () => {
     const st = storageFalso();
-    expect(carregarPerfil(st)).toBeNull();
     st.setItem(CHAVE_PERFIL, "{json quebrado");
     expect(carregarPerfil(st)).toBeNull();
   });
@@ -50,7 +53,7 @@ describe("perfil/perfil — persistência local", () => {
     expect(ok?.perfil).toBe("graduacao"); // default
   });
 
-  test("config IA: salva, recarrega com defaults opcionais e remove", () => {
+  test("config IA: salva e recarrega com defaults opcionais", () => {
     const st = storageFalso();
     expect(carregarConfigIA(st)).toBeNull();
 
@@ -64,6 +67,11 @@ describe("perfil/perfil — persistência local", () => {
     const config2 = carregarConfigIA(st);
     expect(config2?.baseUrl).toBe("https://api.local/v1");
     expect(config2?.modelo).toBe("gpt-4o-mini");
+  });
+
+  test("config IA: remove com removerConfigIA", () => {
+    const st = storageFalso();
+    salvarConfigIA({ apiKey: "sk-teste" }, st);
 
     removerConfigIA(st);
     expect(st.mapa.has(CHAVE_CONFIG_IA)).toBe(false);

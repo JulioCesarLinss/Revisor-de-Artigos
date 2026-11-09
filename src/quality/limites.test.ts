@@ -2,6 +2,10 @@ import { describe, expect, test } from "bun:test";
 import { aplicarCorrecao } from "../document/acoes";
 import { iniciarRevisao } from "../review/orquestrar";
 
+const TOTAL_PARAGRAFOS_LONGO = 500;
+const TAMANHO_PARAGRAFO_GIGANTE = 50_000;
+const INDICE_INEXISTENTE = 99;
+
 /**
  * Sprint 5 — tratamento de erros e limites: entradas improváveis não podem
  * travar o sistema nem perder conteúdo ([[Testes de Qualidade]]).
@@ -17,14 +21,14 @@ describe("Sprint 5 — erros e limites", () => {
   });
 
   test("texto muito longo não trava e mantém contagens corretas", () => {
-    const longo = Array.from({ length: 500 }, (_, i) => `Parágrafo ${i} com texto de preenchimento adequado.`).join("\n\n");
+    const longo = Array.from({ length: TOTAL_PARAGRAFOS_LONGO }, (_, i) => `Parágrafo ${i} com texto de preenchimento adequado.`).join("\n\n");
     const analise = iniciarRevisao(longo);
-    expect(analise.manuscrito.paragrafos.length).toBe(500);
+    expect(analise.manuscrito.paragrafos.length).toBe(TOTAL_PARAGRAFOS_LONGO);
     expect(analise.resumo.total).toBeGreaterThanOrEqual(0);
   });
 
   test("parágrafo único gigante produz problema de parágrafo longo sem travar", () => {
-    const gigante = "x".repeat(50_000);
+    const gigante = "x".repeat(TAMANHO_PARAGRAFO_GIGANTE);
     const analise = iniciarRevisao(gigante);
     expect(analise.problemas.some((p) => p.regraId === "R002")).toBe(true);
   });
@@ -44,7 +48,7 @@ describe("Sprint 5 — erros e limites", () => {
 
   test("correção em índice inexistente devolve texto inalterado", () => {
     const bruto = "Parágrafo único razoável.";
-    expect(aplicarCorrecao(bruto, "adicionarPontoFinal", 99)).toBe(bruto);
+    expect(aplicarCorrecao(bruto, "adicionarPontoFinal", INDICE_INEXISTENTE)).toBe(bruto);
     expect(aplicarCorrecao(bruto, "removerEspacosPontuacao", -1)).toBe(bruto);
   });
 

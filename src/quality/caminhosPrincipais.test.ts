@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import type { ResultadoSugestao } from "../ai/types";
 import { statusIA, sugerirReescrita } from "../ai/assistente";
 import { aplicarCorrecao } from "../document/acoes";
 import { aplicarSugestao } from "../document/aplicarSugestao";
@@ -13,6 +14,8 @@ import { novoHistorico, registrar } from "../workspace/historico";
  * domínio, como exigem [[Testes de Qualidade]].
  */
 
+const TOTAL_PARAGRAFOS = 30;
+
 const MANUSCRITO = [
   "INTRODUÇÃO",
   "A inteligência artificial vem transformando a produção científica .",
@@ -21,6 +24,23 @@ const MANUSCRITO = [
   "REFERÊNCIAS",
   "SILVA, M. Bioética médica. 2021",
 ].join("\n\n");
+
+/** Aplica as correções rápidas disponíveis até estabilizar (ou até o limite). */
+function aplicarCorrecoesDisponiveis(texto: string, limite = 10): string {
+  let atual = texto;
+  for (let i = 0; i < limite; i++) {
+    const alvo = iniciarRevisao(atual).problemas.find((p) => p.acao);
+    if (!alvo) break;
+    atual = aplicarCorrecao(atual, alvo.acao!, alvo.paragrafo);
+  }
+  return atual;
+}
+
+/** Exige que a IA tenha falhado e devolve o motivo, sem asserção condicional. */
+function motivoDaFalha(resultado: ResultadoSugestao): string {
+  if (resultado.ok) throw new Error("esperava falha da IA, mas veio uma sugestão");
+  return resultado.motivo;
+}
 
 describe("Sprint 5 — caminhos principais", () => {
   test("caminho 1: importar → analisar → corrigir → reanalisar → avançar fluxo", () => {
@@ -32,13 +52,7 @@ describe("Sprint 5 — caminhos principais", () => {
     expect(primeira.secoes.length).toBeGreaterThan(0);
 
     // aplicar todas as correções rápidas disponíveis
-    let texto = MANUSCRITO;
-    for (let i = 0; i < 10; i++) {
-      const analise = iniciarRevisao(texto);
-      const alvo = analise.problemas.find((p) => p.acao);
-      if (!alvo) break;
-      texto = aplicarCorrecao(texto, alvo.acao!, alvo.paragrafo);
-    }
+    const texto = aplicarCorrecoesDisponiveis(MANUSCRITO);
 
     const segunda = iniciarRevisao(texto);
     expect(segunda.resumo.total).toBeLessThan(primeira.resumo.total);
@@ -79,17 +93,17 @@ describe("Sprint 5 — caminhos principais", () => {
       1,
     );
     expect(resultado.ok).toBe(false);
-    if (!resultado.ok) expect(resultado.motivo.length).toBeGreaterThan(0);
+    expect(motivoDaFalha(resultado).length).toBeGreaterThan(0);
   });
 
   test("caminho 5: documento realista completo — 0 a N problemas sem travar", () => {
     const titulos = ["INTRODUÇÃO", "METODOLOGIA", "RESULTADOS", "CONSIDERAÇÕES FINAIS"];
     const partes: string[] = [];
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < TOTAL_PARAGRAFOS; i++) {
       partes.push(i % 7 === 0 ? titulos[i / 7] ?? "DISCUSSÃO" : `Parágrafo ${i} com conteúdo acadêmico razoável e pontuação final.`);
     }
     const analise = iniciarRevisao(partes.join("\n\n"));
-    expect(analise.manuscrito.paragrafos.length).toBe(30);
+    expect(analise.manuscrito.paragrafos.length).toBe(TOTAL_PARAGRAFOS);
     expect(analise.secoes.length).toBeGreaterThan(0);
   });
 });
