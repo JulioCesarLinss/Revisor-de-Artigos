@@ -16,6 +16,7 @@
     "test:seguranca": "bun scripts/teste-seguranca.ts",
     "smells": "bun scripts/detectar-test-smells.ts",
     "test:e2e": "playwright test",
+    "test:smoke": "playwright test smoke.e2e",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
     "test:e2e:pdf": "playwright test --reporter=json > .resultados-e2e.json && node scripts/relatorio-pdf.mjs",
