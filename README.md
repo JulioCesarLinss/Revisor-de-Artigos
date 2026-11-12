@@ -67,6 +67,20 @@ A concorrência sobe em degraus (padrão: 1 → 5 → 10 → 25 → 50 → 100 �
 
 > Estresse contra produção gera carga real: prefira um ambiente de teste e rode o gerador em outra máquina. Exaustão real de memória/CPU do host não é provocada — o limite é exercitado por concorrência e pelas validações da API.
 
+### Teste de segurança
+
+Busca brechas, falhas de autenticação e exposição de dados no código e na API:
+
+```bash
+bun run test:seguranca --somente-estatico      # segredos no código/bundle, .env versionado
+bun run test:seguranca                         # + bateria dinâmica contra a API local
+bun scripts/teste-seguranca.ts --front http://localhost:5173
+```
+
+A fase estática procura chaves embutidas (Google/Gemini, OpenAI, PEM, GitHub, AWS), `.env` versionado por engano e variáveis sensíveis com prefixo `VITE_` (que iriam para o navegador). A dinâmica confere autenticação do `/api/gemini` (sem token, JWT forjado `alg none`, token malformado), CORS, cabeçalhos de segurança do front, limites de corpo, JSON profundo, reflexo de HTML, travessia de caminho até `.env`, stack trace em erros e indício de ausência de limitação de taxa. Cada achado recebe severidade (crítico, alto, médio, baixo); o comando falha a partir de `--rigor` (padrão: `alto`). Códigos de saída: 0 sem achados no rigor, 1 com achado, 2 API inacessível no modo completo.
+
+> As verificações são passivas e de baixo volume: nenhum ataque destrutivo ou exaustão de recursos. Rode contra um ambiente de teste e não contra produção sem autorização.
+
 ## Objetivo inicial
 
 - Tornar a revisão mais rápida e mais compreensível.

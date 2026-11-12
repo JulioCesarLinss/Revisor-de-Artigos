@@ -13,6 +13,7 @@
     "test:carga:pico": "bun scripts/teste-carga.ts --perfil pico",
     "test:carga:estresse": "bun scripts/teste-carga.ts --perfil estresse",
     "test:estresse": "bun scripts/teste-estresse.ts",
+    "test:seguranca": "bun scripts/teste-seguranca.ts",
     "smells": "bun scripts/detectar-test-smells.ts",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
