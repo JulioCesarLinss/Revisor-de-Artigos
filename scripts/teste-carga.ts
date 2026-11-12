@@ -35,7 +35,7 @@ const PERFIS = {
 
 type NomePerfil = keyof typeof PERFIS;
 
-interface Opcoes {
+export interface Opcoes {
   url: string;
   perfil: NomePerfil;
   usuarios: number;
@@ -55,14 +55,14 @@ interface Cenario {
   corpo?: string;
 }
 
-interface Amostra {
+export interface Amostra {
   cenario: string;
   ms: number;
   status: number | null;
   erro?: string;
 }
 
-interface Resumo {
+export interface Resumo {
   requisicoes: number;
   falhas: number;
   taxaErro: number;
@@ -198,7 +198,7 @@ Exemplos:
 `);
 }
 
-function percentil(ordenadas: number[], p: number): number {
+export function percentil(ordenadas: number[], p: number): number {
   if (ordenadas.length === 0) return 0;
   const indice = Math.min(ordenadas.length - 1, Math.max(0, Math.ceil((p / 100) * ordenadas.length) - 1));
   return ordenadas[indice]!;
@@ -213,7 +213,7 @@ function ms(valor: number): string {
   return `${valor.toFixed(1)} ms`;
 }
 
-function resumir(amostras: Amostra[], duracaoSegundos: number): Resumo {
+export function resumir(amostras: Amostra[], duracaoSegundos: number): Resumo {
   const latencias = amostras.map((a) => a.ms).sort((a, b) => a - b);
   const falhas = amostras.filter((a) => a.erro !== undefined).length;
   const status: Record<string, number> = {};

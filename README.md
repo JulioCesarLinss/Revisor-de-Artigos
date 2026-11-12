@@ -54,6 +54,19 @@ O relatório mostra throughput, latência (min/média/p50/p90/p95/p99/max), dist
 
 A carga é mista: `/api/health` e `/api/revisar` (manuscritos curto, médio e longo). `/api/gemini` fica fora porque depende do Google — mediria o provedor externo, não este sistema. Rodando o gerador na mesma máquina da API, os números são indicativos; para aferição real, aponte `--url` para o ambiente e rode o gerador em outra máquina.
 
+### Teste de estresse
+
+Leva o sistema ao limite para achar o ponto de quebra e observar a recuperação:
+
+```bash
+bun run test:estresse
+bun scripts/teste-estresse.ts --degraus 1,10,50,100,200 --degrau 10
+```
+
+A concorrência sobe em degraus (padrão: 1 → 5 → 10 → 25 → 50 → 100 → 200 usuários por 8 s). O primeiro degrau que viola p95/erros é o **ponto de quebra**; o anterior é o último nível saudável. Depois o teste mede quanto tempo o `/api/health` leva para voltar, se a carga de retorno normaliza e se corpos acima de 64 KB, JSON inválido e método errado são recusados com 400/405 (sem 500 nem queda). Sai com código 0 quando a degradação é controlada e há recuperação, 1 quando o serviço não volta ou trata mal o limite, e 2 se a API estiver inacessível. Ajustes: `--degraus`, `--degrau`, `--p95`, `--erro`, `--recuperacao`, `--tempo-recuperacao`, `--url` e `--ajuda`.
+
+> Estresse contra produção gera carga real: prefira um ambiente de teste e rode o gerador em outra máquina. Exaustão real de memória/CPU do host não é provocada — o limite é exercitado por concorrência e pelas validações da API.
+
 ## Objetivo inicial
 
 - Tornar a revisão mais rápida e mais compreensível.
