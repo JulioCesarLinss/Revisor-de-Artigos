@@ -40,6 +40,20 @@ A chave do Gemini (`GEMINI_API_KEY`) fica só no servidor — localmente no `bun
 
 Assistente de reescrita (opcional): cada usuário informa a própria chave compatível com OpenAI no Perfil ou na tela de revisão; ela fica salva só no navegador.
 
+### Teste de carga
+
+Com a API rodando (`bun run api`), avalie velocidade, estabilidade e tempo de resposta sob usuários simultâneos:
+
+```bash
+bun run test:carga           # normal: 10 usuários por 20s
+bun run test:carga:pico      # pico: 50 usuários por 30s
+bun run test:carga:estresse  # estresse: 150 usuários por 30s
+```
+
+O relatório mostra throughput, latência (min/média/p50/p90/p95/p99/max), distribuição de status, motivos de falha e a variação de p95 entre o início e o fim. O comando falha (código 1) se p95 passar de 2 s ou os erros de 1% — limites ajustáveis com `--p95` e `--erro`. Outras opções: `--usuarios`, `--duracao`, `--url`, `--pausa`, `--timeout`, `--ajuda`.
+
+A carga é mista: `/api/health` e `/api/revisar` (manuscritos curto, médio e longo). `/api/gemini` fica fora porque depende do Google — mediria o provedor externo, não este sistema. Rodando o gerador na mesma máquina da API, os números são indicativos; para aferição real, aponte `--url` para o ambiente e rode o gerador em outra máquina.
+
 ## Objetivo inicial
 
 - Tornar a revisão mais rápida e mais compreensível.
