@@ -1,12 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { statusIA, sugerirReescrita } from "../ai/assistente";
 import { diagnosticarComGemini, geminiConfigurado } from "../ai/geminiCliente";
 import type { DiagnosticoGemini, ParagrafoNumerado, ResultadoDiagnostico } from "../ai/gemini";
-import { carregarConfigIA, salvarConfigIA } from "../perfil/perfil";
-import type { ConfiguracaoIA, SugestaoIA } from "../ai/types";
 import { aplicarCorrecao } from "../document/acoes";
-import { aplicarSugestao } from "../document/aplicarSugestao";
 import { lerArquivo, type ResultadoUpload } from "../document/arquivo";
 import { importarTexto } from "../document/importar.js";
 import { iniciarRevisao, type AnaliseRevisao } from "../review/orquestrar";
@@ -15,7 +11,6 @@ import { PainelGemini } from "../ui/PainelGemini";
 import { PainelHistorico } from "../ui/PainelHistorico";
 import { ManuscritoPaginado } from "../ui/ManuscritoPaginado";
 import { PainelSecoes } from "../ui/PainelSecoes";
-import { PainelSugestao } from "../ui/PainelSugestao";
 import { ProblemaCard } from "../ui/ProblemaCard";
 import { Resumo } from "../ui/Resumo";
 import { registrar, type RegistroAlteracao } from "../workspace/historico";
@@ -158,20 +153,6 @@ export default function RevisarPage() {
     });
   }, []);
 
-  // Sprint 3 — assistência IA (opcional; DC-03). A chave salva em /perfil
-  // é carregada aqui, para não precisar ser digitada duas vezes.
-  const [configIA, setConfigIA] = useState<ConfiguracaoIA | null>(() => carregarConfigIA());
-  const [chaveInput, setChaveInput] = useState("");
-  const [sugestaoAtiva, setSugestaoAtiva] = useState<SugestaoIA | null>(null);
-  const [carregandoSugestao, setCarregandoSugestao] = useState<string | null>(null);
-  const [erroIA, setErroIA] = useState<string | null>(null);
-
-  /**
-   * Heurística 9 (Nielsen) — reconhecer, diagnosticar e recuperar erros:
-   * guarda o problema que originou o último pedido, para que o relatório de
-   * erro mostre o que falhou e ofereça a recuperação ("Tentar novamente").
-   */
-  const [ultimoPedido, setUltimoPedido] = useState<Problema | null>(null);
   const [historico, setHistorico] = useState<RegistroAlteracao[]>(salvo?.historico ?? []);
 
   // Texto original do arquivo enviado — base para "Voltar ao original" no /historico.
@@ -210,7 +191,6 @@ export default function RevisarPage() {
   const [menuExportar, setMenuExportar] = useState(false);
   const exportarRef = useRef<HTMLSpanElement | null>(null);
 
-  const estadoIA = statusIA(configIA);
   // Gemini: a chave vive só no servidor (api/gemini) — aqui consultamos se ele
   // está ativo (null = ainda sem resposta da consulta).
   const [geminiAtivo, setGeminiAtivo] = useState<boolean | null>(null);
@@ -224,8 +204,8 @@ export default function RevisarPage() {
     };
   }, []);
 
-  // Ocupado quando há análise/versão em processamento ou sugestão IA pendente.
-  const processando = ocupadoCom !== null || carregandoSugestao !== null;
+  // Ocupado quando há análise/versão em processamento.
+  const processando = ocupadoCom !== null;
 
   // Diagnóstico com Gemini (DC-03): só pelo botão próprio do painel — o texto
   // sai para o Google apenas quando o usuário pede. A análise local roda antes,
@@ -488,94 +468,13 @@ export default function RevisarPage() {
     [bruto, formato],
   );
 
-  const pedirSugestao = useCallback(
-    async (problema: Problema) => {
-      if (!configIA || !analise) return;
-      const par = analise.manuscrito.paragrafos.find((p) => p.index === problema.paragrafo);
-      if (!par) return;
-
-      setCarregandoSugestao(problema.id);
-      setErroIA(null);
-      setUltimoPedido(problema); // H9: contexto do pedido para diagnóstico/recuperação
-      const resultado = await sugerirReescrita(configIA, par.texto, problema.paragrafo, {
-        regraId: problema.regraId,
-        mensagem: problema.mensagem,
-        referencia: problema.referencia,
-      });
-      setCarregandoSugestao(null);
-
-      if (resultado.ok) {
-        setSugestaoAtiva(resultado.sugestao);
-        setStatusSistema("Sugestão recebida da IA — revise antes de aceitar.");
-      } else {
-        setErroIA(resultado.motivo);
-        setStatusSistema(null);
-      }
-    },
-    [configIA, analise],
-  );
-
-  const aceitarSugestao = useCallback(
-    (textoFinal: string) => {
-      if (!sugestaoAtiva) return;
-      const novo = aplicarSugestao(bruto, sugestaoAtiva, textoFinal);
-      setPilhaDesfazer((p) => empilhar(p, formato));
-      setBruto(novo);
-      setAnalise(iniciarRevisao(novo));
-      setHistorico((h) =>
-        registrar(h, {
-          origem: "ia",
-          descricao: sugestaoAtiva.regraId ? `sugestão aceita (${sugestaoAtiva.regraId})` : "sugestão aceita",
-          paragrafo: sugestaoAtiva.paragrafo,
-        }),
-      );
-      setStatusSistema(`Sugestão aceita no parágrafo ${sugestaoAtiva.paragrafo} — análise atualizada.`);
-      setSugestaoAtiva(null);
-    },
-    [bruto, formato, sugestaoAtiva],
-  );
-
-  /**
-   * H9 — relatório de erro completo para a falha do assistente IA:
-   * o quê (Ocorreu um erro) → por quê (motivo legível) → como recuperar.
-   */
-  const renderErroIA = () => (
-    <div className="ia-erro" role="alert">
-      <strong className="ia-erro-titulo">Ocorreu um erro ao pedir a sugestão</strong>
-      <span>{erroIA}</span>
-      <span className="ia-erro-acoes">
-        {ultimoPedido && (
-          <button
-            className="btn"
-            type="button"
-            onClick={() => {
-              const problema = ultimoPedido;
-              setErroIA(null);
-              void pedirSugestao(problema);
-            }}
-          >
-            Tentar novamente
-          </button>
-          )}
-        <button className="btn" type="button" onClick={() => setErroIA(null)}>
-          Fechar
-        </button>
-      </span>
-    </div>
-  );
-
   return (
     <main className="app-main" id="conteudo">
       <section className="canvas-col" aria-label="Manuscrito em revisão">
         {/* H1: a linha de status só existe quando há status a mostrar. */}
-        {(carregandoSugestao !== null || ocupadoCom !== null || analisandoGemini || statusSistema) && (
+        {(ocupadoCom !== null || analisandoGemini || statusSistema) && (
           <p className="status-sistema" role="status" aria-live="polite">
-            {carregandoSugestao !== null ? (
-              <>
-                <span className="status-spinner" aria-hidden="true" />
-                Pedindo sugestão à IA…
-              </>
-            ) : ocupadoCom !== null ? (
+            {ocupadoCom !== null ? (
               <>
                 <span className="status-spinner" aria-hidden="true" />
                 {ocupadoCom}
@@ -764,44 +663,6 @@ export default function RevisarPage() {
       <aside className="inspector" aria-label="Resultado da análise">
         <Resumo analise={analise} diagnostico={diagnostico} />
 
-        {/* Sprint 3 — configuração da assistência IA (opcional) */}
-        <div className="resumo-card">
-          <h2>Assistente IA (opcional)</h2>
-          {estadoIA === "pronta" ? (
-            <p className="ia-status ia-pronta">
-              Assistente configurado. Sugestões aparecem como <em>assistência</em>, nunca como decisão normativa.
-            </p>
-          ) : (
-            <div className="ia-config">
-              <p className="ia-status">
-                Sem IA o fluxo continua completo: regras, relatório e correções. Configure uma chave para receber
-                sugestões de reescrita.
-              </p>
-              <input
-                type="password"
-                className="ia-input"
-                placeholder="Chave da API (OpenAI ou compatível)"
-                value={chaveInput}
-                onChange={(e) => setChaveInput(e.target.value)}
-              />
-              <button
-                className="btn btn-primary"
-                type="button"
-                disabled={chaveInput.trim().length === 0}
-                onClick={() => {
-                  const config = { apiKey: chaveInput.trim() };
-                  setConfigIA(config);
-                  salvarConfigIA(config); // disponível também em /perfil
-                  setChaveInput("");
-                }}
-              >
-                Ativar assistente
-              </button>
-            </div>
-          )}
-          {erroIA && renderErroIA()}
-        </div>
-
         {/* Diagnóstico do Gemini — só quando o usuário pede, no botão do painel. */}
         <PainelGemini
           configurado={geminiAtivo !== false}
@@ -826,16 +687,6 @@ export default function RevisarPage() {
           </div>
         )}
 
-        {sugestaoAtiva && analise && (
-          <PainelSugestao
-            sugestao={sugestaoAtiva}
-            manuscrito={analise.manuscrito}
-            onAceitar={aceitarSugestao}
-            onIgnorar={() => setSugestaoAtiva(null)}
-            sugerindo={carregandoSugestao !== null}
-          />
-        )}
-
         {/* Contador que acompanha as correções: cai a cada aviso resolvido. */}
         {analise && analise.problemas.length > 0 && (
           <p className="avisos-restantes" role="status" aria-live="polite">
@@ -852,8 +703,6 @@ export default function RevisarPage() {
             problema={p}
             onCorrigir={corrigir}
             onLocalizar={() => localizarProblema(p)}
-            onSugerir={estadoIA === "pronta" ? () => pedirSugestao(p) : undefined}
-            sugerindo={carregandoSugestao === p.id}
             listarAcao={!analise.manuscrito.paragrafos.find((x) => x.index === p.paragrafo)?.ehTitulo}
           />
         ))}

@@ -110,9 +110,9 @@ export function PainelAjuda({ onFechar }: Props) {
           <div className="ajuda-secao">
             <h3>O papel da IA</h3>
             <p>
-              O assistente IA é <strong>opcional</strong> (chave da API no painel à direita) e funciona apenas como{" "}
-              <em>assistência</em>: sugere reescritas que você aceita, edita ou ignora. A decisão normativa
-              permanece com o catálogo de regras e com você — o app funciona integralmente sem IA.
+              O diagnóstico com Gemini é <strong>opcional</strong> e só é enviado ao Google quando você pede, no
+              painel à direita. Ele funciona apenas como <em>assistência</em>: aponta melhorias para você avaliar. A
+              decisão normativa permanece com o catálogo de regras e com você — o app funciona integralmente sem IA.
             </p>
           </div>
 

@@ -65,7 +65,7 @@ src/
 | `bun run typecheck` | `tsc --noEmit` estrito |
 | `bun run build` | build de produção em `dist/` |
 
-**IA (opcional):** chave informada por sessão na UI, ou `VITE_OPENAI_API_KEY` no ambiente; endpoint e modelo configuráveis em `src/ai/assistente.ts`.
+**IA (opcional):** diagnóstico com Gemini pelo servidor (`api/gemini`), com a chave em `GEMINI_API_KEY` — o usuário nunca informa a própria chave.
 
 ---
 
@@ -75,7 +75,7 @@ src/
 - **Regra**: legível e testável isoladamente; `avaliar(manuscrito) → Problema[]`; nunca acessa UI.
 - **Texto bruto é a fonte de verdade**: qualquer transformação preserva separadores e conteúdo não-alvo (testes garantem).
 - **Ids determinísticos**: mesma entrada → mesmos ids de problemas (teste cobre).
-- **IA sempre retorna `ResultadoSugestao`**: nunca lança; `{ ok: false, motivo }` em qualquer falha.
+- **IA sempre retorna `ResultadoDiagnostico`**: nunca lança; `{ ok: false, motivo }` em qualquer falha.
 
 ---
 
@@ -84,5 +84,4 @@ src/
 - Exportação (.docx/.pdf) e persistência entre sessões (Backlog §4 P2).
 - Upload de arquivos (hoje: colagem) — Backlog §1.
 - Expansão do catálogo ABNT sem reescrever fluxos (o motor já aceita novas regras por inserção em `CATALOGO`).
-- Proxy de backend para a chave de IA (a chamada client-side é adequada ao padrão BYO-key do MVP).
 - Métricas de feedback ("isso ajudou?") agregadas para refinamento.

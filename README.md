@@ -38,8 +38,6 @@ O que cada parte precisa:
 
 A chave do Gemini (`GEMINI_API_KEY`) fica só no servidor — localmente no `bun run api`, em produção na Vercel — e nunca usa o prefixo `VITE_`.
 
-Assistente de reescrita (opcional): cada usuário informa a própria chave compatível com OpenAI no Perfil ou na tela de revisão; ela fica salva só no navegador.
-
 ## Objetivo inicial
 
 - Tornar a revisão mais rápida e mais compreensível.
@@ -69,7 +67,7 @@ Assistente de reescrita (opcional): cada usuário informa a própria chave compa
 - Sprints 0 a 5 estão encerradas no nível documental (planos em `docs/06-sprint-*-plan.md`).
 - **Sprint 1 executada em código**: app em `src/` (Vite + React + TypeScript) com importar → analisar → corrigir → reanalisar.
 - **Sprint 2 executada em código**: catálogo normativo R001–R010 com referência ABNT (NBR 10520/6023/14724), relatório de conformidade por seção e navegação até o trecho problema.
-- **Sprint 3 executada em código**: assistência IA opcional (endpoint compatível OpenAI, chave do usuário) com sugestão pontual, explicação, aceitar/editar/ignorar e histórico com rastro manual vs IA.
+- **Sprint 3 executada em código**: diagnóstico opcional com Gemini pelo servidor (`api/gemini`), com apontamentos por parágrafo e navegação até o trecho.
 - **Sprint 4 executada em código**: fluxo rascunho → revisão → versão final com snapshots, comparação lado a lado por parágrafo e feedback “isso ajudou?”.
 - **Sprint 5 executada em código**: testes dos caminhos principais e limites (53 no total), acessibilidade e [[Documentação v1]] em `docs/11-entrega-v1.md`.
 - **Ciclo 1→5 completo.** Manutenção: comece por `docs/11-entrega-v1.md`; priorização de expansão segue DC-12 em `docs/03-decisoes-tecnologias.md`.

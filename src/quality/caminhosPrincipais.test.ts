@@ -1,11 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import type { ResultadoSugestao } from "../ai/types";
-import { statusIA, sugerirReescrita } from "../ai/assistente";
 import { aplicarCorrecao } from "../document/acoes";
-import { aplicarSugestao } from "../document/aplicarSugestao";
 import { iniciarRevisao } from "../review/orquestrar";
 import { desempilhar, empilhar } from "../workspace/desfazer";
-import { novoHistorico, registrar } from "../workspace/historico";
 
 /**
  * Sprint 5 — testes automatizados dos caminhos principais (P0):
@@ -25,11 +21,6 @@ const MANUSCRITO = [
 ].join("\n\n");
 
 /** Exige que a IA tenha falhado e devolve o motivo, sem asserção condicional. */
-function motivoDaFalha(resultado: ResultadoSugestao): string {
-  if (resultado.ok) throw new Error("esperava falha da IA, mas veio uma sugestão");
-  return resultado.motivo;
-}
-
 describe("Sprint 5 — caminhos principais", () => {
   test("caminho 1: importar → analisar → corrigir → reanalisar → desfazer", () => {
     const primeira = iniciarRevisao(MANUSCRITO);
@@ -59,35 +50,7 @@ describe("Sprint 5 — caminhos principais", () => {
     expect(texto).toBe(MANUSCRITO);
   });
 
-  test("caminho 2: sugestão IA aceita com rastro no histórico", () => {
-    const bruto = "Parágrafo que será reescrito pela assistência.";
-    const sugestao = { textoSugerido: "Parágrafo reescrito de forma acadêmica.", explicacao: "Tom formal.", paragrafo: 1 };
-
-    const novo = aplicarSugestao(bruto, sugestao, sugestao.textoSugerido);
-    expect(novo).toBe(sugestao.textoSugerido);
-
-    let h = novoHistorico();
-    h = registrar(h, { origem: "ia", descricao: "sugestão aceita", paragrafo: 1 });
-    expect(h[0].origem).toBe("ia");
-  });
-
-  test("caminho 3: sem chave de IA o fluxo permanece 100% funcional (DC-03)", () => {
-    expect(statusIA(null)).toBe("nao_configurada");
-    const analise = iniciarRevisao(MANUSCRITO);
-    expect(analise.resumo.total).toBeGreaterThan(0);
-  });
-
-  test("caminho 4: falha de rede da IA não quebra o fluxo (timeout/DNS)", async () => {
-    const resultado = await sugerirReescrita(
-      { apiKey: "chave-de-teste", baseUrl: "http://localhost:1" }, // porta fechada
-      "trecho de teste",
-      1,
-    );
-    expect(resultado.ok).toBe(false);
-    expect(motivoDaFalha(resultado).length).toBeGreaterThan(0);
-  });
-
-  test("caminho 5: documento realista completo — 0 a N problemas sem travar", () => {
+  test("caminho 2: documento realista completo — 0 a N problemas sem travar", () => {
     const titulos = ["INTRODUÇÃO", "METODOLOGIA", "RESULTADOS", "CONSIDERAÇÕES FINAIS"];
     const partes: string[] = [];
     for (let i = 0; i < TOTAL_PARAGRAFOS; i++) {

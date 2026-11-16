@@ -630,105 +630,12 @@ body {
   color: var(--ink);
 }
 
-/* ---------- Sprint 3: assistência IA ---------- */
-.chip-ia {
-  font-size: 10.5px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--cobalt-dark);
-  background: #eff6ff;
-  border-radius: 999px;
-  padding: 3px 9px;
-}
-
-.sugestao-card {
-  border-color: var(--cobalt);
-}
-
-.sugestao-diff {
-  display: grid;
-  gap: 8px;
-}
-
-.sugestao-diff > div {
-  background: var(--slate-50);
-  border-radius: 8px;
-  padding: 8px 12px;
-}
-
-.sugestao-diff p {
-  margin: 0;
-  font-family: var(--font-serif);
-  font-size: 12.5px;
-  line-height: 1.6;
-  color: var(--ink-soft);
-}
-
-.sugestao-editor {
-  width: 100%;
-  border: 1px solid var(--slate-300);
-  border-radius: 6px;
-  font-family: var(--font-serif);
-  font-size: 12.5px;
-  line-height: 1.6;
-  padding: 6px 8px;
-  resize: vertical;
-}
-
-.sugestao-editor:focus-visible {
-  outline: 2px solid var(--cobalt);
-}
-
-.sugestao-explicacao {
-  margin: 0;
-  font-size: 12.5px;
-  line-height: 1.55;
-  color: var(--ink-soft);
-}
-
-.sugestao-nota {
-  margin: 0;
-  font-size: 11px;
-  font-style: italic;
-  color: var(--slate-500);
-}
-
-.btn-ia {
-  background: #eff6ff;
-  border-color: #bfdbfe;
-  color: var(--cobalt-dark);
-}
-
-.btn-ia:hover {
-  background: #dbeafe;
-  border-color: var(--cobalt);
-}
-
+/* ---------- Diagnóstico com IA ---------- */
 .ia-status {
   margin: 0 0 8px;
   font-size: 12px;
   line-height: 1.55;
   color: var(--slate-600);
-}
-
-.ia-pronta {
-  color: var(--emerald);
-  font-weight: 500;
-}
-
-.ia-input {
-  width: 100%;
-  border: 1px solid var(--slate-300);
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-family: var(--font-body);
-  font-size: 12.5px;
-  margin-bottom: 8px;
-}
-
-.ia-input:focus-visible {
-  outline: 2px solid var(--cobalt);
 }
 
 .ia-erro {
@@ -1062,17 +969,6 @@ button .atalho-tecla {
 .ia-erro-titulo {
   font-family: var(--font-ui);
   font-size: 12.5px;
-}
-
-.ia-erro-acoes {
-  display: inline-flex;
-  gap: 8px;
-  margin-top: 2px;
-}
-
-.ia-erro-acoes .btn {
-  padding: 4px 10px;
-  font-size: 11.5px;
 }
 
 /* ---------- Rascunho em folhas A4 ---------- */
@@ -2317,15 +2213,6 @@ body:has(.login-main) .app-footer {
   border: 1px solid #fde68a;
   border-radius: 8px;
   padding: 4px 8px;
-}
-
-.sugestao-aviso {
-  display: block;
-  margin-top: 4px;
-  font-family: var(--font-ui);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--crimson);
 }
 
 /* ---------- Heurística 1 — visibilidade do status do sistema ---------- */
