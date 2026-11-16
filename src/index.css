@@ -10,8 +10,14 @@
   --slate-200: #e2e8f0;
   --slate-100: #f1f5f9;
   --slate-50: #f8fafc;
-  --cobalt: #3b82f6;
-  --cobalt-dark: #2563eb;
+  /* Azul da identidade atual (o mesmo da tela de entrada): vivo no destaque,
+     profundo no texto e no cabeçalho. */
+  --cobalt: #1d6ff2;
+  --cobalt-dark: #1554c0;
+  --azul-suave: #e9f1ff;
+  --azul-borda: #c6d8fb;
+  --fundo: #eef2fb;
+  --header-gradiente: linear-gradient(100deg, #0b1a4f 0%, #151f78 55%, #2a1b96 100%);
   --emerald: #059669;
   --emerald-bg: #ecfdf5;
   --amber: #d97706;
@@ -88,14 +94,14 @@ body {
 
 body {
   font-family: var(--font-body);
-  background: var(--slate-100);
+  background: var(--fundo);
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
 }
 
 /* ---------- Cabeçalho ---------- */
 .app-header {
-  background: linear-gradient(135deg, var(--ink) 0%, var(--ink-soft) 100%);
+  background: var(--header-gradiente);
   color: #fff;
   padding: 20px 24px;
 }
@@ -126,7 +132,7 @@ body {
 }
 
 .brand h1 span {
-  color: #93c5fd;
+  color: #8b7cf6;
 }
 
 .brand p {
@@ -195,8 +201,8 @@ body {
 
 .btn-formato[aria-pressed="true"],
 .btn-formato[aria-pressed="true"]:hover {
-  background: var(--ink);
-  border-color: var(--ink);
+  background: var(--cobalt-dark);
+  border-color: var(--cobalt-dark);
   color: #fff;
 }
 
@@ -430,7 +436,7 @@ body {
 
 .badge-sev.observacao {
   color: var(--cobalt-dark);
-  background: #eff6ff;
+  background: var(--azul-suave);
 }
 
 .problema-msg {
@@ -491,14 +497,13 @@ body {
 }
 
 .btn-primary {
-  background: var(--ink);
-  border-color: var(--ink);
+  background: var(--header-gradiente);
+  border-color: #1e2a78;
   color: #fff;
 }
 
 .btn-primary:hover {
-  background: var(--ink-soft);
-  border-color: var(--ink-soft);
+  filter: brightness(1.18);
 }
 
 .btn-accent {
@@ -681,7 +686,7 @@ body {
 
 .origem-ia {
   color: var(--cobalt-dark);
-  background: #eff6ff;
+  background: var(--azul-suave);
 }
 
 .historico-desc {
@@ -840,8 +845,8 @@ body {
 }
 
 .historico-filtro.ativo {
-  background: var(--ink);
-  border-color: var(--ink);
+  background: var(--cobalt-dark);
+  border-color: var(--cobalt-dark);
   color: #fff;
 }
 
@@ -1697,8 +1702,8 @@ body:has(.login-main) .app-footer {
   width: 64px;
   height: 64px;
   border-radius: 999px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  background: var(--azul-suave);
+  border: 1px solid var(--azul-borda);
   color: var(--cobalt-dark);
   font-family: var(--font-ui);
   font-size: 22px;
@@ -1713,7 +1718,7 @@ body:has(.login-main) .app-footer {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--cobalt-dark);
-  background: #eff6ff;
+  background: var(--azul-suave);
   border-radius: 999px;
   padding: 4px 12px;
 }
@@ -1936,8 +1941,8 @@ body:has(.login-main) .app-footer {
 }
 
 .laudo-veredito-observacao {
-  background: #eff6ff;
-  border-color: #bfdbfe;
+  background: var(--azul-suave);
+  border-color: var(--azul-borda);
 }
 
 .laudo-veredito-observacao .laudo-veredito-chip {
@@ -2164,7 +2169,7 @@ body:has(.login-main) .app-footer {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--cobalt-dark);
-  background: #eff6ff;
+  background: var(--azul-suave);
   border-radius: 999px;
   padding: 4px 12px;
   margin: 0 0 12px;
