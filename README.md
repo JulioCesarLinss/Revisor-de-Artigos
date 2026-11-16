@@ -1,6 +1,6 @@
 # Revisor-de-Artigos
 
-Projeto de revisão acadêmica com foco em normas ABNT e assistência por IA.
+Projeto de revisão acadêmica com foco em normas ABNT e assistência por inteligência artificial.
 
 ## O que é
 
@@ -37,6 +37,47 @@ O que cada parte precisa:
 | Diagnóstico com Gemini | `VITE_FIREBASE_*` (exige login) + `GEMINI_API_KEY` + `bun run api` rodando |
 
 A chave do Gemini (`GEMINI_API_KEY`) fica só no servidor — localmente no `bun run api`, em produção na Vercel — e nunca usa o prefixo `VITE_`.
+
+### Teste de carga
+
+Com a API rodando (`bun run api`), avalie velocidade, estabilidade e tempo de resposta sob usuários simultâneos:
+
+```bash
+bun run test:carga           # normal: 10 usuários por 20s
+bun run test:carga:pico      # pico: 50 usuários por 30s
+bun run test:carga:estresse  # estresse: 150 usuários por 30s
+```
+
+O relatório mostra throughput, latência (min/média/p50/p90/p95/p99/max), distribuição de status, motivos de falha e a variação de p95 entre o início e o fim. O comando falha (código 1) se p95 passar de 2 s ou os erros de 1% — limites ajustáveis com `--p95` e `--erro`. Outras opções: `--usuarios`, `--duracao`, `--url`, `--pausa`, `--timeout`, `--ajuda`.
+
+A carga é mista: `/api/health` e `/api/revisar` (manuscritos curto, médio e longo). `/api/gemini` fica fora porque depende do Google — mediria o provedor externo, não este sistema. Rodando o gerador na mesma máquina da API, os números são indicativos; para aferição real, aponte `--url` para o ambiente e rode o gerador em outra máquina.
+
+### Teste de estresse
+
+Leva o sistema ao limite para achar o ponto de quebra e observar a recuperação:
+
+```bash
+bun run test:estresse
+bun scripts/teste-estresse.ts --degraus 1,10,50,100,200 --degrau 10
+```
+
+A concorrência sobe em degraus (padrão: 1 → 5 → 10 → 25 → 50 → 100 → 200 usuários por 8 s). O primeiro degrau que viola p95/erros é o **ponto de quebra**; o anterior é o último nível saudável. Depois o teste mede quanto tempo o `/api/health` leva para voltar, se a carga de retorno normaliza e se corpos acima de 64 KB, JSON inválido e método errado são recusados com 400/405 (sem 500 nem queda). Sai com código 0 quando a degradação é controlada e há recuperação, 1 quando o serviço não volta ou trata mal o limite, e 2 se a API estiver inacessível. Ajustes: `--degraus`, `--degrau`, `--p95`, `--erro`, `--recuperacao`, `--tempo-recuperacao`, `--url` e `--ajuda`.
+
+> Estresse contra produção gera carga real: prefira um ambiente de teste e rode o gerador em outra máquina. Exaustão real de memória/CPU do host não é provocada — o limite é exercitado por concorrência e pelas validações da API.
+
+### Teste de segurança
+
+Busca brechas, falhas de autenticação e exposição de dados no código e na API:
+
+```bash
+bun run test:seguranca --somente-estatico      # segredos no código/bundle, .env versionado
+bun run test:seguranca                         # + bateria dinâmica contra a API local
+bun scripts/teste-seguranca.ts --front http://localhost:5173
+```
+
+A fase estática procura chaves embutidas (Google/Gemini, OpenAI, PEM, GitHub, AWS), `.env` versionado por engano e variáveis sensíveis com prefixo `VITE_` (que iriam para o navegador). A dinâmica confere autenticação do `/api/gemini` (sem token, JWT forjado `alg none`, token malformado), CORS, cabeçalhos de segurança do front, limites de corpo, JSON profundo, reflexo de HTML, travessia de caminho até `.env`, stack trace em erros e indício de ausência de limitação de taxa. Cada achado recebe severidade (crítico, alto, médio, baixo); o comando falha a partir de `--rigor` (padrão: `alto`). Códigos de saída: 0 sem achados no rigor, 1 com achado, 2 API inacessível no modo completo.
+
+> As verificações são passivas e de baixo volume: nenhum ataque destrutivo ou exaustão de recursos. Rode contra um ambiente de teste e não contra produção sem autorização.
 
 ## Objetivo inicial
 
