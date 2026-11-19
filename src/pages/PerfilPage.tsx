@@ -12,6 +12,8 @@ import {
   salvarPerfil,
 } from "../perfil/perfil";
 import type { ConfiguracaoIA } from "../ai/types";
+import { NOME_SERVICO, servicoDaChave } from "../ai/assistente";
+import { InfoChaveIA } from "../ui/InfoChaveIA";
 import { sair as sairFirebase, useAutorizacao } from "../firebase/auth";
 import { configurado as firebaseConfigurado } from "../firebase/config";
 import { carregarPerfilNuvem, salvarPerfilNuvem } from "../firebase/persistencia";
@@ -176,11 +178,12 @@ export default function PerfilPage() {
         <div className="perfil-coluna">
           {/* Assistente IA */}
           <section className="perfil-card" aria-label="Assistente IA">
-            <h3>Assistente IA (opcional)</h3>
+            <InfoChaveIA titulo="Assistente IA (opcional)" nivel="h3" />
             {configIA ? (
               <>
                 <p className="ia-status ia-pronta">
-                  Configurado{configIA.modelo ? ` — modelo ${configIA.modelo}` : ""}. Sugestões aparecem como
+                  Configurado com {NOME_SERVICO[servicoDaChave(configIA.apiKey)]}
+                  {configIA.modelo ? ` — modelo ${configIA.modelo}` : ""}. Sugestões aparecem como
                   <em> assistência</em>, nunca como decisão normativa.
                 </p>
                 <button className="btn perfil-btn-perigo" type="button" onClick={desativarChave}>
@@ -194,12 +197,12 @@ export default function PerfilPage() {
                   apenas neste dispositivo.
                 </p>
                 <label className="perfil-campo">
-                  <span>Chave da API (OpenAI ou compatível)</span>
+                  <span>Chave da API (Gemini ou OpenAI)</span>
                   <input
                     type="password"
                     value={chaveInput}
                     onChange={(e) => setChaveInput(e.target.value)}
-                    placeholder="sk-…"
+                    placeholder="AIza… (Gemini) ou sk-… (OpenAI)"
                   />
                 </label>
                 <div className="perfil-duas-colunas">
@@ -209,7 +212,7 @@ export default function PerfilPage() {
                       type="text"
                       value={baseUrlInput}
                       onChange={(e) => setBaseUrlInput(e.target.value)}
-                      placeholder="https://api.openai.com/v1"
+                      placeholder="Automático pela chave"
                     />
                   </label>
                   <label className="perfil-campo">
@@ -218,7 +221,7 @@ export default function PerfilPage() {
                       type="text"
                       value={modeloInput}
                       onChange={(e) => setModeloInput(e.target.value)}
-                      placeholder="gpt-4o-mini"
+                      placeholder="Automático pela chave"
                     />
                   </label>
                 </div>

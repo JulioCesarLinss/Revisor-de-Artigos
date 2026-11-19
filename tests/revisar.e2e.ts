@@ -82,6 +82,27 @@ test.describe("Revisão", () => {
     await expect(italico).toHaveAttribute("aria-pressed", "true");
   });
 
+  test("o ⓘ do assistente explica como funciona e como conseguir a chave", async ({ page }) => {
+    const info = page.getByRole("button", { name: "Como funciona e como conseguir a chave da API" });
+    await expect(info).toHaveAttribute("aria-expanded", "false");
+    await info.click();
+
+    const caixa = page.getByRole("region", { name: "Sobre a chave da API" });
+    // Duas opções: Gemini (grátis para começar) e OpenAI (paga), cada uma com o link para criar a chave.
+    await expect(caixa).toContainText("grátis para começar");
+    await expect(caixa.getByRole("link", { name: "aistudio.google.com/apikey" })).toHaveAttribute(
+      "href",
+      "https://aistudio.google.com/apikey",
+    );
+    await expect(caixa.getByRole("link", { name: "platform.openai.com/api-keys" })).toHaveAttribute(
+      "href",
+      "https://platform.openai.com/api-keys",
+    );
+
+    await info.click();
+    await expect(caixa).toHaveCount(0);
+  });
+
   test("menu de exportação abre com as duas opções", async ({ page }) => {
     await analisarTexto(page);
     await page.getByRole("button", { name: /Exportar/ }).click();

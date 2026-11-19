@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { statusIA, sugerirReescrita } from "../ai/assistente";
+import { NOME_SERVICO, servicoDaChave, statusIA, sugerirReescrita } from "../ai/assistente";
 import { diagnosticarComGemini, geminiConfigurado } from "../ai/geminiCliente";
 import type { DiagnosticoGemini, ParagrafoNumerado, ResultadoDiagnostico } from "../ai/gemini";
 import { carregarConfigIA, salvarConfigIA } from "../perfil/perfil";
@@ -11,6 +11,7 @@ import { lerArquivo, type ResultadoUpload } from "../document/arquivo";
 import { importarTexto } from "../document/importar.js";
 import { iniciarRevisao, type AnaliseRevisao } from "../review/orquestrar";
 import type { Intervalo, Problema } from "../rules/types";
+import { InfoChaveIA } from "../ui/InfoChaveIA";
 import { PainelGemini } from "../ui/PainelGemini";
 import { PainelHistorico } from "../ui/PainelHistorico";
 import { ManuscritoPaginado } from "../ui/ManuscritoPaginado";
@@ -251,6 +252,8 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
 
   // Exportar: nome do arquivo anexado (base do nome exportado) e o menu aberto.
   const [nomeArquivo, setNomeArquivo] = useState<string | null>(salvo?.arquivo ?? null);
+  // Nome dado na aba Artigos: só é lido aqui, mas precisa voltar ao salvar.
+  const [nomeArtigo] = useState<string | null>(salvo?.nome ?? null);
   const [menuExportar, setMenuExportar] = useState(false);
   const exportarRef = useRef<HTMLSpanElement | null>(null);
 
@@ -368,8 +371,9 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
       diagnostico,
       textoDiagnosticado,
       arquivo: nomeArquivo,
+      nome: nomeArtigo,
     }),
-    [bruto, textoOriginal, historico, formato.trechos, diagnostico, textoDiagnosticado, nomeArquivo],
+    [bruto, textoOriginal, historico, formato.trechos, diagnostico, textoDiagnosticado, nomeArquivo, nomeArtigo],
   );
   const brutoAtual = useRef(bruto);
   brutoAtual.current = bruto;
@@ -479,14 +483,14 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
   /** Baixa o texto revisado em .docx com formatação ABNT básica. */
   const exportarDocx = useCallback(() => {
     setMenuExportar(false);
-    const nome = nomeExportado(nomeArquivo);
+    const nome = nomeExportado(nomeArquivo, nomeArtigo);
     try {
       baixarArquivo(gerarDocx(bruto, formato.trechos), nome, MIME_DOCX);
       setStatusSistema(`"${nome}" gerado com formatação ABNT básica.${avisoPendente}`);
     } catch {
       setStatusSistema("Não foi possível gerar o arquivo .docx. Tente novamente.");
     }
-  }, [bruto, formato.trechos, nomeArquivo, avisoPendente]);
+  }, [bruto, formato.trechos, nomeArquivo, nomeArtigo, avisoPendente]);
 
   /** Copia o texto revisado para colar no Word ou no Google Docs. */
   const copiarTexto = useCallback(async () => {
@@ -863,21 +867,23 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
 
         {/* Sprint 3 — configuração da assistência IA (opcional) */}
         <div className="resumo-card">
-          <h2>Assistente IA (opcional)</h2>
+          <InfoChaveIA titulo="Assistente IA (opcional)" />
           {estadoIA === "pronta" ? (
             <p className="ia-status ia-pronta">
-              Assistente configurado. Sugestões aparecem como <em>assistência</em>, nunca como decisão normativa.
+              Assistente configurado com {configIA ? NOME_SERVICO[servicoDaChave(configIA.apiKey)] : "IA"}. Sugestões aparecem
+              como <em>assistência</em>, nunca como decisão normativa.
             </p>
           ) : (
             <div className="ia-config">
               <p className="ia-status">
-                Sem IA o fluxo continua completo: regras, relatório e correções. Configure uma chave para receber
-                sugestões de reescrita.
+                Sem IA o fluxo continua completo: regras, relatório e correções. Cole uma chave do Gemini (grátis
+                para começar) ou da OpenAI para receber sugestões de reescrita — veja como no ⓘ.
               </p>
               <input
                 type="password"
                 className="ia-input"
-                placeholder="Chave da API (OpenAI ou compatível)"
+                placeholder="Chave do Gemini (grátis) ou da OpenAI"
+                aria-label="Chave da API (Gemini ou OpenAI)"
                 value={chaveInput}
                 onChange={(e) => setChaveInput(e.target.value)}
               />

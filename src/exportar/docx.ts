@@ -124,8 +124,12 @@ export function gerarDocx(bruto: string, formatacao: TrechoFormatado[] = []): Ui
   ]);
 }
 
-/** Nome do arquivo exportado: "<nome original>-revisado.docx". */
-export function nomeExportado(nomeOriginal: string | null): string {
-  const base = (nomeOriginal ?? "").replace(/\.[^.]+$/, "").trim() || "manuscrito";
-  return `${base}-revisado.docx`;
+/**
+ * Nome do arquivo exportado: "<nome>-revisado.docx". Vale o nome dado ao
+ * artigo; senão, o do arquivo original sem a extensão. Caracteres que o
+ * Windows não aceita em nomes de arquivo viram hífen.
+ */
+export function nomeExportado(nomeOriginal: string | null, nomeDado?: string | null): string {
+  const base = nomeDado?.trim() || (nomeOriginal ?? "").replace(/\.[^.]+$/, "").trim() || "manuscrito";
+  return `${base.replace(/[\\/:*?"<>|]/g, "-")}-revisado.docx`;
 }

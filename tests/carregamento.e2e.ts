@@ -27,7 +27,7 @@ const RESPOSTA_IA = {
 
 /** Configura o assistente IA pela própria tela (chave fictícia: o fetch é interceptado). */
 async function ativarAssistente(page: Page): Promise<void> {
-  await page.getByPlaceholder("Chave da API (OpenAI ou compatível)").fill("chave-de-teste");
+  await page.getByPlaceholder("Chave do Gemini (grátis) ou da OpenAI").fill("chave-de-teste");
   await page.getByRole("button", { name: "Ativar assistente" }).click();
   await expect(page.getByText("Assistente configurado", { exact: false })).toBeVisible();
 }

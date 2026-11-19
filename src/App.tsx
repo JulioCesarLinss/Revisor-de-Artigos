@@ -70,7 +70,7 @@ export default function App() {
               ))}
               {/* H10: ponto de entrada sempre visível para a ajuda e documentação. */}
               <button
-                className="btn norm-chip-acao"
+                className="nav-item"
                 type="button"
                 onClick={() => setAjudaAberta(true)}
                 title="Abrir o guia de uso, atalhos de teclado e significado das severidades"

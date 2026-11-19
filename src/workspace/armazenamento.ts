@@ -38,6 +38,8 @@ export interface EstadoWorkspace {
   textoDiagnosticado?: string | null;
   /** Nome do arquivo anexado: dá nome ao artigo e ao .docx exportado. */
   arquivo?: string | null;
+  /** Nome dado pelo usuário na aba Artigos; vale sobre o nome automático. */
+  nome?: string | null;
 }
 
 export function armazenamentoPadrao(): Armazenamento | null {
@@ -124,6 +126,7 @@ export function validarWorkspace(dados: unknown): EstadoWorkspace | null {
     diagnostico: ehDiagnostico(d.diagnostico) ? d.diagnostico : null,
     textoDiagnosticado: typeof d.textoDiagnosticado === "string" ? d.textoDiagnosticado : null,
     arquivo: typeof d.arquivo === "string" ? d.arquivo : null,
+    nome: typeof d.nome === "string" && d.nome.trim().length > 0 ? d.nome.trim() : null,
   };
 }
 
@@ -182,6 +185,7 @@ export function restaurarOriginalWorkspace(st?: Armazenamento): EstadoWorkspace 
     textoOriginal: atual.textoOriginal,
     historico: [],
     arquivo: atual.arquivo ?? null, // o artigo continua com o mesmo nome
+    nome: atual.nome ?? null,
   };
   salvarWorkspace(restaurado, st);
   return restaurado;

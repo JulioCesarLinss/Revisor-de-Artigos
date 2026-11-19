@@ -34,8 +34,20 @@ export const MOTIVO_LIMITE =
   `Você já tem ${LIMITE_ARTIGOS} artigos salvos. Exclua um no Histórico para abrir outro.`;
 
 export function estadoVazio(): EstadoWorkspace {
-  return { bruto: "", textoOriginal: null, historico: [], formatacao: [], diagnostico: null, textoDiagnosticado: null, arquivo: null };
+  return {
+    bruto: "",
+    textoOriginal: null,
+    historico: [],
+    formatacao: [],
+    diagnostico: null,
+    textoDiagnosticado: null,
+    arquivo: null,
+    nome: null,
+  };
 }
+
+/** Tamanho máximo do nome dado pelo usuário. */
+export const LIMITE_NOME = 80;
 
 let sequencia = 0;
 export function novoId(agora = Date.now()): string {
@@ -47,8 +59,10 @@ export function estaVazio(estado: EstadoWorkspace): boolean {
   return estado.bruto.trim().length === 0;
 }
 
-/** Nome do artigo: o arquivo anexado, senão a primeira linha do texto. */
-export function tituloDoArtigo(estado: Pick<EstadoWorkspace, "bruto" | "arquivo">, limite = 60): string {
+/** Nome do artigo: o dado pelo usuário; senão o arquivo anexado; senão a primeira linha do texto. */
+export function tituloDoArtigo(estado: Pick<EstadoWorkspace, "bruto" | "arquivo" | "nome">, limite = 60): string {
+  const dado = estado.nome?.trim();
+  if (dado) return dado;
   const doArquivo = estado.arquivo?.replace(/\.[^.]+$/, "").trim();
   if (doArquivo) return doArquivo;
   const linha = estado.bruto.split("\n").map((l) => l.trim()).find((l) => l.length > 0);
@@ -97,6 +111,15 @@ export function criarArtigo(b: Biblioteca, estado: EstadoWorkspace = estadoVazio
   return { ativo: artigo.id, artigos: [...b.artigos, artigo] };
 }
 
+/** Dá nome a um artigo; vazio volta ao nome automático. A data não muda. */
+export function renomearArtigo(b: Biblioteca, id: string, nome: string): Biblioteca {
+  const limpo = nome.replace(/\s+/g, " ").trim().slice(0, LIMITE_NOME);
+  return {
+    ...b,
+    artigos: b.artigos.map((a) => (a.id === id ? { ...a, estado: { ...a.estado, nome: limpo || null } } : a)),
+  };
+}
+
 export function abrirArtigo(b: Biblioteca, id: string): Biblioteca {
   return b.artigos.some((a) => a.id === id) ? { ...b, ativo: id } : b;
 }
@@ -136,8 +159,12 @@ export function carregarBiblioteca(st?: Armazenamento, agora = Date.now()): Bibl
   }
   const aberto = carregarWorkspace(st);
   if (!lida) {
+    // Gravada já na criação: sem isso, cada leitura inventaria um id novo para
+    // o mesmo artigo (e a nuvem o gravaria com um id diferente a cada vez).
     const primeiro = artigoNovo(aberto ?? estadoVazio(), agora);
-    return { ativo: primeiro.id, artigos: [primeiro] };
+    const nova = { ativo: primeiro.id, artigos: [primeiro] };
+    salvarBiblioteca(nova, st);
+    return nova;
   }
   return aberto ? atualizarAtivo(lida, aberto, agora) : lida;
 }

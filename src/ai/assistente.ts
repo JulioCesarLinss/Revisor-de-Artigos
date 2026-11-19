@@ -3,6 +3,54 @@ import type { ConfiguracaoIA, ResultadoSugestao, StatusIA, SugestaoIA } from "./
 const TIMEOUT_MS = 20_000;
 const MAXIMO_TRECHO = 2_000;
 
+/** De quem é a chave, pelo formato: o usuário só cola, o app escolhe o serviço. */
+export type ServicoIA = "gemini" | "openai" | "outro";
+
+export function servicoDaChave(chave: string): ServicoIA {
+  const c = chave.trim();
+  if (c.startsWith("AIza")) return "gemini"; // chaves do Google AI Studio
+  if (c.startsWith("sk-")) return "openai";
+  return "outro";
+}
+
+export const NOME_SERVICO: Record<ServicoIA, string> = {
+  gemini: "Gemini (Google)",
+  openai: "OpenAI",
+  outro: "serviço compatível com a OpenAI",
+};
+
+/**
+ * Endereço e modelo de cada serviço. O Gemini é chamado pela interface
+ * compatível com a OpenAI (o mesmo formato de pedido e de resposta) e aceita
+ * chamadas direto do navegador. Chave de formato desconhecido usa a OpenAI.
+ */
+const PADRAO: Record<"gemini" | "openai", { base: string; modelo: string }> = {
+  gemini: { base: "https://generativelanguage.googleapis.com/v1beta/openai", modelo: "gemini-flash-lite-latest" },
+  openai: { base: "https://api.openai.com/v1", modelo: "gpt-4o-mini" },
+};
+
+/** Para onde o pedido vai: o endpoint/modelo do Perfil, se houver; senão, o padrão do serviço da chave. */
+export function destinoIA(config: ConfiguracaoIA): { servico: ServicoIA; base: string; modelo: string } {
+  const servico = servicoDaChave(config.apiKey);
+  const padrao = PADRAO[servico === "gemini" ? "gemini" : "openai"];
+  return {
+    servico,
+    base: (config.baseUrl ?? padrao.base).replace(/\/$/, ""),
+    modelo: config.modelo ?? padrao.modelo,
+  };
+}
+
+/** Motivo legível para uma resposta de erro (o Gemini avisa chave inválida com 400). */
+function motivoDoErro(status: number, corpo: string): string {
+  if (status === 401 || status === 403 || (status === 400 && /api key/i.test(corpo))) {
+    return "Chave da API inválida, expirada ou sem permissão. Confira a chave colada.";
+  }
+  if (status === 429) {
+    return "Limite de pedidos atingido (no plano gratuito do Gemini há limite por minuto e por dia). Aguarde um pouco e tente de novo.";
+  }
+  return `Serviço de IA respondeu ${status}. Tente novamente mais tarde.`;
+}
+
 export function statusIA(config: ConfiguracaoIA | null): StatusIA {
   if (!config || config.apiKey.trim().length === 0) return "nao_configurada";
   return "pronta";
@@ -38,8 +86,7 @@ export async function sugerirReescrita(
   paragrafo: number,
   contextoRegra?: { regraId: string; mensagem: string; referencia: string },
 ): Promise<ResultadoSugestao> {
-  const base = (config.baseUrl ?? "https://api.openai.com/v1").replace(/\/$/, "");
-  const modelo = config.modelo ?? "gpt-4o-mini";
+  const { base, modelo } = destinoIA(config);
   const recorte = trecho.slice(0, MAXIMO_TRECHO);
 
   const pedido = contextoRegra
@@ -68,11 +115,8 @@ export async function sugerirReescrita(
     });
 
     if (!resposta.ok) {
-      const motivo =
-        resposta.status === 401
-          ? "Chave da API inválida ou expirada."
-          : `Serviço de IA respondeu ${resposta.status}. Tente novamente mais tarde.`;
-      return { ok: false, motivo };
+      const corpo = await resposta.text().catch(() => "");
+      return { ok: false, motivo: motivoDoErro(resposta.status, corpo) };
     }
 
     const dados = (await resposta.json()) as { choices?: { message?: { content?: string } }[] };

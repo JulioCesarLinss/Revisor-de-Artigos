@@ -29,7 +29,7 @@ test.describe("Perfil", () => {
   });
 
   test("salva e remove a chave do assistente IA", async ({ page }) => {
-    const chave = page.getByLabel("Chave da API (OpenAI ou compatível)");
+    const chave = page.getByLabel("Chave da API (Gemini ou OpenAI)");
     await chave.fill("sk-teste-local");
     await page.getByRole("button", { name: "Salvar chave" }).click();
 
@@ -38,7 +38,7 @@ test.describe("Perfil", () => {
 
     await page.getByRole("button", { name: "Remover chave" }).click();
     await expect(page.getByRole("status")).toContainText("Assistente IA desativado");
-    await expect(page.getByLabel("Chave da API (OpenAI ou compatível)")).toBeVisible();
+    await expect(page.getByLabel("Chave da API (Gemini ou OpenAI)")).toBeVisible();
   });
 
   test("sair da conta pela tela de perfil volta ao login", async ({ page }) => {

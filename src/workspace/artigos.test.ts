@@ -9,9 +9,11 @@ import {
   criarArtigo,
   estadoVazio,
   LIMITE_ARTIGOS,
+  LIMITE_NOME,
   limparDispositivo,
   porRecencia,
   removerArtigo,
+  renomearArtigo,
   salvarBiblioteca,
   tituloDoArtigo,
   validarBiblioteca,
@@ -87,6 +89,34 @@ describe("workspace/artigos — título", () => {
   test("vazio vira 'Artigo sem título'", () => {
     expect(tituloDoArtigo(texto("   "))).toBe("Artigo sem título");
   });
+
+  test("o nome dado pelo usuário vale sobre o arquivo e a primeira linha", () => {
+    expect(tituloDoArtigo({ ...texto("INTRODUÇÃO", "tese.docx"), nome: "Minha tese" })).toBe("Minha tese");
+  });
+});
+
+describe("workspace/artigos — renomear", () => {
+  test("renomeia só o artigo escolhido, sem mudar a data", () => {
+    const b = renomearArtigo(biblioteca("Um.", "Dois."), "a2", "  Artigo   da   disciplina  ");
+    const segundo = b.artigos.find((a) => a.id === "a2")!;
+    expect(segundo.estado.nome).toBe("Artigo da disciplina");
+    expect(segundo.atualizadoEm).toBe(2);
+    expect(b.artigos.find((a) => a.id === "a1")!.estado.nome ?? null).toBeNull();
+  });
+
+  test("nome vazio volta ao nome automático; nome longo é cortado", () => {
+    const nomeado = renomearArtigo(biblioteca("INTRODUÇÃO"), "a1", "Provisório");
+    const vazio = renomearArtigo(nomeado, "a1", "   ");
+    expect(tituloDoArtigo(artigoAtivo(vazio).estado)).toBe("INTRODUÇÃO");
+    const longo = renomearArtigo(nomeado, "a1", "x".repeat(LIMITE_NOME + 20));
+    expect(artigoAtivo(longo).estado.nome).toHaveLength(LIMITE_NOME);
+  });
+
+  test("o nome é salvo e volta ao recarregar", () => {
+    const st = storageFalso();
+    ativarNoDispositivo(renomearArtigo(biblioteca("Um."), "a1", "Meu artigo"), st);
+    expect(tituloDoArtigo(artigoAtivo(carregarBiblioteca(st)).estado)).toBe("Meu artigo");
+  });
 });
 
 describe("workspace/artigos — dispositivo", () => {
@@ -96,6 +126,12 @@ describe("workspace/artigos — dispositivo", () => {
     const b = carregarBiblioteca(st);
     expect(b.artigos).toHaveLength(1);
     expect(artigoAtivo(b).estado.bruto).toBe("Trabalho antigo.");
+  });
+
+  test("o primeiro artigo tem o mesmo id em todas as leituras", () => {
+    const st = storageFalso();
+    salvarWorkspace(texto("Único artigo."), st);
+    expect(carregarBiblioteca(st).ativo).toBe(carregarBiblioteca(st).ativo);
   });
 
   test("sem nada salvo, começa com um artigo vazio aberto", () => {

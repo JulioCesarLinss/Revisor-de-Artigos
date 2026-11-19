@@ -60,6 +60,53 @@ test.describe("Artigos", () => {
     await expect(page.getByRole("button", { name: /^Abrir o artigo/ })).toHaveCount(3);
   });
 
+  test("o lápis renomeia o artigo; Esc cancela; vazio volta ao nome automático", async ({ page }) => {
+    await editorDeTexto(page).fill("INTRODUÇÃO\n\nTexto qualquer.");
+    await irParaArtigos(page);
+
+    await page.getByRole("button", { name: "Renomear o artigo INTRODUÇÃO" }).click();
+    const campo = page.getByRole("textbox", { name: /Novo nome do artigo/ });
+    await campo.fill("Artigo da disciplina");
+    await campo.press("Enter");
+    await expect(page.locator(".recente-titulo").nth(1)).toHaveText("Artigo da disciplina");
+
+    // Continua com o nome depois de recarregar a página.
+    await page.reload();
+    await expect(page.getByRole("button", { name: "Abrir o artigo Artigo da disciplina" })).toBeVisible();
+
+    // Esc não salva o que foi digitado.
+    await page.getByRole("button", { name: "Renomear o artigo Artigo da disciplina" }).click();
+    await page.getByRole("textbox", { name: /Novo nome do artigo/ }).fill("Nome descartado");
+    await page.getByRole("textbox", { name: /Novo nome do artigo/ }).press("Escape");
+    await expect(page.locator(".recente-titulo").nth(1)).toHaveText("Artigo da disciplina");
+
+    // Apagar o nome volta à primeira linha do texto.
+    await page.getByRole("button", { name: "Renomear o artigo Artigo da disciplina" }).click();
+    await page.getByRole("textbox", { name: /Novo nome do artigo/ }).fill("");
+    await page.getByRole("textbox", { name: /Novo nome do artigo/ }).press("Enter");
+    await expect(page.locator(".recente-titulo").nth(1)).toHaveText("INTRODUÇÃO");
+  });
+
+  test("o nome dado sobrevive à edição no editor e dá nome ao .docx", async ({ page }) => {
+    await editorDeTexto(page).fill("INTRODUÇÃO\n\nTexto qualquer.");
+    await irParaArtigos(page);
+    await page.getByRole("button", { name: "Renomear o artigo INTRODUÇÃO" }).click();
+    await page.getByRole("textbox", { name: /Novo nome do artigo/ }).fill("Meu artigo");
+    await page.getByRole("textbox", { name: /Novo nome do artigo/ }).press("Enter");
+
+    await page.getByRole("button", { name: "Abrir o artigo Meu artigo" }).click();
+    await editorDeTexto(page).fill("INTRODUÇÃO\n\nTexto alterado no editor.");
+    await page.getByRole("button", { name: /Exportar/ }).click();
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByRole("menuitem", { name: /Baixar \.docx/ }).click(),
+    ]);
+    expect(download.suggestedFilename()).toBe("Meu artigo-revisado.docx");
+
+    await irParaArtigos(page);
+    await expect(page.getByRole("button", { name: "Abrir o artigo Meu artigo" })).toBeVisible();
+  });
+
   test("excluir pede confirmação e tira a folha", async ({ page }) => {
     await editorDeTexto(page).fill("ARTIGO A\n\nTexto A.");
     await novoArtigoCom(page, "ARTIGO B\n\nTexto B.");

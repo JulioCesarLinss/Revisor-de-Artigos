@@ -9,14 +9,16 @@ import {
   criarArtigo,
   estaVazio,
   LIMITE_ARTIGOS,
+  LIMITE_NOME,
   MOTIVO_LIMITE,
   porRecencia,
   removerArtigo,
+  renomearArtigo,
   tituloDoArtigo,
   type Biblioteca,
 } from "../workspace/artigos";
 import { useAutorizacao } from "../firebase/auth";
-import { apagarArtigoNuvem, salvarIndiceNuvem } from "../firebase/persistencia";
+import { apagarArtigoNuvem, salvarArtigoNuvem, salvarIndiceNuvem } from "../firebase/persistencia";
 
 /** Aviso quando a ação valeu no dispositivo mas a cópia da conta não acompanhou. */
 const AVISO_NUVEM =
@@ -39,6 +41,8 @@ export default function ArtigosPage() {
   const [status, setStatus] = useState<string | null>(null);
   /** Artigo à espera da confirmação de exclusão (confirmação no app, sem pop-up). */
   const [excluindo, setExcluindo] = useState<{ id: string; titulo: string } | null>(null);
+  /** Artigo com o nome em edição (o lápis troca o título por um campo). */
+  const [renomeando, setRenomeando] = useState<{ id: string; valor: string } | null>(null);
 
   const cheia = biblioteca.artigos.length >= LIMITE_ARTIGOS;
 
@@ -73,6 +77,22 @@ export default function ArtigosPage() {
     if (!uid) return;
     const ok = (await apagarArtigoNuvem(uid, id)) && (await salvarIndiceNuvem(uid, b));
     if (!ok) setStatus(`${mensagem} ${AVISO_NUVEM}`);
+  };
+
+  /** Grava o nome digitado; vazio volta ao nome automático. */
+  const salvarNome = async () => {
+    if (!renomeando) return;
+    const b = renomearArtigo(carregarBiblioteca(), renomeando.id, renomeando.valor);
+    ativarNoDispositivo(b);
+    setBiblioteca(b);
+    setRenomeando(null);
+    const artigo = b.artigos.find((a) => a.id === renomeando.id);
+    if (!artigo) return;
+    const mensagem = artigo.estado.nome
+      ? `Artigo renomeado para "${artigo.estado.nome}".`
+      : `Nome removido — o artigo voltou a se chamar "${tituloDoArtigo(artigo.estado)}".`;
+    setStatus(mensagem);
+    if (uid && !(await salvarArtigoNuvem(uid, artigo.id, artigo.estado))) setStatus(`${mensagem} ${AVISO_NUVEM}`);
   };
 
   // O aberto no editor pode ter mudado depois da última troca: a cópia do editor vale.
@@ -152,9 +172,48 @@ export default function ArtigosPage() {
               >
                 ×
               </button>
-              <span className="recente-titulo" title={titulo}>
-                {titulo}
-              </span>
+              {renomeando?.id === a.id ? (
+                <input
+                  className="recente-nome-campo"
+                  aria-label={`Novo nome do artigo ${titulo}`}
+                  value={renomeando.valor}
+                  maxLength={LIMITE_NOME}
+                  placeholder="Nome automático"
+                  autoFocus
+                  onFocus={(e) => e.currentTarget.select()}
+                  onChange={(e) => setRenomeando({ id: a.id, valor: e.target.value })}
+                  onKeyDown={(e) => {
+                    // Enter salva pelo blur (uma gravação só); Esc marca o campo para não salvar.
+                    if (e.key === "Enter") e.currentTarget.blur();
+                    if (e.key === "Escape") {
+                      e.currentTarget.dataset.cancelado = "1";
+                      setRenomeando(null);
+                    }
+                  }}
+                  onBlur={(e) => {
+                    if (e.currentTarget.dataset.cancelado) return;
+                    void salvarNome();
+                  }}
+                />
+              ) : (
+                <span className="recente-nome">
+                  <span className="recente-titulo" title={titulo}>
+                    {titulo}
+                  </span>
+                  <button
+                    type="button"
+                    className="recente-renomear"
+                    aria-label={`Renomear o artigo ${titulo}`}
+                    title="Renomear (deixe vazio para voltar ao nome automático)"
+                    onClick={() => setRenomeando({ id: a.id, valor: estado.nome ?? titulo })}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+                    </svg>
+                  </button>
+                </span>
+              )}
               <span className="recente-data">
                 {a.atualizadoEm > 0 ? DATA_HORA.format(a.atualizadoEm) : "Sem data"}
               </span>

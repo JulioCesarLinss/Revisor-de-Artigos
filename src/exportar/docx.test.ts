@@ -96,4 +96,10 @@ describe("exportar/docx", () => {
     expect(nomeExportado("tese.txt")).toBe("tese-revisado.docx");
     expect(nomeExportado(null)).toBe("manuscrito-revisado.docx");
   });
+
+  test("nome dado ao artigo vale sobre o do arquivo, sem cortar pontos nem aceitar caracteres inválidos", () => {
+    expect(nomeExportado("tese.docx", "Artigo final v2.1")).toBe("Artigo final v2.1-revisado.docx");
+    expect(nomeExportado(null, "Capítulo 1: Introdução/Revisão")).toBe("Capítulo 1- Introdução-Revisão-revisado.docx");
+    expect(nomeExportado("tese.docx", "   ")).toBe("tese-revisado.docx");
+  });
 });

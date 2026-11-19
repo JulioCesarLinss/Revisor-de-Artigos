@@ -4,22 +4,21 @@ interface Props {
   onFechar: () => void;
 }
 
-/** Documenta o que cada severidade pede do autor (mesma classificação do motor). */
+/**
+ * O que cada nível de aviso pede do autor, com exemplos tirados do catálogo
+ * de regras (src/rules/catalogo.ts). Nenhuma regra usa "Crítico" hoje: o
+ * nível só volta a aparecer aqui quando alguma regra passar a usá-lo.
+ */
 const SEVERIDADES = [
-  {
-    cor: "var(--crimson)",
-    nome: "Crítico",
-    texto: "violação clara da norma (ex.: citação longa sem página). Corrija antes de entregar.",
-  },
   {
     cor: "var(--amber)",
     nome: "Advertência",
-    texto: "provável desvio (ex.: parágrafo muito longo). Avalie e corrija quando fizer sentido.",
+    texto: "provável erro de norma — aspas sem fechar, citação sem vírgula antes do ano, referência sem ano. Vale corrigir.",
   },
   {
     cor: "var(--cobalt-dark)",
     nome: "Observação",
-    texto: "ponto de atenção menor (ex.: espaço duplo). Revisão fina, sem urgência.",
+    texto: "ajuste de acabamento — espaço duplo, espaço antes da vírgula, parágrafo longo, citação longa sem página. Revise quando puder.",
   },
 ];
 
@@ -56,47 +55,60 @@ export function PainelAjuda({ onFechar }: Props) {
 
         <div className="ajuda-corpo">
           <div className="ajuda-secao">
-            <h3>Fluxo de revisão</h3>
+            <h3>Como revisar, passo a passo</h3>
             <ol>
               <li>
-                <strong>Anexe ou cole o manuscrito</strong> no canvas central (parágrafos separados por linha em
-                branco; títulos em CAIXA-ALTA criam seções no relatório).
+                <strong>Coloque o texto</strong>: cole, digite ou clique em <strong>Anexar</strong> (.docx, .txt ou
+                .md). Títulos em CAIXA-ALTA, como INTRODUÇÃO, dividem o texto em seções.
               </li>
               <li>
-                <strong>Clique em Analisar</strong> (ou use <kbd className="atalho-tecla">Ctrl+↵</kbd>) para verificar
-                o texto contra o catálogo de regras. Daí em diante, os avisos acompanham suas correções.
+                <strong>Clique em Analisar</strong> (<kbd className="atalho-tecla">Ctrl+↵</kbd>). Os avisos aparecem
+                à direita e, a partir daí, se atualizam sozinhos enquanto você corrige.
               </li>
               <li>
-                <strong>Corrija os problemas</strong>: "Aplicar correção" resolve automaticamente; "Localizar no
-                manuscrito" destaca o parágrafo no editor — clique nele para editar e o destaque some. Cada aviso
-                resolvido sai da lista sozinho.
+                <strong>Localizar no manuscrito</strong> marca em amarelo cada erro do parágrafo. Ao clicar numa
+                marca ou corrigir aquele trecho, só ela some; as outras continuam.
               </li>
               <li>
-                <strong>Errou?</strong> "Desfazer" volta o texto ao estado anterior à última alteração. O histórico
-                registra cada correção e sugestão aceita.
+                <strong>Corrija</strong> à mão ou com <strong>Aplicar correção</strong>, quando o aviso oferecer.
+                O aviso resolvido sai da lista.
               </li>
               <li>
-                <strong>Exporte</strong> o texto revisado: "Baixar .docx" gera um arquivo do Word com formatação ABNT
-                básica (Times New Roman 12, espaçamento 1,5, margens 3 e 2 cm); "Copiar texto" leva o texto para
-                colar onde quiser. A formatação do arquivo original não é mantida.
+                <strong>Exporte</strong>: <strong>Baixar .docx</strong> gera um Word com formatação ABNT básica
+                (Times New Roman 12, espaçamento 1,5, margens de 3 e 2 cm); <strong>Copiar texto</strong> leva o
+                texto para colar onde quiser.
               </li>
             </ol>
           </div>
 
           <div className="ajuda-secao">
-            <h3>Atalhos de teclado</h3>
-            <ul className="ajuda-lista-atalhos">
+            <h3>Editando o texto</h3>
+            <ul>
               <li>
-                <kbd className="atalho-tecla">Ctrl+↵</kbd> analisar o manuscrito
+                <kbd className="atalho-tecla">Enter</kbd> desce uma linha; dois <kbd className="atalho-tecla">Enter</kbd>{" "}
+                começam um parágrafo novo.
               </li>
               <li>
-                <kbd className="atalho-tecla">Esc</kbd> fechar painéis
+                <strong>N</strong>, <strong>I</strong> e <strong>S</strong> (negrito, itálico e sublinhado): selecione
+                o trecho e clique, ou ligue o botão antes de digitar. A formatação vai junto para o .docx.
+              </li>
+              <li>
+                <strong>Desfazer</strong> volta a última alteração, inclusive de formatação.
               </li>
             </ul>
           </div>
 
           <div className="ajuda-secao">
-            <h3>O que significa cada severidade</h3>
+            <h3>Seus artigos</h3>
+            <p>
+              Na aba <strong>Artigos</strong> ficam até 3 artigos, cada um como uma folha. Clique na folha para abrir,
+              no lápis para renomear e no × para excluir. A folha com + começa um artigo novo. Tudo é salvo
+              sozinho, enquanto você escreve.
+            </p>
+          </div>
+
+          <div className="ajuda-secao">
+            <h3>O que significa cada aviso</h3>
             <ul className="ajuda-lista-sev">
               {SEVERIDADES.map((s) => (
                 <li key={s.nome}>
@@ -108,20 +120,38 @@ export function PainelAjuda({ onFechar }: Props) {
           </div>
 
           <div className="ajuda-secao">
-            <h3>O papel da IA</h3>
+            <h3>Inteligência artificial (opcional)</h3>
             <p>
-              O assistente IA é <strong>opcional</strong> (chave da API no painel à direita) e funciona apenas como{" "}
-              <em>assistência</em>: sugere reescritas que você aceita, edita ou ignora. A decisão normativa
-              permanece com o catálogo de regras e com você — o app funciona integralmente sem IA.
+              <strong>Diagnóstico com Gemini</strong>: com a conta conectada, envia o texto ao Google e traz
+              sugestões de clareza, coerência e escrita. <strong>Assistente com a sua chave</strong>: informe uma
+              chave da OpenAI (ou compatível) no painel à direita ou no Perfil para ver o botão{" "}
+              <strong>Sugerir com IA</strong> nos avisos. A IA só sugere — quem decide o que segue a norma são as
+              regras ABNT e você. O app funciona por completo sem ela.
             </p>
           </div>
 
           <div className="ajuda-secao">
-            <h3>Normas de referência</h3>
+            <h3>Atalhos de teclado</h3>
+            <ul className="ajuda-lista-atalhos">
+              <li>
+                <kbd className="atalho-tecla">Ctrl+↵</kbd> analisar o texto
+              </li>
+              <li>
+                <kbd className="atalho-tecla">Ctrl+B</kbd> <kbd className="atalho-tecla">Ctrl+I</kbd>{" "}
+                <kbd className="atalho-tecla">Ctrl+U</kbd> negrito, itálico e sublinhado
+              </li>
+              <li>
+                <kbd className="atalho-tecla">Esc</kbd> fechar esta ajuda
+              </li>
+            </ul>
+          </div>
+
+          <div className="ajuda-secao">
+            <h3>Normas usadas</h3>
             <ul>
-              <li>NBR 14724 — formatação de trabalhos acadêmicos</li>
-              <li>NBR 10520 — citações em documentos</li>
-              <li>NBR 6023 — referências bibliográficas</li>
+              <li>NBR 14724 — apresentação de trabalhos acadêmicos</li>
+              <li>NBR 10520 — citações</li>
+              <li>NBR 6023 — referências</li>
             </ul>
           </div>
         </div>
