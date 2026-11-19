@@ -36,9 +36,11 @@ export interface EstadoWorkspace {
   diagnostico?: ResultadoDiagnostico | null;
   /** Texto que gerou o diagnóstico acima (base do aviso "o texto mudou"). */
   textoDiagnosticado?: string | null;
+  /** Nome do arquivo anexado: dá nome ao artigo e ao .docx exportado. */
+  arquivo?: string | null;
 }
 
-function armazenamentoPadrao(): Armazenamento | null {
+export function armazenamentoPadrao(): Armazenamento | null {
   try {
     return typeof localStorage !== "undefined" ? localStorage : null;
   } catch {
@@ -121,6 +123,7 @@ export function validarWorkspace(dados: unknown): EstadoWorkspace | null {
     // Diagnóstico malformado é descartado (nunca derruba o manuscrito).
     diagnostico: ehDiagnostico(d.diagnostico) ? d.diagnostico : null,
     textoDiagnosticado: typeof d.textoDiagnosticado === "string" ? d.textoDiagnosticado : null,
+    arquivo: typeof d.arquivo === "string" ? d.arquivo : null,
   };
 }
 
@@ -178,6 +181,7 @@ export function restaurarOriginalWorkspace(st?: Armazenamento): EstadoWorkspace 
     bruto: atual.textoOriginal,
     textoOriginal: atual.textoOriginal,
     historico: [],
+    arquivo: atual.arquivo ?? null, // o artigo continua com o mesmo nome
   };
   salvarWorkspace(restaurado, st);
   return restaurado;

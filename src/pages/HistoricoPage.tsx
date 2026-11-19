@@ -5,13 +5,13 @@ import {
   carregarWorkspace,
   contarPorOrigem,
   limparHistoricoWorkspace,
-  limparWorkspace,
   restaurarOriginalWorkspace,
   type EstadoWorkspace,
 } from "../workspace/armazenamento";
+import { carregarBiblioteca } from "../workspace/artigos";
 import { tituloDaRegra } from "../ui/rotulos";
 import { useAutorizacao } from "../firebase/auth";
-import { apagarWorkspaceNuvem, salvarWorkspaceNuvem } from "../firebase/persistencia";
+import { salvarArtigoNuvem } from "../firebase/persistencia";
 
 /** Aviso quando a ação valeu no dispositivo mas a cópia da conta não acompanhou. */
 const AVISO_NUVEM =
@@ -20,12 +20,11 @@ const AVISO_NUVEM =
 type Filtro = "todas" | "manual" | "ia";
 
 /** Ações que exigem confirmação dentro do app (especifica a pergunta). */
-type Confirmacao = "limpar" | "voltarOriginal" | "descartar" | null;
+type Confirmacao = "limpar" | "voltarOriginal" | null;
 
 const PERGUNTA_CONFIRMACAO: Record<Exclude<Confirmacao, null>, string> = {
   limpar: "Limpar o histórico de alterações? O manuscrito atual será mantido.",
   voltarOriginal: "Restaurar o texto original do arquivo? O histórico de alterações será apagado.",
-  descartar: "Apagar o manuscrito e o histórico? Esta ação não pode ser desfeita.",
 };
 
 const FILTROS: { valor: Filtro; rotulo: string }[] = [
@@ -46,6 +45,8 @@ export default function HistoricoPage() {
   // traria de volta o que foi apagado aqui).
   const { uid } = useAutorizacao();
   const [workspace, setWorkspace] = useState<EstadoWorkspace | null>(() => carregarWorkspace());
+  // O artigo aberto no editor: as ações daqui gravam nele, também na nuvem.
+  const [ativoId] = useState(() => carregarBiblioteca().ativo);
   const [filtro, setFiltro] = useState<Filtro>("todas");
   const [status, setStatus] = useState<string | null>(null);
 
@@ -73,7 +74,7 @@ export default function HistoricoPage() {
     setWorkspace(limpo);
     setConfirmacao(null);
     const mensagem = "Histórico limpo — o manuscrito atual foi mantido.";
-    if (limpo) void sincronizar((u) => salvarWorkspaceNuvem(u, limpo), mensagem);
+    if (limpo) void sincronizar((u) => salvarArtigoNuvem(u, ativoId, limpo), mensagem);
     else setStatus(mensagem);
   };
 
@@ -85,7 +86,7 @@ export default function HistoricoPage() {
     setConfirmacao(null);
     if (restaurado) {
       void sincronizar(
-        (u) => salvarWorkspaceNuvem(u, restaurado),
+        (u) => salvarArtigoNuvem(u, ativoId, restaurado),
         "Texto original restaurado — o rastro recomeçou do zero.",
       );
     } else {
@@ -93,20 +94,9 @@ export default function HistoricoPage() {
     }
   };
 
-  const descartarTudo = () => {
-    limparWorkspace();
-    setWorkspace(null);
-    setConfirmacao(null);
-    void sincronizar(
-      apagarWorkspaceNuvem,
-      uid ? "Manuscrito e histórico apagados." : "Manuscrito e histórico apagados deste dispositivo.",
-    );
-  };
-
   const confirmar = () => {
     if (confirmacao === "limpar") limpar();
     else if (confirmacao === "voltarOriginal") voltarAoOriginal();
-    else if (confirmacao === "descartar") descartarTudo();
   };
 
   const vazio = !workspace || contagem.total === 0;
@@ -130,15 +120,6 @@ export default function HistoricoPage() {
             onClick={temOriginal ? () => setConfirmacao("voltarOriginal") : undefined}
           >
             Voltar ao original
-          </button>
-          <button
-            className="btn historico-btn-perigo"
-            type="button"
-            disabled={!workspace}
-            title={workspace ? "Apaga o manuscrito e o histórico" : "Nada para descartar"}
-            onClick={workspace ? () => setConfirmacao("descartar") : undefined}
-          >
-            Descartar tudo
           </button>
           {!vazio && (
             <button className="btn historico-btn-perigo" type="button" onClick={() => setConfirmacao("limpar")}>

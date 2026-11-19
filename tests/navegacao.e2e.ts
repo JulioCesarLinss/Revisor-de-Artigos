@@ -15,10 +15,10 @@ test.describe("Navegação", () => {
     await expect(page.getByRole("heading", { name: "Histórico de revisões" })).toBeVisible();
     await expect(navegacao.getByRole("link", { name: "Histórico" })).toHaveAttribute("aria-current", "page");
 
-    await navegacao.getByRole("link", { name: "Laudo" }).click();
-    await expect(page).toHaveURL(/\/laudo$/);
-    await expect(page.getByRole("heading", { name: "Laudo ABNT" })).toBeVisible();
-    await expect(navegacao.getByRole("link", { name: "Laudo" })).toHaveAttribute("aria-current", "page");
+    await navegacao.getByRole("link", { name: "Artigos" }).click();
+    await expect(page).toHaveURL(/\/artigos$/);
+    await expect(page.getByRole("heading", { name: "Artigos" })).toBeVisible();
+    await expect(navegacao.getByRole("link", { name: "Artigos" })).toHaveAttribute("aria-current", "page");
 
     await navegacao.getByRole("link", { name: "Perfil" }).click();
     await expect(page).toHaveURL(/\/perfil$/);

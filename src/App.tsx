@@ -7,13 +7,13 @@ import LoginPage from "./pages/LoginPage";
 import RevisarPage from "./pages/RevisarPage";
 import PerfilPage from "./pages/PerfilPage";
 import HistoricoPage from "./pages/HistoricoPage";
-import LaudoPage from "./pages/LaudoPage";
-import { limparWorkspace } from "./workspace/armazenamento";
+import ArtigosPage from "./pages/ArtigosPage";
+import { limparDispositivo } from "./workspace/artigos";
 
 const CADEIA = [
   { para: "/revisar", rotulo: "Revisar" },
   { para: "/historico", rotulo: "Histórico" },
-  { para: "/laudo", rotulo: "Laudo" },
+  { para: "/artigos", rotulo: "Artigos" },
   { para: "/perfil", rotulo: "Perfil" },
 ];
 
@@ -38,7 +38,7 @@ export default function App() {
   const sair = () => {
     void sairFirebase();
     encerrarSessao();
-    limparWorkspace();
+    limparDispositivo();
     navegar("/login", { replace: true });
   };
 
@@ -54,7 +54,8 @@ export default function App() {
               NormaReview <span>AI</span>
             </h1>
             {!naEntrada && <p>Regras normativas como base confiável; IA como assistente opcional.</p>}
-          </Link>          {autenticado && (
+          </Link>
+          {autenticado && (
             <nav className="app-nav" aria-label="Navegação do sistema">
               {CADEIA.map((e) => (
                 <Link
@@ -67,9 +68,6 @@ export default function App() {
                   {e.rotulo}
                 </Link>
               ))}
-              <button className="nav-item nav-item-acao" type="button" onClick={sair} title="Encerrar a sessão">
-                Sair
-              </button>
               {/* H10: ponto de entrada sempre visível para a ajuda e documentação. */}
               <button
                 className="btn norm-chip-acao"
@@ -78,6 +76,10 @@ export default function App() {
                 title="Abrir o guia de uso, atalhos de teclado e significado das severidades"
               >
                 Ajuda
+              </button>
+              {/* Sair no canto direito, só a palavra: separado da navegação. */}
+              <button className="nav-sair" type="button" onClick={sair} title="Encerrar a sessão">
+                Sair
               </button>
             </nav>
           )}
@@ -114,10 +116,10 @@ export default function App() {
           }
         />
         <Route
-          path="/laudo"
+          path="/artigos"
           element={
             <RequireAuth pronto={pronto} autenticado={autenticado}>
-              <LaudoPage />
+              <ArtigosPage />
             </RequireAuth>
           }
         />

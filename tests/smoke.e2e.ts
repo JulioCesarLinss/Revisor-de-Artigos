@@ -35,7 +35,7 @@ test.describe("Smoke", () => {
     expect(Object.keys(await gemini.json())).toEqual(["configurado"]);
   });
 
-  test("caminho crítico: entrar, analisar, corrigir, exportar, histórico, laudo e sair", async ({ page }, info) => {
+  test("caminho crítico: entrar, analisar, corrigir, exportar, histórico e sair", async ({ page }, info) => {
     await test.step("rota protegida pede login e o login abre a revisão", async () => {
       await page.goto("/revisar");
       await expect(page).toHaveURL(/\/login$/);
@@ -99,13 +99,6 @@ test.describe("Smoke", () => {
       await page.getByRole("link", { name: "Histórico" }).click();
       await expect(page).toHaveURL(/\/historico$/);
       await expect(page.getByText("1 alteração(ões) registrada(s).")).toBeVisible();
-    });
-
-    await test.step("laudo apura os mesmos números da análise", async () => {
-      await page.getByRole("link", { name: "Laudo" }).click();
-      await expect(page).toHaveURL(/\/laudo$/);
-      const resumo = page.getByRole("region", { name: "Resumo por severidade" });
-      await expect(resumo.locator(".laudo-stat.total strong")).toHaveText(String(AVISOS_DO_EXEMPLO));
     });
 
     await test.step("sair encerra a sessão e a rota protegida volta a barrar", async () => {

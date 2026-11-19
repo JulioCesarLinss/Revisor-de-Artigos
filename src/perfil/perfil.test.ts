@@ -1,9 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import {
+  carregarConfigIA,
   carregarPerfil,
+  CHAVE_CONFIG_IA,
   CHAVE_PERFIL,
   iniciaisDoNome,
+  removerConfigIA,
   rotuloDoPerfil,
+  salvarConfigIA,
   salvarPerfil,
   validarPerfil,
   type Armazenamento,
@@ -47,6 +51,37 @@ describe("perfil/perfil — persistência local", () => {
     expect(ok?.nome).toBe("Ana Costa");
     expect(ok?.email).toBe("ana@usp.br");
     expect(ok?.perfil).toBe("graduacao"); // default
+  });
+
+  test("config IA: salva e recarrega com defaults opcionais", () => {
+    const st = storageFalso();
+    expect(carregarConfigIA(st)).toBeNull();
+
+    salvarConfigIA({ apiKey: "sk-teste" }, st);
+    const config = carregarConfigIA(st);
+    expect(config?.apiKey).toBe("sk-teste");
+    expect(config?.baseUrl).toBeUndefined();
+    expect(config?.modelo).toBeUndefined();
+
+    salvarConfigIA({ apiKey: "sk-2", baseUrl: " https://api.local/v1 ", modelo: "gpt-4o-mini" }, st);
+    const config2 = carregarConfigIA(st);
+    expect(config2?.baseUrl).toBe("https://api.local/v1");
+    expect(config2?.modelo).toBe("gpt-4o-mini");
+  });
+
+  test("config IA: remove com removerConfigIA", () => {
+    const st = storageFalso();
+    salvarConfigIA({ apiKey: "sk-teste" }, st);
+
+    removerConfigIA(st);
+    expect(st.mapa.has(CHAVE_CONFIG_IA)).toBe(false);
+    expect(carregarConfigIA(st)).toBeNull();
+  });
+
+  test("chave vazia na configuração salva é tratada como não configurada", () => {
+    const st = storageFalso();
+    st.setItem(CHAVE_CONFIG_IA, JSON.stringify({ apiKey: "   " }));
+    expect(carregarConfigIA(st)).toBeNull();
   });
 });
 

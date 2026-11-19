@@ -7,6 +7,9 @@ interface Props {
   onCorrigir: (problema: Problema) => void;
   /** Navega até o trecho problema no manuscrito (Sprint 2). */
   onLocalizar: () => void;
+  /** Presente quando a assistência IA está configurada (Sprint 3). */
+  onSugerir?: () => void;
+  sugerindo?: boolean;
   /** Falso quando o parágrafo é título — esconde o botão "Aplicar correção". */
   listarAcao?: boolean;
 }
@@ -17,7 +20,7 @@ const ROTULO_SEVERIDADE = {
   observacao: "Observação",
 } as const;
 
-export function ProblemaCard({ problema, onCorrigir, onLocalizar, listarAcao = true }: Props) {
+export function ProblemaCard({ problema, onCorrigir, onLocalizar, onSugerir, sugerindo, listarAcao = true }: Props) {
   const local = problema.paragrafo > 0 ? `Parágrafo ${problema.paragrafo}` : "Documento inteiro";
 
   /**
@@ -53,6 +56,24 @@ export function ProblemaCard({ problema, onCorrigir, onLocalizar, listarAcao = t
           {problema.paragrafo > 0 && (
             <button className="btn" type="button" onClick={onLocalizar}>
               Localizar no manuscrito
+            </button>
+          )}
+          {onSugerir && (
+            <button
+              className="btn btn-ia"
+              type="button"
+              onClick={onSugerir}
+              disabled={sugerindo}
+              aria-busy={sugerindo || undefined}
+            >
+              {sugerindo ? (
+                <>
+                  <span className="status-spinner status-spinner-sm" aria-hidden="true" />
+                  Pedindo sugestão…
+                </>
+              ) : (
+                "Sugerir com IA"
+              )}
             </button>
           )}
           {problema.acao && listarAcao && !confirmar && (

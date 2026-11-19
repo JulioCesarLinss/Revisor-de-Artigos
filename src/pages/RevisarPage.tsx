@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { statusIA, sugerirReescrita } from "../ai/assistente";
 import { diagnosticarComGemini, geminiConfigurado } from "../ai/geminiCliente";
 import type { DiagnosticoGemini, ParagrafoNumerado, ResultadoDiagnostico } from "../ai/gemini";
+import { carregarConfigIA, salvarConfigIA } from "../perfil/perfil";
+import type { ConfiguracaoIA, SugestaoIA } from "../ai/types";
 import { aplicarCorrecao } from "../document/acoes";
+import { aplicarSugestao } from "../document/aplicarSugestao";
 import { lerArquivo, type ResultadoUpload } from "../document/arquivo";
 import { importarTexto } from "../document/importar.js";
 import { iniciarRevisao, type AnaliseRevisao } from "../review/orquestrar";
@@ -11,6 +15,7 @@ import { PainelGemini } from "../ui/PainelGemini";
 import { PainelHistorico } from "../ui/PainelHistorico";
 import { ManuscritoPaginado } from "../ui/ManuscritoPaginado";
 import { PainelSecoes } from "../ui/PainelSecoes";
+import { PainelSugestao } from "../ui/PainelSugestao";
 import { ProblemaCard } from "../ui/ProblemaCard";
 import { Resumo } from "../ui/Resumo";
 import { registrar, type RegistroAlteracao } from "../workspace/historico";
@@ -26,9 +31,21 @@ import { posicoesParagrafos } from "../workspace/paragrafos";
 import { desempilhar, empilhar } from "../workspace/desfazer";
 import { gerarDocx, MIME_DOCX, nomeExportado } from "../exportar/docx";
 import { baixarArquivo } from "../exportar/baixar";
-import { carregarWorkspace, salvarWorkspace } from "../workspace/armazenamento";
+import { salvarWorkspace, type EstadoWorkspace } from "../workspace/armazenamento";
+import {
+  artigoAtivo,
+  ativarNoDispositivo,
+  carregarBiblioteca,
+  criarArtigo,
+  estadoVazio,
+  estaVazio,
+  LIMITE_ARTIGOS,
+  MOTIVO_LIMITE,
+  salvarBiblioteca,
+  type Biblioteca,
+} from "../workspace/artigos";
 import { useAutorizacao } from "../firebase/auth";
-import { carregarWorkspaceNuvem, salvarWorkspaceNuvem } from "../firebase/persistencia";
+import { carregarBibliotecaNuvem, salvarArtigoNuvem, salvarIndiceNuvem } from "../firebase/persistencia";
 
 /** Espera após a última tecla antes de reanalisar (as regras são instantâneas). */
 const ATRASO_REANALISE_MS = 500;
@@ -55,13 +72,45 @@ interface Destaque {
   pedido: number;
 }
 
-/** Tela /revisar — editor de revisão interativa (conteúdo original do App). */
+/** Ao trocar de artigo, a tela recomeça do zero com ele (estado, Desfazer, marcas). */
+interface Abertura {
+  /** Muda a cada troca: recria o editor. */
+  versao: number;
+  mensagem: string | null;
+  /** Arquivo recém-anexado: espera o "Analisar", como na primeira leitura. */
+  aguardarAnalise: boolean;
+}
+
+/** Tela /revisar — o editor do artigo aberto; trocar de artigo recria o editor. */
 export default function RevisarPage() {
+  const [abertura, setAbertura] = useState<Abertura>({ versao: 0, mensagem: null, aguardarAnalise: false });
+  const trocar = useCallback((mensagem: string | null, aguardarAnalise = false) => {
+    setAbertura((a) => ({ versao: a.versao + 1, mensagem, aguardarAnalise }));
+  }, []);
+  return (
+    <EditorRevisao
+      key={abertura.versao}
+      mensagemInicial={abertura.mensagem}
+      aguardarAnalise={abertura.aguardarAnalise}
+      aoTrocarArtigo={trocar}
+    />
+  );
+}
+
+interface PropsEditor {
+  mensagemInicial: string | null;
+  aguardarAnalise: boolean;
+  aoTrocarArtigo: (mensagem: string | null, aguardarAnalise?: boolean) => void;
+}
+
+function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: PropsEditor) {
   // uid do Firebase (quando configurado) — chave da persistência na nuvem.
   const { uid } = useAutorizacao();
-  // Workspace restaurado do dispositivo (uma única leitura, no primeiro render):
-  // o rascunho e o histórico sobrevivem à troca de rotas e alimentam /historico.
-  const [salvo] = useState(carregarWorkspace);
+  // Artigos do dispositivo (uma leitura por abertura): o aberto vem para o
+  // editor; o rascunho e o histórico sobrevivem à troca de rotas.
+  const [biblioteca] = useState<Biblioteca>(() => carregarBiblioteca());
+  const ativoId = biblioteca.ativo;
+  const [salvo] = useState<EstadoWorkspace | null>(() => artigoAtivo(biblioteca).estado);
   const location = useLocation();
 
   // Upload de arquivo (aba Revisar): seletor + arrastar-e-soltar na folha.
@@ -97,9 +146,9 @@ export default function RevisarPage() {
    * as correções. Um texto restaurado (volta de outra tela) é trabalho em
    * andamento e já chega analisado; um arquivo novo espera o clique.
    */
-  const [acompanhando, setAcompanhando] = useState(() => !!salvo && salvo.bruto.trim().length > 0);
+  const [acompanhando, setAcompanhando] = useState(() => !aguardarAnalise && !!salvo && salvo.bruto.trim().length > 0);
   const [analise, setAnalise] = useState<AnaliseRevisao | null>(() =>
-    salvo && salvo.bruto.trim().length > 0 ? iniciarRevisao(salvo.bruto) : null,
+    !aguardarAnalise && salvo && salvo.bruto.trim().length > 0 ? iniciarRevisao(salvo.bruto) : null,
   );
 
   // Destaque no editor: "Localizar" marca os erros do parágrafo (ou o parágrafo,
@@ -153,6 +202,20 @@ export default function RevisarPage() {
     });
   }, []);
 
+  // Sprint 3 — assistência IA (opcional; DC-03). A chave salva em /perfil
+  // é carregada aqui, para não precisar ser digitada duas vezes.
+  const [configIA, setConfigIA] = useState<ConfiguracaoIA | null>(() => carregarConfigIA());
+  const [chaveInput, setChaveInput] = useState("");
+  const [sugestaoAtiva, setSugestaoAtiva] = useState<SugestaoIA | null>(null);
+  const [carregandoSugestao, setCarregandoSugestao] = useState<string | null>(null);
+  const [erroIA, setErroIA] = useState<string | null>(null);
+
+  /**
+   * Heurística 9 (Nielsen) — reconhecer, diagnosticar e recuperar erros:
+   * guarda o problema que originou o último pedido, para que o relatório de
+   * erro mostre o que falhou e ofereça a recuperação ("Tentar novamente").
+   */
+  const [ultimoPedido, setUltimoPedido] = useState<Problema | null>(null);
   const [historico, setHistorico] = useState<RegistroAlteracao[]>(salvo?.historico ?? []);
 
   // Texto original do arquivo enviado — base para "Voltar ao original" no /historico.
@@ -160,7 +223,7 @@ export default function RevisarPage() {
 
   // Heurística 1 (Nielsen) — visibilidade do status do sistema
   const [ocupadoCom, setOcupadoCom] = useState<string | null>(null);
-  const [statusSistema, setStatusSistema] = useState<string | null>(null);
+  const [statusSistema, setStatusSistema] = useState<string | null>(mensagemInicial);
 
   /**
    * "Desfazer": estados anteriores do texto, só na memória desta tela (não vão
@@ -187,10 +250,11 @@ export default function RevisarPage() {
   );
 
   // Exportar: nome do arquivo anexado (base do nome exportado) e o menu aberto.
-  const [nomeArquivo, setNomeArquivo] = useState<string | null>(null);
+  const [nomeArquivo, setNomeArquivo] = useState<string | null>(salvo?.arquivo ?? null);
   const [menuExportar, setMenuExportar] = useState(false);
   const exportarRef = useRef<HTMLSpanElement | null>(null);
 
+  const estadoIA = statusIA(configIA);
   // Gemini: a chave vive só no servidor (api/gemini) — aqui consultamos se ele
   // está ativo (null = ainda sem resposta da consulta).
   const [geminiAtivo, setGeminiAtivo] = useState<boolean | null>(null);
@@ -204,8 +268,8 @@ export default function RevisarPage() {
     };
   }, []);
 
-  // Ocupado quando há análise/versão em processamento.
-  const processando = ocupadoCom !== null;
+  // Ocupado quando há análise/versão em processamento ou sugestão IA pendente.
+  const processando = ocupadoCom !== null || carregandoSugestao !== null;
 
   // Diagnóstico com Gemini (DC-03): só pelo botão próprio do painel — o texto
   // sai para o Google apenas quando o usuário pede. A análise local roda antes,
@@ -294,39 +358,77 @@ export default function RevisarPage() {
     return () => clearTimeout(t);
   }, [acompanhando, bruto, analise]);
 
-  // Persiste o workspace a cada mudança: /historico lê daqui e o rascunho
+  /** O artigo aberto como é salvo (dispositivo e nuvem). */
+  const estadoAtual = useMemo<EstadoWorkspace>(
+    () => ({
+      bruto,
+      textoOriginal,
+      historico,
+      formatacao: formato.trechos,
+      diagnostico,
+      textoDiagnosticado,
+      arquivo: nomeArquivo,
+    }),
+    [bruto, textoOriginal, historico, formato.trechos, diagnostico, textoDiagnosticado, nomeArquivo],
+  );
+  const brutoAtual = useRef(bruto);
+  brutoAtual.current = bruto;
+
+  // Persiste o artigo aberto a cada mudança: /historico lê daqui e o rascunho
   // sobrevive à navegação entre rotas.
   useEffect(() => {
-    salvarWorkspace({ bruto, textoOriginal, historico, formatacao: formato.trechos, diagnostico, textoDiagnosticado });
-  }, [bruto, textoOriginal, historico, formato.trechos, diagnostico, textoDiagnosticado]);
+    salvarWorkspace(estadoAtual);
+  }, [estadoAtual]);
 
-  // Com Firebase, carrega da nuvem quando o dispositivo local está vazio
-  // (primeiro acesso deste dispositivo à conta).
+  // Com Firebase: se o dispositivo está sem texto (primeiro acesso dele à
+  // conta), abre os artigos da nuvem; senão, junta à lista os artigos que só
+  // existem na nuvem e envia o índice.
   const nuvemCarregada = useRef(false);
   useEffect(() => {
     if (!uid || nuvemCarregada.current) return;
     nuvemCarregada.current = true;
-    void carregarWorkspaceNuvem(uid).then((nuvem) => {
-      if (!nuvem || bruto.trim().length > 0) return; // só preenche vazio
-      setBruto(nuvem.bruto);
-      setFormato({ texto: nuvem.bruto, trechos: nuvem.formatacao ?? [] });
-      setTextoOriginal(nuvem.textoOriginal ?? null);
-      setHistorico(nuvem.historico ?? []);
-      setDiagnostico(nuvem.diagnostico ?? null);
-      setTextoDiagnosticado(nuvem.textoDiagnosticado ?? null);
+    void carregarBibliotecaNuvem(uid).then((nuvem) => {
+      const local = carregarBiblioteca();
+      // Conferido na chegada da resposta: o que foi digitado enquanto isso não se perde.
+      const localVazio = brutoAtual.current.trim().length === 0 && local.artigos.every((a) => estaVazio(a.estado));
+      if (nuvem && localVazio) {
+        ativarNoDispositivo(nuvem);
+        aoTrocarArtigo(null);
+        return;
+      }
+      const deFora = (nuvem?.artigos ?? []).filter((a) => !local.artigos.some((l) => l.id === a.id));
+      const juntos: Biblioteca = { ...local, artigos: [...local.artigos, ...deFora].slice(0, LIMITE_ARTIGOS) };
+      salvarBiblioteca(juntos);
+      void salvarIndiceNuvem(uid, juntos);
     });
-  }, [uid, bruto]);
+  }, [uid, aoTrocarArtigo]);
 
-  // Com Firebase, espelha o workspace na nuvem com debounce (evita gravar a
-  // cada tecla). O localStorage continua sendo a fonte imediata/offline.
+  // Com Firebase, espelha o artigo na nuvem com debounce (evita gravar a cada
+  // tecla). Ao sair da tela ou trocar de artigo, o que estava pendente é
+  // gravado na hora. O localStorage continua sendo a fonte imediata/offline.
+  const gravacaoPendente = useRef<(() => void) | null>(null);
   useEffect(() => {
     if (!uid) return;
-    const estado = { bruto, textoOriginal, historico, formatacao: formato.trechos, diagnostico, textoDiagnosticado };
-    const t = setTimeout(() => {
-      void salvarWorkspaceNuvem(uid, estado);
-    }, 1200);
+    const gravar = () => {
+      gravacaoPendente.current = null;
+      void salvarArtigoNuvem(uid, ativoId, estadoAtual);
+    };
+    gravacaoPendente.current = gravar;
+    const t = setTimeout(gravar, 1200);
     return () => clearTimeout(t);
-  }, [uid, bruto, textoOriginal, historico, formato.trechos, diagnostico, textoDiagnosticado]);
+  }, [uid, ativoId, estadoAtual]);
+  useEffect(() => () => gravacaoPendente.current?.(), []);
+
+  /** Grava a lista de artigos (dispositivo e nuvem) e recria o editor com o novo aberto. */
+  const abrirNoEditor = useCallback(
+    (b: Biblioteca, mensagem: string | null, aguardar = false) => {
+      ativarNoDispositivo(b);
+      if (uid) void salvarIndiceNuvem(uid, b);
+      aoTrocarArtigo(mensagem, aguardar);
+    },
+    [uid, aoTrocarArtigo],
+  );
+
 
   /**
    * Heurística 7 (Nielsen) — flexibilidade e eficiência de uso: acelerador de
@@ -414,7 +516,10 @@ export default function RevisarPage() {
     };
   }, [menuExportar]);
 
-  /** Lê o arquivo no cliente e carrega o texto como novo rascunho (a análise espera o "Analisar"). */
+  /**
+   * Lê o arquivo no cliente. Com o artigo aberto vazio, o texto entra nele;
+   * senão, vira um artigo novo (se ainda couber). A análise espera o "Analisar".
+   */
   const receberArquivo = useCallback(async (file: File | null | undefined) => {
     if (!file) return;
     setErroUpload(null);
@@ -437,6 +542,18 @@ export default function RevisarPage() {
       return;
     }
 
+    if (brutoAtual.current.trim().length > 0) {
+      setOcupadoCom(null);
+      const estado = { ...estadoVazio(), bruto: resultado.texto, textoOriginal: resultado.texto, arquivo: file.name };
+      const b = criarArtigo(carregarBiblioteca(), estado);
+      if (!b) {
+        setErroUpload(`${MOTIVO_LIMITE} O arquivo "${file.name}" não foi aberto.`);
+        return;
+      }
+      abrirNoEditor(b, `Arquivo "${file.name}" aberto como novo artigo (veja todos na aba Artigos) — clique em Analisar para verificar o texto.`, true);
+      return;
+    }
+
     setBruto(resultado.texto);
     setFormato({ texto: resultado.texto, trechos: [] }); // a importação traz só o texto
     setEstilosAtivos([]);
@@ -451,7 +568,7 @@ export default function RevisarPage() {
     setNomeArquivo(file.name);
     setOcupadoCom(null);
     setStatusSistema(`Arquivo "${file.name}" carregado — clique em Analisar para verificar o texto.`);
-  }, []);
+  }, [abrirNoEditor]);
 
   const corrigir = useCallback(
     (problema: Problema) => {
@@ -468,13 +585,94 @@ export default function RevisarPage() {
     [bruto, formato],
   );
 
+  const pedirSugestao = useCallback(
+    async (problema: Problema) => {
+      if (!configIA || !analise) return;
+      const par = analise.manuscrito.paragrafos.find((p) => p.index === problema.paragrafo);
+      if (!par) return;
+
+      setCarregandoSugestao(problema.id);
+      setErroIA(null);
+      setUltimoPedido(problema); // H9: contexto do pedido para diagnóstico/recuperação
+      const resultado = await sugerirReescrita(configIA, par.texto, problema.paragrafo, {
+        regraId: problema.regraId,
+        mensagem: problema.mensagem,
+        referencia: problema.referencia,
+      });
+      setCarregandoSugestao(null);
+
+      if (resultado.ok) {
+        setSugestaoAtiva(resultado.sugestao);
+        setStatusSistema("Sugestão recebida da IA — revise antes de aceitar.");
+      } else {
+        setErroIA(resultado.motivo);
+        setStatusSistema(null);
+      }
+    },
+    [configIA, analise],
+  );
+
+  const aceitarSugestao = useCallback(
+    (textoFinal: string) => {
+      if (!sugestaoAtiva) return;
+      const novo = aplicarSugestao(bruto, sugestaoAtiva, textoFinal);
+      setPilhaDesfazer((p) => empilhar(p, formato));
+      setBruto(novo);
+      setAnalise(iniciarRevisao(novo));
+      setHistorico((h) =>
+        registrar(h, {
+          origem: "ia",
+          descricao: sugestaoAtiva.regraId ? `sugestão aceita (${sugestaoAtiva.regraId})` : "sugestão aceita",
+          paragrafo: sugestaoAtiva.paragrafo,
+        }),
+      );
+      setStatusSistema(`Sugestão aceita no parágrafo ${sugestaoAtiva.paragrafo} — análise atualizada.`);
+      setSugestaoAtiva(null);
+    },
+    [bruto, formato, sugestaoAtiva],
+  );
+
+  /**
+   * H9 — relatório de erro completo para a falha do assistente IA:
+   * o quê (Ocorreu um erro) → por quê (motivo legível) → como recuperar.
+   */
+  const renderErroIA = () => (
+    <div className="ia-erro" role="alert">
+      <strong className="ia-erro-titulo">Ocorreu um erro ao pedir a sugestão</strong>
+      <span>{erroIA}</span>
+      <span className="ia-erro-acoes">
+        {ultimoPedido && (
+          <button
+            className="btn"
+            type="button"
+            onClick={() => {
+              const problema = ultimoPedido;
+              setErroIA(null);
+              void pedirSugestao(problema);
+            }}
+          >
+            Tentar novamente
+          </button>
+          )}
+        <button className="btn" type="button" onClick={() => setErroIA(null)}>
+          Fechar
+        </button>
+      </span>
+    </div>
+  );
+
   return (
     <main className="app-main" id="conteudo">
       <section className="canvas-col" aria-label="Manuscrito em revisão">
         {/* H1: a linha de status só existe quando há status a mostrar. */}
-        {(ocupadoCom !== null || analisandoGemini || statusSistema) && (
+        {(carregandoSugestao !== null || ocupadoCom !== null || analisandoGemini || statusSistema) && (
           <p className="status-sistema" role="status" aria-live="polite">
-            {ocupadoCom !== null ? (
+            {carregandoSugestao !== null ? (
+              <>
+                <span className="status-spinner" aria-hidden="true" />
+                Pedindo sugestão à IA…
+              </>
+            ) : ocupadoCom !== null ? (
               <>
                 <span className="status-spinner" aria-hidden="true" />
                 {ocupadoCom}
@@ -663,6 +861,44 @@ export default function RevisarPage() {
       <aside className="inspector" aria-label="Resultado da análise">
         <Resumo analise={analise} diagnostico={diagnostico} />
 
+        {/* Sprint 3 — configuração da assistência IA (opcional) */}
+        <div className="resumo-card">
+          <h2>Assistente IA (opcional)</h2>
+          {estadoIA === "pronta" ? (
+            <p className="ia-status ia-pronta">
+              Assistente configurado. Sugestões aparecem como <em>assistência</em>, nunca como decisão normativa.
+            </p>
+          ) : (
+            <div className="ia-config">
+              <p className="ia-status">
+                Sem IA o fluxo continua completo: regras, relatório e correções. Configure uma chave para receber
+                sugestões de reescrita.
+              </p>
+              <input
+                type="password"
+                className="ia-input"
+                placeholder="Chave da API (OpenAI ou compatível)"
+                value={chaveInput}
+                onChange={(e) => setChaveInput(e.target.value)}
+              />
+              <button
+                className="btn btn-primary"
+                type="button"
+                disabled={chaveInput.trim().length === 0}
+                onClick={() => {
+                  const config = { apiKey: chaveInput.trim() };
+                  setConfigIA(config);
+                  salvarConfigIA(config); // disponível também em /perfil
+                  setChaveInput("");
+                }}
+              >
+                Ativar assistente
+              </button>
+            </div>
+          )}
+          {erroIA && renderErroIA()}
+        </div>
+
         {/* Diagnóstico do Gemini — só quando o usuário pede, no botão do painel. */}
         <PainelGemini
           configurado={geminiAtivo !== false}
@@ -687,6 +923,16 @@ export default function RevisarPage() {
           </div>
         )}
 
+        {sugestaoAtiva && analise && (
+          <PainelSugestao
+            sugestao={sugestaoAtiva}
+            manuscrito={analise.manuscrito}
+            onAceitar={aceitarSugestao}
+            onIgnorar={() => setSugestaoAtiva(null)}
+            sugerindo={carregandoSugestao !== null}
+          />
+        )}
+
         {/* Contador que acompanha as correções: cai a cada aviso resolvido. */}
         {analise && analise.problemas.length > 0 && (
           <p className="avisos-restantes" role="status" aria-live="polite">
@@ -703,6 +949,8 @@ export default function RevisarPage() {
             problema={p}
             onCorrigir={corrigir}
             onLocalizar={() => localizarProblema(p)}
+            onSugerir={estadoIA === "pronta" ? () => pedirSugestao(p) : undefined}
+            sugerindo={carregandoSugestao === p.id}
             listarAcao={!analise.manuscrito.paragrafos.find((x) => x.index === p.paragrafo)?.ehTitulo}
           />
         ))}

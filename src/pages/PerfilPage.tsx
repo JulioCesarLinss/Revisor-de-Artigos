@@ -2,19 +2,23 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { encerrarSessao } from "../sessao";
 import {
+  carregarConfigIA,
   carregarPerfil,
   iniciaisDoNome,
   PERFIS,
+  removerConfigIA,
   rotuloDoPerfil,
+  salvarConfigIA,
   salvarPerfil,
 } from "../perfil/perfil";
+import type { ConfiguracaoIA } from "../ai/types";
 import { sair as sairFirebase, useAutorizacao } from "../firebase/auth";
 import { configurado as firebaseConfigurado } from "../firebase/config";
 import { carregarPerfilNuvem, salvarPerfilNuvem } from "../firebase/persistencia";
 
 /**
- * Tela /perfil — dados do autor/revisor e controle da sessão. Persistência
- * local no dispositivo.
+ * Tela /perfil — dados do autor/revisor, configuração do assistente IA
+ * (BYO-key, DC-03) e controle da sessão. Persistência local no dispositivo.
  */
 export default function PerfilPage() {
   const navegar = useNavigate();
@@ -55,6 +59,12 @@ export default function PerfilPage() {
     };
   }, [uid]);
 
+  // Assistente IA — a chave salva aqui é reutilizada pela tela Revisar.
+  const [configIA, setConfigIA] = useState<ConfiguracaoIA | null>(() => carregarConfigIA());
+  const [chaveInput, setChaveInput] = useState("");
+  const [baseUrlInput, setBaseUrlInput] = useState(configIA?.baseUrl ?? "");
+  const [modeloInput, setModeloInput] = useState(configIA?.modelo ?? "");
+
   const salvar = (e: FormEvent) => {
     e.preventDefault();
     if (nome.trim().length === 0 || email.trim().length === 0) {
@@ -69,6 +79,26 @@ export default function PerfilPage() {
     } else {
       setStatus("Perfil salvo neste dispositivo.");
     }
+  };
+
+  const salvarChave = () => {
+    const chave = chaveInput.trim();
+    if (chave.length === 0) return;
+    const config: ConfiguracaoIA = {
+      apiKey: chave,
+      baseUrl: baseUrlInput.trim() || undefined,
+      modelo: modeloInput.trim() || undefined,
+    };
+    salvarConfigIA(config);
+    setConfigIA(config);
+    setChaveInput("");
+    setStatus("Assistente IA configurado — a chave fica só neste dispositivo.");
+  };
+
+  const desativarChave = () => {
+    removerConfigIA();
+    setConfigIA(null);
+    setStatus("Assistente IA desativado. O fluxo normativo continua completo.");
   };
 
   const sair = () => {
@@ -144,6 +174,66 @@ export default function PerfilPage() {
         </form>
 
         <div className="perfil-coluna">
+          {/* Assistente IA */}
+          <section className="perfil-card" aria-label="Assistente IA">
+            <h3>Assistente IA (opcional)</h3>
+            {configIA ? (
+              <>
+                <p className="ia-status ia-pronta">
+                  Configurado{configIA.modelo ? ` — modelo ${configIA.modelo}` : ""}. Sugestões aparecem como
+                  <em> assistência</em>, nunca como decisão normativa.
+                </p>
+                <button className="btn perfil-btn-perigo" type="button" onClick={desativarChave}>
+                  Remover chave
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="ia-status">
+                  Sem IA o fluxo continua completo: regras, relatório e correções. A chave é sua (BYO-key) e fica
+                  apenas neste dispositivo.
+                </p>
+                <label className="perfil-campo">
+                  <span>Chave da API (OpenAI ou compatível)</span>
+                  <input
+                    type="password"
+                    value={chaveInput}
+                    onChange={(e) => setChaveInput(e.target.value)}
+                    placeholder="sk-…"
+                  />
+                </label>
+                <div className="perfil-duas-colunas">
+                  <label className="perfil-campo">
+                    <span>Endpoint (opcional)</span>
+                    <input
+                      type="text"
+                      value={baseUrlInput}
+                      onChange={(e) => setBaseUrlInput(e.target.value)}
+                      placeholder="https://api.openai.com/v1"
+                    />
+                  </label>
+                  <label className="perfil-campo">
+                    <span>Modelo (opcional)</span>
+                    <input
+                      type="text"
+                      value={modeloInput}
+                      onChange={(e) => setModeloInput(e.target.value)}
+                      placeholder="gpt-4o-mini"
+                    />
+                  </label>
+                </div>
+                <button
+                  className="btn btn-primary"
+                  type="button"
+                  disabled={chaveInput.trim().length === 0}
+                  onClick={salvarChave}
+                >
+                  Salvar chave
+                </button>
+              </>
+            )}
+          </section>
+
           {/* Sessão */}
           <section className="perfil-card" aria-label="Sessão">
             <h3>Sessão</h3>

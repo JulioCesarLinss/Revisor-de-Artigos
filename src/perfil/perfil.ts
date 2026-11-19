@@ -1,6 +1,10 @@
+import type { ConfiguracaoIA } from "../ai/types";
+
 /**
- * Módulo `perfil` — dados do usuário persistidos no dispositivo
- * (localStorage): nome, e-mail e perfil de utilização.
+ * Módulo `perfil` — dados do usuário e configurações persistidas no
+ * dispositivo (localStorage). Sem backend ainda, a persistência é local:
+ * - dados de perfil (nome, e-mail, perfil de utilização);
+ * - chave do assistente IA (BYO-key, DC-03), reaproveitada pela tela Revisar.
  * O storage é injetável para os testes; o padrão é o localStorage real.
  */
 
@@ -25,6 +29,7 @@ export const PERFIS = [
 ] as const;
 
 export const CHAVE_PERFIL = "normareview.perfil";
+export const CHAVE_CONFIG_IA = "normareview.ia";
 
 function armazenamentoPadrao(): Armazenamento | null {
   try {
@@ -80,5 +85,43 @@ export function salvarPerfil(dados: PerfilUsuario, st?: Armazenamento): void {
     s.setItem(CHAVE_PERFIL, JSON.stringify(dados));
   } catch {
     /* armazenamento indisponível: segue sem persistir */
+  }
+}
+
+export function carregarConfigIA(st?: Armazenamento): ConfiguracaoIA | null {
+  const s = st ?? armazenamentoPadrao();
+  if (!s) return null;
+  try {
+    const cru = s.getItem(CHAVE_CONFIG_IA);
+    if (!cru) return null;
+    const dados = JSON.parse(cru) as Partial<ConfiguracaoIA>;
+    if (typeof dados.apiKey !== "string" || dados.apiKey.trim().length === 0) return null;
+    return {
+      apiKey: dados.apiKey,
+      baseUrl: typeof dados.baseUrl === "string" && dados.baseUrl.trim() ? dados.baseUrl.trim() : undefined,
+      modelo: typeof dados.modelo === "string" && dados.modelo.trim() ? dados.modelo.trim() : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function salvarConfigIA(config: ConfiguracaoIA, st?: Armazenamento): void {
+  const s = st ?? armazenamentoPadrao();
+  if (!s) return;
+  try {
+    s.setItem(CHAVE_CONFIG_IA, JSON.stringify(config));
+  } catch {
+    /* segue sem persistir */
+  }
+}
+
+export function removerConfigIA(st?: Armazenamento): void {
+  const s = st ?? armazenamentoPadrao();
+  if (!s) return;
+  try {
+    s.removeItem(CHAVE_CONFIG_IA);
+  } catch {
+    /* ignora */
   }
 }
