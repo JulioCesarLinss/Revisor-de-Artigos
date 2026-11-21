@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { DiagnosticoGemini, ResultadoDiagnostico } from "../ai/gemini";
 
 interface Props {
@@ -41,15 +42,41 @@ export function PainelGemini({
 }: Props) {
   const falha = resultado !== null && !resultado.ok;
   const sucesso = resultado !== null && resultado.ok;
+  const [instrucoesAbertas, setInstrucoesAbertas] = useState(true);
 
   return (
     <div className="resumo-card">
-      <h2>Diagnóstico com Gemini</h2>
-      {/* H6: legenda explica o que é e de onde vem, sem exigir memorização. */}
-      <p className="resumo-legenda">
-        Obtenha uma análise complementar do seu manuscrito, com sugestões de melhoria na clareza, coerência, estrutura
-        e qualidade da escrita acadêmica.
-      </p>
+      <h2 className="gemini-titulo">
+        <button
+          type="button"
+          className="gemini-alternar"
+          onClick={() => setInstrucoesAbertas((aberto) => !aberto)}
+          aria-expanded={instrucoesAbertas}
+          aria-controls="gemini-instrucoes"
+          title={instrucoesAbertas ? "Esconder as instruções" : "Mostrar as instruções"}
+        >
+          <span>Diagnóstico com Gemini</span>
+          <span className={`gemini-seta${instrucoesAbertas ? " aberta" : ""}`} aria-hidden="true">
+            ▾
+          </span>
+        </button>
+      </h2>
+      <div id="gemini-instrucoes" hidden={!instrucoesAbertas}>
+        {/* H6: legenda explica o que é e de onde vem, sem exigir memorização. */}
+        <p className="resumo-legenda">
+          Obtenha uma análise complementar do seu manuscrito, com sugestões de melhoria na clareza, coerência,
+          estrutura e qualidade da escrita acadêmica.
+        </p>
+        {configurado && (
+          <>
+            <h3 className="gemini-subtitulo">Como funciona</h3>
+            <p className="ia-status">
+              O texto do artigo será enviado ao Google Gemini para uma avaliação complementar. Você receberá sugestões
+              de melhoria e poderá compará-las com os apontamentos da revisão normativa.
+            </p>
+          </>
+        )}
+      </div>
 
       {!configurado ? (
         <p className="ia-status">
@@ -57,11 +84,6 @@ export function PainelGemini({
         </p>
       ) : (
         <>
-          <h3 className="gemini-subtitulo">Como funciona</h3>
-          <p className="ia-status">
-            O texto do artigo será enviado ao Google Gemini para uma avaliação complementar. Você receberá sugestões
-            de melhoria e poderá compará-las com os apontamentos da revisão normativa.
-          </p>
           <div className="gemini-acoes">
             <button
               className="btn btn-primary"

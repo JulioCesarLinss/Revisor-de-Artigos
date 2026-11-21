@@ -109,6 +109,7 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
   const { uid } = useAutorizacao();
   // Artigos do dispositivo (uma leitura por abertura): o aberto vem para o
   // editor; o rascunho e o histórico sobrevivem à troca de rotas.
+  const [assistenteRecolhido, setAssistenteRecolhido] = useState(false);
   const [biblioteca] = useState<Biblioteca>(() => carregarBiblioteca());
   const ativoId = biblioteca.ativo;
   const [salvo] = useState<EstadoWorkspace | null>(() => artigoAtivo(biblioteca).estado);
@@ -867,7 +868,12 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
 
         {/* Sprint 3 — configuração da assistência IA (opcional) */}
         <div className="resumo-card">
-          <InfoChaveIA titulo="Assistente IA (opcional)" />
+          <InfoChaveIA
+            titulo="Assistente IA (opcional)"
+            recolhido={assistenteRecolhido}
+            onAlternarRecolhimento={() => setAssistenteRecolhido((r) => !r)}
+          />
+          <div hidden={assistenteRecolhido}>
           {estadoIA === "pronta" ? (
             <p className="ia-status ia-pronta">
               Assistente configurado com {configIA ? NOME_SERVICO[servicoDaChave(configIA.apiKey)] : "IA"}. Sugestões aparecem
@@ -903,6 +909,7 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
             </div>
           )}
           {erroIA && renderErroIA()}
+          </div>
         </div>
 
         {/* Diagnóstico do Gemini — só quando o usuário pede, no botão do painel. */}

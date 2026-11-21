@@ -61,6 +61,25 @@ const ICONES = {
   ),
 };
 
+/** Mensagens em português no lugar das do navegador (que saem no idioma dele). */
+const MSG_EMAIL_VAZIO = "Informe o seu e-mail.";
+const MSG_EMAIL_INVALIDO = "Digite um e-mail válido, com @ e domínio. Exemplo: nome@email.com";
+const MSG_CAMPO_VAZIO = "Preencha este campo.";
+
+/** Troca a mensagem de validação nativa de qualquer campo do formulário. */
+function mensagemCampoInvalido(e: React.FormEvent<HTMLFormElement>) {
+  const campo = e.target as HTMLInputElement;
+  if (campo.type === "email") {
+    campo.setCustomValidity(campo.validity.valueMissing ? MSG_EMAIL_VAZIO : MSG_EMAIL_INVALIDO);
+  } else if (campo.validity.valueMissing) {
+    campo.setCustomValidity(MSG_CAMPO_VAZIO);
+  }
+}
+
+function limparMensagemCampo(e: React.FormEvent<HTMLFormElement>) {
+  (e.target as HTMLInputElement).setCustomValidity?.(""); // sem isso o campo continuaria "inválido" depois de corrigido
+}
+
 function Icone({ nome, className }: { nome: keyof typeof ICONES; className?: string }) {
   return (
     <svg
@@ -217,7 +236,7 @@ export default function LoginPage() {
           )}
 
           {aba === "login" ? (
-            <form className="login-form" onSubmit={entrar}>
+            <form className="login-form" onSubmit={entrar} onInvalidCapture={mensagemCampoInvalido} onInputCapture={limparMensagemCampo}>
               <div className="login-campo">
                 <label htmlFor="login-email">E-mail institucional ou pessoal</label>
                 <div className="login-entrada">
@@ -282,7 +301,7 @@ export default function LoginPage() {
               </button>
             </form>
           ) : (
-            <form className="login-form" onSubmit={cadastrar}>
+            <form className="login-form" onSubmit={cadastrar} onInvalidCapture={mensagemCampoInvalido} onInputCapture={limparMensagemCampo}>
               <div className="login-campo">
                 <label htmlFor="reg-nome">Nome completo do autor(a) ou revisor(a)</label>
                 <div className="login-entrada">

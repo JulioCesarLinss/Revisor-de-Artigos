@@ -5,6 +5,9 @@ interface Props {
   titulo: string;
   /** Nível do título: h2 na revisão, h3 no perfil. */
   nivel?: "h2" | "h3";
+  /** Quando informado, mostra uma seta que recolhe/expande o conteúdo do quadro. */
+  recolhido?: boolean;
+  onAlternarRecolhimento?: () => void;
 }
 
 /**
@@ -13,7 +16,7 @@ interface Props {
  * começar) ou OpenAI (paga). O app reconhece o serviço pelo formato da
  * chave (src/ai/assistente.ts): AIza… vai para o Gemini, sk-… para a OpenAI.
  */
-export function InfoChaveIA({ titulo, nivel = "h2" }: Props) {
+export function InfoChaveIA({ titulo, nivel = "h2", recolhido, onAlternarRecolhimento }: Props) {
   const [aberto, setAberto] = useState(false);
   const idCaixa = useId();
   const Titulo = nivel;
@@ -37,6 +40,20 @@ export function InfoChaveIA({ titulo, nivel = "h2" }: Props) {
             <path d="M12 8h.01" />
           </svg>
         </button>
+        {onAlternarRecolhimento && (
+          <button
+            type="button"
+            className="info-seta-botao"
+            aria-expanded={!recolhido}
+            aria-label={recolhido ? "Mostrar o conteúdo do assistente" : "Esconder o conteúdo do assistente"}
+            title={recolhido ? "Mostrar" : "Esconder"}
+            onClick={onAlternarRecolhimento}
+          >
+            <span className={`gemini-seta${recolhido ? "" : " aberta"}`} aria-hidden="true">
+              ▾
+            </span>
+          </button>
+        )}
       </div>
 
       {aberto && (
