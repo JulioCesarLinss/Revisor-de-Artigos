@@ -10,8 +10,6 @@ interface Props {
   resultado: ResultadoDiagnostico | null;
   /** Verdadeiro quando há texto e o app não está ocupado. */
   podePedir: boolean;
-  /** O manuscrito mudou depois do diagnóstico exibido. */
-  desatualizado: boolean;
   /** Reanalisa pelas regras e pede o diagnóstico com o manuscrito atual. */
   onPedir: () => void;
   /** Navega até o trecho apontado no manuscrito. */
@@ -35,7 +33,6 @@ export function PainelGemini({
   carregando,
   resultado,
   podePedir,
-  desatualizado,
   onPedir,
   onFocar,
   onExcluir,
@@ -115,9 +112,6 @@ export function PainelGemini({
 
       {!carregando && sucesso && (
         <>
-          {desatualizado && (
-            <p className="gemini-aviso">O texto mudou depois deste diagnóstico. Peça um novo para atualizar.</p>
-          )}
           {resultado!.resumo && <p className="gemini-resumo">{resultado!.resumo}</p>}
           {resultado!.truncado && (
             <p className="gemini-aviso">
@@ -155,7 +149,8 @@ export function PainelGemini({
                       <strong>Sugestão:</strong> {d.sugestao}
                     </p>
                   )}
-                  {d.paragrafo > 0 && !desatualizado && (
+                  {/* Funciona mesmo depois de editar o texto: a busca usa o trecho no texto atual. */}
+                  {d.paragrafo > 0 && (
                     <div className="problema-acoes">
                       <button className="btn" type="button" onClick={() => onFocar(d)}>
                         Localizar no manuscrito

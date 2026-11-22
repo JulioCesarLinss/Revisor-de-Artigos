@@ -21,16 +21,56 @@ test.describe("Revisão", () => {
     const problemas = await analisarTexto(page);
     expect(problemas).toBe(3);
 
-    // O resumo das regras acompanha exatamente os cartões exibidos.
-    await expect(page.locator(".resumo-subtitulo")).toHaveText("Regras normativas");
+    // Sem Gemini, o total do resumo é exatamente o número de cartões exibidos.
     await expect(page.locator(".resumo-item.total strong")).toHaveText(String(problemas));
     await expect(cartaoDaRegra(page, "Espaço em excesso antes da pontuação")).toBeVisible();
     await expect(cartaoDaRegra(page, "Aspas desbalanceadas")).toBeVisible();
     await expect(cartaoDaRegra(page, "Espaço duplo entre palavras")).toBeVisible();
     await expect(page.locator(".avisos-restantes")).toContainText("avisos restantes");
 
-    // Diagnóstico do Gemini é opcional: sem pedir, o bloco não aparece no resumo.
-    await expect(page.locator(".resumo-gemini")).toHaveCount(0);
+    // O resumo é um quadro só, sem divisão por origem nem legenda.
+    await expect(page.locator(".resumo-card").first()).not.toContainText("Regras normativas");
+    await expect(page.locator(".resumo-card").first()).not.toContainText("¶ = parágrafo");
+    // O histórico de alterações não aparece mais na tela de revisão (fica na aba Histórico).
+    await expect(page.getByRole("heading", { name: "Histórico de alterações" })).toHaveCount(0);
+  });
+
+  test("com diagnóstico do Gemini, o total soma regras e Gemini; localizar funciona depois de editar", async ({ page }) => {
+    // Diagnóstico salvo (como após um pedido real), feito sobre uma versão anterior do texto.
+    const textoAntigo = "INTRODUCAO\n\nOs dados foi coletados em campo ontem.\n\nOutro paragrafo sem erro nenhum aqui.";
+    const textoAtual = `${textoAntigo}\n\nParagrafo novo escrito depois do diagnostico.`;
+    await page.evaluate(
+      ([bruto, diagnosticado]) => {
+        localStorage.setItem(
+          "normareview.workspace",
+          JSON.stringify({
+            bruto,
+            textoOriginal: null,
+            historico: [],
+            textoDiagnosticado: diagnosticado,
+            diagnostico: {
+              ok: true,
+              resumo: "Um ponto de concordância.",
+              truncado: false,
+              diagnosticos: [
+                { paragrafo: 2, trecho: "dados foi coletados", categoria: "Gramática", descricao: "Concordância.", sugestao: "os dados foram", severidade: "alta" },
+              ],
+            },
+          }),
+        );
+      },
+      [textoAtual, textoAntigo],
+    );
+    await page.goto("/revisar");
+
+    // Regras: 0 avisos neste texto; Gemini: 1 apontamento de severidade alta → entra em Críticos.
+    await expect(page.locator(".resumo-item.total strong")).toHaveText("1");
+    await expect(page.locator(".resumo-item.critico strong")).toHaveText("1");
+
+    // O texto mudou depois do diagnóstico: sem aviso laranja, e o Localizar continua disponível.
+    await expect(page.getByText("O texto mudou depois deste diagnóstico")).toHaveCount(0);
+    await page.locator(".gemini-item").getByRole("button", { name: "Localizar no manuscrito" }).click();
+    await expect(page.locator("mark.folha-destaque")).toHaveText("dados foi coletados");
   });
 
   test("localizar destaca o trecho no manuscrito", async ({ page }) => {

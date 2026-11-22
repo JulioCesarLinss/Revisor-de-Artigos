@@ -13,7 +13,6 @@ import { iniciarRevisao, type AnaliseRevisao } from "../review/orquestrar";
 import type { Intervalo, Problema } from "../rules/types";
 import { InfoChaveIA } from "../ui/InfoChaveIA";
 import { PainelGemini } from "../ui/PainelGemini";
-import { PainelHistorico } from "../ui/PainelHistorico";
 import { ManuscritoPaginado } from "../ui/ManuscritoPaginado";
 import { PainelSecoes } from "../ui/PainelSecoes";
 import { PainelSugestao } from "../ui/PainelSugestao";
@@ -918,7 +917,6 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
           carregando={analisandoGemini}
           resultado={diagnostico}
           podePedir={bruto.trim().length > 0 && !processando && !analisandoGemini}
-          desatualizado={diagnostico !== null && textoDiagnosticado !== null && textoDiagnosticado !== bruto}
           onPedir={pedirGemini}
           onFocar={localizarDiagnostico}
           onExcluir={excluirDiagnostico}
@@ -968,7 +966,6 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
           />
         ))}
 
-        <PainelHistorico historico={historico} />
       </aside>
     </main>
   );
