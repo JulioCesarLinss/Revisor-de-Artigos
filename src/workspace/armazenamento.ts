@@ -69,7 +69,9 @@ function ehApontamento(v: unknown): boolean {
     typeof a.descricao === "string" &&
     typeof a.sugestao === "string" &&
     ehSeveridade(a.severidade) &&
-    (a.posicao === undefined || ehIntervalo(a.posicao))
+    (a.posicao === undefined || ehIntervalo(a.posicao)) &&
+    (a.tipo === undefined || a.tipo === "linguagem" || a.tipo === "conteudo") &&
+    (a.id === undefined || typeof a.id === "number")
   );
 }
 

@@ -7,7 +7,13 @@
  * para o servidor local (`bun run api`), que usa o mesmo tratador da Vercel.
  */
 import { firebaseAuth } from "../firebase/config";
-import { recortarParagrafos, type ParagrafoNumerado, type ResultadoDiagnostico } from "./gemini";
+import {
+  recortarParagrafos,
+  type ApontamentoConferido,
+  type ParagrafoNumerado,
+  type ResultadoConferencia,
+  type ResultadoDiagnostico,
+} from "./gemini";
 
 const ENDPOINT = "/api/gemini";
 /** O servidor desiste em 50s e a Vercel corta em 60s: esperamos um pouco mais. */
@@ -40,8 +46,17 @@ async function tokenDoUsuario(): Promise<string | null> {
   }
 }
 
-/** POST /api/gemini — qualquer falha vira { ok: false } com motivo em português. */
-async function chamarApi(paragrafos: ParagrafoNumerado[]): Promise<ResultadoDiagnostico> {
+type Falha = { ok: false; motivo: string };
+
+/**
+ * POST /api/gemini — qualquer falha vira { ok: false } com motivo em português.
+ * `extra` vai junto no corpo (ex.: o apontamento a conferir).
+ */
+async function chamarApi<R extends { ok: true }>(
+  paragrafos: ParagrafoNumerado[],
+  extra: Record<string, unknown> = {},
+  ajustar: (resultado: R, truncado: boolean) => R = (r) => r,
+): Promise<R | Falha> {
   const token = await tokenDoUsuario();
   if (token === null) {
     return { ok: false, motivo: "Entre na sua conta para usar o diagnóstico com Gemini." };
@@ -56,7 +71,7 @@ async function chamarApi(paragrafos: ParagrafoNumerado[]): Promise<ResultadoDiag
       method: "POST",
       signal: controle.signal,
       headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
-      body: JSON.stringify({ paragrafos: recorte.paragrafos }),
+      body: JSON.stringify({ paragrafos: recorte.paragrafos, ...extra }),
     });
     const corpo = (await resposta.json().catch(() => null)) as unknown;
     if (corpo !== null && typeof corpo === "object") {
@@ -65,8 +80,8 @@ async function chamarApi(paragrafos: ParagrafoNumerado[]): Promise<ResultadoDiag
         return { ok: false, motivo: erro.motivo };
       }
       if ("ok" in corpo) {
-        const resultado = corpo as ResultadoDiagnostico;
-        return resultado.ok && recorte.truncado ? { ...resultado, truncado: true } : resultado;
+        const resultado = corpo as R | Falha;
+        return resultado.ok ? ajustar(resultado, recorte.truncado) : resultado;
       }
     }
     // 504: a Vercel encerrou a função por tempo (resposta sem o nosso JSON).
@@ -93,5 +108,18 @@ async function chamarApi(paragrafos: ParagrafoNumerado[]): Promise<ResultadoDiag
  * problema vira { ok: false } com motivo em português (H9 / DC-03).
  */
 export function diagnosticarComGemini(paragrafos: ParagrafoNumerado[]): Promise<ResultadoDiagnostico> {
-  return chamarApi(paragrafos);
+  return chamarApi<Extract<ResultadoDiagnostico, { ok: true }>>(paragrafos, {}, (r, truncado) =>
+    truncado ? { ...r, truncado: true } : r,
+  );
+}
+
+/**
+ * Pergunta ao Gemini se UM apontamento sobre o artigo foi resolvido no texto
+ * atual (botão "Conferir"). Nunca lança.
+ */
+export function conferirComGemini(
+  paragrafos: ParagrafoNumerado[],
+  apontamento: ApontamentoConferido,
+): Promise<ResultadoConferencia> {
+  return chamarApi<Extract<ResultadoConferencia, { ok: true }>>(paragrafos, { conferir: apontamento });
 }

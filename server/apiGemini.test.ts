@@ -45,6 +45,7 @@ function padrao(): DependenciasGemini {
       chamadasDiagnostico += 1;
       return { ok: true, resumo: "ok", diagnosticos: [], truncado: false };
     },
+    conferir: async () => ({ ok: true, resolvido: true, explicacao: "Resolvido." }),
   };
 }
 
@@ -107,5 +108,31 @@ describe("api/gemini — proteção da rota", () => {
   test("OPTIONS e outros métodos → 405 (sem pré-voo CORS)", async () => {
     expect((await chamar({}, requisicao("OPTIONS"))).status).toBe(405);
     expect((await chamar({}, requisicao("DELETE"))).status).toBe(405);
+  });
+});
+
+describe("api/gemini — conferir um apontamento", () => {
+  const APONTAMENTO = { paragrafo: 0, categoria: "Estrutura", descricao: "Falta a metodologia.", sugestao: "" };
+
+  test("logado, com apontamento válido → 200 com o veredito (sem novo diagnóstico)", async () => {
+    const antes = chamadasDiagnostico;
+    const corpo = JSON.stringify({ paragrafos: [{ index: 1, texto: "Texto." }], conferir: APONTAMENTO });
+    const r = await chamar({}, requisicao("POST", corpo, LOGADO));
+    expect(r.status).toBe(200);
+    expect(r.corpo).toEqual({ ok: true, resolvido: true, explicacao: "Resolvido." });
+    expect(chamadasDiagnostico).toBe(antes);
+  });
+
+  test("apontamento inválido → 400", async () => {
+    const corpo = JSON.stringify({ paragrafos: [{ index: 1, texto: "Texto." }], conferir: { descricao: "" } });
+    const r = await chamar({}, requisicao("POST", corpo, LOGADO));
+    expect(r.status).toBe(400);
+    expect(r.corpo.erro?.codigo).toBe("corpo_invalido");
+  });
+
+  test("sem login → 401, mesmo no modo conferir", async () => {
+    const corpo = JSON.stringify({ paragrafos: [{ index: 1, texto: "Texto." }], conferir: APONTAMENTO });
+    const r = await chamar({}, requisicao("POST", corpo));
+    expect(r.status).toBe(401);
   });
 });

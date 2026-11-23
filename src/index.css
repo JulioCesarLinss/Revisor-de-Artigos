@@ -482,6 +482,9 @@ body {
 }
 
 .btn-primary:hover {
+  /* Repete o fundo: o .btn:hover (mais específico) deixava o fundo claro com o texto branco. */
+  background: var(--header-gradiente);
+  border-color: #1e2a78;
   filter: brightness(1.18);
 }
 
@@ -2112,6 +2115,52 @@ button[aria-busy="true"] {
 
 .gemini-avaliacao p {
   margin: 0;
+}
+
+.gemini-avaliacao .gemini-avaliacao-rotulo {
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--slate-500);
+}
+
+.gemini-avaliacao .gemini-avaliacao-nivel {
+  margin-top: 2px;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* Três ações por apontamento: botões mais compactos para caber numa linha. */
+.gemini-item .problema-acoes .btn {
+  padding: 6px 10px;
+}
+
+/* Resultado do "Conferir" de um apontamento sobre o artigo. */
+.gemini-conferencia {
+  margin: 6px 0 0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.gemini-conferencia.resolvido {
+  color: var(--emerald);
+  background: var(--emerald-bg);
+}
+
+.gemini-conferencia.pendente {
+  color: #92400e;
+  background: var(--amber-bg);
+}
+
+.gemini-conferencia.erro {
+  color: var(--crimson);
+  background: var(--crimson-bg);
 }
 
 .gemini-avaliacao .gemini-avaliacao-falta {

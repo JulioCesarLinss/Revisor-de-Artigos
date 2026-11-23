@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { NOME_SERVICO, servicoDaChave, statusIA, sugerirReescrita } from "../ai/assistente";
-import { diagnosticarComGemini, geminiConfigurado } from "../ai/geminiCliente";
+import { conferirComGemini, diagnosticarComGemini, geminiConfigurado } from "../ai/geminiCliente";
 import type { DiagnosticoGemini, ParagrafoNumerado, ResultadoDiagnostico } from "../ai/gemini";
 import { carregarConfigIA, salvarConfigIA } from "../perfil/perfil";
 import type { ConfiguracaoIA, SugestaoIA } from "../ai/types";
@@ -12,7 +12,7 @@ import { importarTexto } from "../document/importar.js";
 import { iniciarRevisao, type AnaliseRevisao } from "../review/orquestrar";
 import type { Intervalo, Problema } from "../rules/types";
 import { InfoChaveIA } from "../ui/InfoChaveIA";
-import { PainelGemini } from "../ui/PainelGemini";
+import { PainelGemini, type Conferencia } from "../ui/PainelGemini";
 import { ManuscritoPaginado } from "../ui/ManuscritoPaginado";
 import { PainelSecoes } from "../ui/PainelSecoes";
 import { PainelSugestao } from "../ui/PainelSugestao";
@@ -53,6 +53,8 @@ import { carregarBibliotecaNuvem, salvarArtigoNuvem, salvarIndiceNuvem } from ".
 const ATRASO_REANALISE_MS = 500;
 /** Teclas digitadas com menos que isso de intervalo viram um único passo do "Desfazer". */
 const PAUSA_NOVO_PASSO_MS = 1000;
+/** Quanto tempo o "Corrigido" do Conferir fica visível antes de o apontamento sair. */
+const TEMPO_CORRIGIDO_MS = 2000;
 
 /** Texto e formatação juntos: um passo do "Desfazer", e a base de `trechos` no estado da tela. */
 interface TextoFormatado {
@@ -312,8 +314,11 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
         const mesmos = (diagnostico?.ok ? diagnostico.diagnosticos : [alvo]).flatMap((d) =>
           d.posicao && d.posicao.inicio >= doAlvo.inicio && d.posicao.inicio <= doAlvo.fim ? [d.posicao] : [],
         );
+        const trechos = unirTrechos([naPosicao, ...mesmos]);
+        // O trecho foi apagado por inteiro: marca o parágrafo onde ele estava.
+        if (trechos.length === 0) return marcar(posicoes.indexOf(doAlvo) + 1);
         pedidosLocalizar.current += 1;
-        setDestaque({ texto: bruto, trechos: unirTrechos([naPosicao, ...mesmos]), pedido: pedidosLocalizar.current });
+        setDestaque({ texto: bruto, trechos, pedido: pedidosLocalizar.current });
         return;
       }
       const textos = posicoes.map((p) => bruto.slice(p.inicio, p.fim));
@@ -332,15 +337,56 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
     [posicoes, bruto, diagnostico, marcar],
   );
 
-  /** "Já resolvi": tira um apontamento da lista (o manuscrito não é tocado). */
-  const resolverApontamento = useCallback((indice: number) => {
-    setDiagnostico((d) => (d?.ok ? { ...d, diagnosticos: d.diagnosticos.filter((_, i) => i !== indice) } : d));
-    setStatusSistema("Apontamento do Gemini marcado como resolvido.");
+  /** Tira um apontamento da lista pelo id (o manuscrito não é tocado). */
+  const tirarApontamento = useCallback((id: number) => {
+    setDiagnostico((d) => (d?.ok ? { ...d, diagnosticos: d.diagnosticos.filter((a) => a.id !== id) } : d));
   }, []);
+
+  /** "Já resolvi": o usuário tira um apontamento sobre o artigo. */
+  const resolverApontamento = useCallback(
+    (id: number) => {
+      tirarApontamento(id);
+      setStatusSistema("Apontamento do Gemini marcado como resolvido.");
+    },
+    [tirarApontamento],
+  );
+
+  /**
+   * "Conferir" de um apontamento sobre o artigo: vai o texto atual e o
+   * apontamento; o Gemini diz se foi resolvido. Resolvido: mostra
+   * "Corrigido" por um instante e tira da lista; senão, diz o que falta.
+   */
+  const [conferencias, setConferencias] = useState<Record<number, Conferencia>>({});
+  const conferirApontamento = useCallback(
+    async (alvo: DiagnosticoGemini) => {
+      const id = alvo.id;
+      if (id === undefined) return;
+      setConferencias((c) => ({ ...c, [id]: { estado: "conferindo" } }));
+      const paragrafos = posicoes.map((p) => ({ index: p.index, texto: bruto.slice(p.inicio, p.fim) }));
+      const r = await conferirComGemini(paragrafos, {
+        paragrafo: alvo.paragrafo,
+        categoria: alvo.categoria,
+        descricao: alvo.descricao,
+        sugestao: alvo.sugestao,
+      });
+      const resultado: Conferencia = !r.ok
+        ? { estado: "erro", motivo: r.motivo }
+        : r.resolvido
+          ? { estado: "resolvido", explicacao: r.explicacao }
+          : { estado: "pendente", explicacao: r.explicacao };
+      setConferencias((c) => ({ ...c, [id]: resultado }));
+      if (resultado.estado === "resolvido") {
+        setStatusSistema("Apontamento conferido pelo Gemini: corrigido.");
+        setTimeout(() => tirarApontamento(id), TEMPO_CORRIGIDO_MS);
+      }
+    },
+    [posicoes, bruto, tirarApontamento],
+  );
 
   /** Exclui o diagnóstico atual (mantém o manuscrito e a análise normativa). */
   const excluirDiagnostico = useCallback(() => {
     setDiagnostico(null);
+    setConferencias({});
     setTextoDiagnosticado(null);
     setStatusSistema("Diagnóstico do Gemini excluído.");
   }, []);
@@ -349,6 +395,7 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
     if (geminiAtivo === false || geminiOcupado.current) return; // uma consulta por vez
     geminiOcupado.current = true;
     setDiagnostico(null);
+    setConferencias({});
     setAnalisandoGemini(true);
     try {
       const diagnosticado = await diagnosticarComGemini(paragrafos);
@@ -605,6 +652,7 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
     setTextoOriginal(resultado.texto); // guarda o original do upload p/ "Voltar ao original"
     setDestaque(null); // o texto novo invalida um destaque antigo
     setDiagnostico(null); // o diagnóstico anterior pertencia ao texto anterior
+    setConferencias({});
     setTextoDiagnosticado(null);
     setAnalise(null); // avisos do texto anterior não valem para o novo
     setAcompanhando(false);
@@ -966,6 +1014,8 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
           onFocar={localizarDiagnostico}
           onExcluir={excluirDiagnostico}
           onResolver={resolverApontamento}
+          onConferir={conferirApontamento}
+          conferencias={conferencias}
         />
 
         {analise && <PainelSecoes secoes={analise.secoes} onFocarSecao={(indices) => {

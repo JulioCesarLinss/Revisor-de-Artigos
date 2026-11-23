@@ -1,5 +1,11 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { chaveGemini, executarDiagnostico, validarParagrafos } from "../src/ai/gemini.js";
+import {
+  chaveGemini,
+  executarConferencia,
+  executarDiagnostico,
+  validarApontamentoConferido,
+  validarParagrafos,
+} from "../src/ai/gemini.js";
 import {
   extrairBearer,
   projetoFirebaseServidor,
@@ -24,7 +30,8 @@ import {
  *
  * Contrato:
  * - GET  → 200 { configurado: boolean }
- * - POST → 200 ResultadoDiagnostico { ok: true | false, ... }
+ * - POST { paragrafos }            → 200 ResultadoDiagnostico { ok: true | false, ... }
+ * - POST { paragrafos, conferir }  → 200 ResultadoConferencia (um apontamento foi resolvido?)
  *        → 400 corpo inválido | 401 sem login | 405 método | 413 corpo grande
  *        → 503 Gemini indisponível no servidor
  */
@@ -73,6 +80,7 @@ export interface DependenciasGemini {
   chave: () => string;
   verificarToken: (token: string) => Promise<UsuarioVerificado | null>;
   diagnosticar: typeof executarDiagnostico;
+  conferir: typeof executarConferencia;
 }
 
 async function verificarTokenPadrao(token: string): Promise<UsuarioVerificado | null> {
@@ -143,6 +151,18 @@ export function criarTratadorGemini(deps: DependenciasGemini) {
       return;
     }
 
+    // Modo conferir: o usuário revisou o texto e pergunta se UM apontamento foi resolvido.
+    const conferir = (valor as { conferir?: unknown }).conferir;
+    if (conferir !== undefined) {
+      const apontamento = validarApontamentoConferido(conferir);
+      if (apontamento === null) {
+        responderErro(res, 400, "corpo_invalido", 'O campo "conferir" deve ser um apontamento com "descricao".');
+        return;
+      }
+      responderJson(res, 200, await deps.conferir(paragrafos, apontamento, chave));
+      return;
+    }
+
     const resultado = await deps.diagnosticar(paragrafos, chave);
     responderJson(res, 200, resultado);
   };
@@ -152,4 +172,5 @@ export default criarTratadorGemini({
   chave: chaveGemini,
   verificarToken: verificarTokenPadrao,
   diagnosticar: executarDiagnostico,
+  conferir: executarConferencia,
 });

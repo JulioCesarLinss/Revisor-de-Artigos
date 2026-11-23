@@ -2,9 +2,13 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import {
   chaveGemini,
   contarApontamentos,
+  ehDoArtigo,
+  executarConferencia,
   executarDiagnostico,
+  interpretarConferencia,
   interpretarDiagnostico,
   recortarParagrafos,
+  validarApontamentoConferido,
   validarParagrafos,
 } from "./gemini";
 
@@ -60,6 +64,7 @@ describe("ai/gemini — interpretarDiagnostico", () => {
       descricao: "Citação direta sem indicação de página.",
       sugestao: "Incluir a página, ex.: (SILVA, 2024, p. 12).",
       severidade: "alta",
+      tipo: "linguagem",
     });
     expect(r.diagnosticos[1].severidade).toBe("baixa");
   });
@@ -320,5 +325,79 @@ describe("ai/gemini — executarDiagnostico (tentativas e prazo)", () => {
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.motivo).toContain("alta demanda");
     expect(urls.length).toBe(1);
+  });
+});
+
+describe("ai/gemini — tipo do apontamento (linguagem × artigo)", () => {
+  test("usa o tipo informado; sem ele, decide pela categoria e pelo documento inteiro", () => {
+    const r = interpretarDiagnostico(
+      resposta([
+        { paragrafo: 2, tipo: "Conteúdo", categoria: "Clareza", descricao: "Falta explicar o método." },
+        { paragrafo: 2, categoria: "Ortografia", descricao: "Grafia." },
+        { paragrafo: 3, categoria: "Coerência", descricao: "Contradiz o parágrafo 1." },
+        { paragrafo: 0, categoria: "Revisão", descricao: "Texto curto." },
+      ]),
+      5,
+    );
+    expect(r.ok && r.diagnosticos.map((d) => d.tipo)).toEqual(["conteudo", "linguagem", "conteudo", "conteudo"]);
+  });
+
+  test("apontamentos salvos antes do campo tipo também são classificados", () => {
+    expect(ehDoArtigo({ categoria: "Estrutura", paragrafo: 0 })).toBe(true);
+    expect(ehDoArtigo({ categoria: "Metodologia", paragrafo: 4 })).toBe(true);
+    expect(ehDoArtigo({ categoria: "Gramática", paragrafo: 2 })).toBe(false);
+    expect(ehDoArtigo({ categoria: "Gramática", paragrafo: 2, tipo: "conteudo" })).toBe(true);
+  });
+});
+
+describe("ai/gemini — conferir um apontamento", () => {
+  const fetchOriginal = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = fetchOriginal;
+  });
+
+  const APONTAMENTO = { paragrafo: 0, categoria: "Estrutura", descricao: "Falta a metodologia.", sugestao: "Descreva a coleta." };
+
+  test("interpreta sim/não e a explicação; formato errado vira erro legível", () => {
+    expect(interpretarConferencia('{"resolvido": true, "explicacao": " Seção incluída. "}')).toEqual({
+      ok: true,
+      resolvido: true,
+      explicacao: "Seção incluída.",
+    });
+    expect(interpretarConferencia('{"resolvido": "sim"}').ok).toBe(false);
+    expect(interpretarConferencia("não é json").ok).toBe(false);
+  });
+
+  test("valida o apontamento enviado à rota", () => {
+    expect(validarApontamentoConferido(APONTAMENTO)).toEqual(APONTAMENTO);
+    expect(validarApontamentoConferido({ ...APONTAMENTO, descricao: "  " })).toBeNull();
+    expect(validarApontamentoConferido({ ...APONTAMENTO, descricao: "x".repeat(1001) })).toBeNull();
+    expect(validarApontamentoConferido({ ...APONTAMENTO, paragrafo: -1 })).toBeNull();
+    expect(validarApontamentoConferido("lixo")).toBeNull();
+  });
+
+  test("envia o apontamento e o texto atual, e devolve o veredito", async () => {
+    let enviado = "";
+    globalThis.fetch = (async (_url: string | URL | Request, init?: RequestInit) => {
+      enviado = String(init?.body ?? "");
+      const conteudo = JSON.stringify({ resolvido: false, explicacao: "Ainda falta dizer o tamanho da amostra." });
+      return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: conteudo }] } }] }), { status: 200 });
+    }) as typeof fetch;
+
+    const r = await executarConferencia([{ index: 1, texto: "Metodologia: entrevistas." }], APONTAMENTO, "chave");
+    expect(r).toEqual({ ok: true, resolvido: false, explicacao: "Ainda falta dizer o tamanho da amostra." });
+    expect(enviado).toContain("Falta a metodologia.");
+    expect(enviado).toContain("[1] Metodologia: entrevistas.");
+  });
+
+  test("sem chave no servidor: motivo legível, sem chamar o Gemini", async () => {
+    let chamou = false;
+    globalThis.fetch = (async () => {
+      chamou = true;
+      return new Response("", { status: 500 });
+    }) as unknown as typeof fetch;
+    const r = await executarConferencia([{ index: 1, texto: "Texto." }], APONTAMENTO, " ");
+    expect(r.ok).toBe(false);
+    expect(chamou).toBe(false);
   });
 });

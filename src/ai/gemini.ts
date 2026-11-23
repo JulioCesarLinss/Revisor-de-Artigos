@@ -37,6 +37,29 @@ export interface DiagnosticoGemini {
    * Só existe quando o trecho foi achado (o Firestore recusa undefined).
    */
   posicao?: { inicio: number; fim: number };
+  /**
+   * "linguagem" (ortografia, gramática, pontuação…): some sozinho quando o
+   * trecho é editado. "conteudo" (estrutura, sentido, falta de informação):
+   * avalia o artigo e só sai com "Conferir" ou "Já resolvi". Diagnósticos
+   * antigos não têm o campo: ver `ehDoArtigo`.
+   */
+  tipo?: TipoApontamento;
+  /** Identificador estável na lista (preenchido no navegador). */
+  id?: number;
+}
+
+export type TipoApontamento = "linguagem" | "conteudo";
+
+/** Categorias que falam do artigo, não da frase (base para quem veio sem "tipo"). */
+const CATEGORIA_DO_ARTIGO = /estrutura|conte[uú]do|coer[eê]ncia|argument|metodolog|fundament|sentido|coes[aã]o|objetivo|conclus|introdu|refer[eê]ncia|resumo|extens/i;
+
+function tipoPelaCategoria(categoria: string, paragrafo: number): TipoApontamento {
+  return paragrafo === 0 || CATEGORIA_DO_ARTIGO.test(categoria) ? "conteudo" : "linguagem";
+}
+
+/** Verdadeiro quando o apontamento avalia o artigo (não some sozinho ao editar). */
+export function ehDoArtigo(d: Pick<DiagnosticoGemini, "tipo" | "categoria" | "paragrafo">): boolean {
+  return (d.tipo ?? tipoPelaCategoria(d.categoria, d.paragrafo)) === "conteudo";
 }
 
 /** Opinião da IA sobre o texto como artigo (não é aprovação normativa: DC-02). */
@@ -49,9 +72,9 @@ export interface AvaliacaoArtigo {
 }
 
 export const ROTULO_NIVEL: Record<NivelAvaliacao, string> = {
-  pronto: "pronto para a revisão final",
-  quase: "quase lá",
-  insuficiente: "precisa de mais conteúdo",
+  pronto: "Apto para a revisão final",
+  quase: "Necessita de ajustes",
+  insuficiente: "Necessita de desenvolvimento",
 };
 
 export type ResultadoDiagnostico =
@@ -109,7 +132,8 @@ const INSTRUCAO_SISTEMA = [
   "(3) LINGUAGEM E NORMA: ortografia, gramática, clareza, ABNT e citações.",
   `Liste primeiro os problemas das frentes 1 e 2; use no máximo ${MAXIMO_LINGUAGEM} apontamentos para a frente 3.`,
   "Você diagnostica e sugere; você nunca decide conformidade normativa sozinho — o motor de regras do aplicativo é a referência primária. Não invente referências nem dados.",
-  'Responda SOMENTE com JSON válido, sem markdown nem comentários, no formato {"avaliacao": {"nivel": "pronto"|"quase"|"insuficiente", "faltando": [string]}, "resumo": string, "diagnosticos": [{"paragrafo": number, "trecho": string, "categoria": string, "descricao": string, "sugestao": string, "severidade": "alta"|"media"|"baixa"}]}.',
+  'Responda SOMENTE com JSON válido, sem markdown nem comentários, no formato {"avaliacao": {"nivel": "pronto"|"quase"|"insuficiente", "faltando": [string]}, "resumo": string, "diagnosticos": [{"paragrafo": number, "trecho": string, "tipo": "conteudo"|"linguagem", "categoria": string, "descricao": string, "sugestao": string, "severidade": "alta"|"media"|"baixa"}]}.',
+  '"tipo" é "conteudo" para as frentes 1 e 2 (estrutura, completude, conteúdo, sentido, coerência, argumentação) e "linguagem" para a frente 3.',
   '"avaliacao.nivel": "pronto" quando a estrutura está completa e o argumento é consistente, faltando só ajustes de linguagem; "quase" quando a estrutura existe mas há lacunas de conteúdo ou de coerência; "insuficiente" quando faltam seções essenciais ou o texto é curto ou incompleto demais para um artigo. "avaliacao.faltando" lista, com nomes curtos, as seções ou elementos ausentes (ex.: "Metodologia", "Referências"); [] se nada falta. "resumo" diz em 2 ou 3 frases o estado do artigo e o que priorizar.',
   'Seção ausente ou problema do texto todo: "paragrafo" 0, "trecho" "", "categoria" "Estrutura" ou "Conteúdo".',
   'Cada item descreve UM problema: "paragrafo" é o número da marca [n] que abre o parágrafo onde o problema está (confira a marca; ou 0 para o documento inteiro), "trecho" copia letra por letra só as palavras desse parágrafo onde está o problema, mantendo o erro como ele aparece no texto, sem corrigi-lo (ex.: o texto tem "problmas", o trecho é "problmas"; no máximo 12 palavras, sem aspas em volta; use "" somente quando o problema for do parágrafo ou do documento inteiro), "categoria" é curta (ex.: "Estrutura", "Conteúdo", "Coerência", "ABNT", "Gramática", "Clareza"), "descricao" diz o que está errado e "sugestao" diz como corrigir, ambas em português.',
@@ -212,6 +236,12 @@ function normalizarSeveridade(valor: unknown): DiagnosticoGemini["severidade"] {
   return "media";
 }
 
+function normalizarTipo(valor: unknown, categoria: unknown, paragrafo: number): TipoApontamento {
+  const limpo = typeof valor === "string" ? valor.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() : "";
+  if (limpo === "conteudo" || limpo === "linguagem") return limpo;
+  return tipoPelaCategoria(typeof categoria === "string" ? categoria : "", paragrafo);
+}
+
 function normalizarParagrafo(valor: unknown, limite: number): number {
   const bruto =
     typeof valor === "number"
@@ -262,6 +292,7 @@ export function interpretarDiagnostico(conteudo: string, limiteParagrafo: number
       descricao,
       sugestao: typeof d.sugestao === "string" ? d.sugestao.trim() : "",
       severidade: normalizarSeveridade(d.severidade),
+      tipo: normalizarTipo(d.tipo, d.categoria, normalizarParagrafo(d.paragrafo, limiteParagrafo)),
     });
   }
 
@@ -290,11 +321,17 @@ function falhaHttp(status: number): Falha {
   return { motivo: `O Gemini respondeu com erro ${status}. Tente novamente mais tarde.`, tentarProximo: false };
 }
 
+/** Pedido ao modelo: instrução de sistema, texto do usuário e limite da resposta. */
+interface Consulta {
+  instrucao: string;
+  conteudo: string;
+  maxTokens: number;
+}
+
 async function chamarGemini(
   modelo: string,
   chave: string,
-  texto: string,
-  palavras: number,
+  consulta: Consulta,
   prazoMs: number,
 ): Promise<{ ok: true; conteudo: string; semConteudo: boolean; estourou: boolean } | { ok: false; falha: Falha }> {
   const controle = new AbortController();
@@ -305,17 +342,12 @@ async function chamarGemini(
       signal: controle.signal,
       headers: { "Content-Type": "application/json", "x-goog-api-key": chave },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: INSTRUCAO_SISTEMA }] },
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: `Extensão: ${palavras} palavras.\n\nManuscrito (parágrafos numerados):\n\n${texto}` }],
-          },
-        ],
+        systemInstruction: { parts: [{ text: consulta.instrucao }] },
+        contents: [{ role: "user", parts: [{ text: consulta.conteudo }] }],
         generationConfig: {
           temperature: 0.2,
           responseMimeType: "application/json",
-          maxOutputTokens: 8192, // folga para a avaliação e o "trecho" de cada diagnóstico
+          maxOutputTokens: consulta.maxTokens,
         },
       }),
     });
@@ -347,32 +379,24 @@ async function chamarGemini(
 }
 
 /**
- * Pede ao Gemini um diagnóstico do manuscrito inteiro. Nunca lança: qualquer
- * problema vira { ok: false } com motivo em português (H9 / DC-03).
- * A chave é passada pelo chamador (o servidor), nunca lida do navegador.
- * Todas as tentativas dividem um prazo total (`prazoTotalMs`, trocável nos
- * testes): a primeira usa o prazo inteiro; as seguintes, só o que sobrou.
+ * Tenta os modelos em ordem, dentro de um prazo total (`prazoTotalMs`): a
+ * primeira tentativa usa o prazo inteiro; as seguintes, só o que sobrou.
+ * Nunca lança: qualquer problema vira { ok: false } com motivo em português.
  */
-export async function executarDiagnostico(
-  paragrafos: ParagrafoNumerado[],
+async function consultar<R extends { ok: true }>(
   chave: string,
-  prazoTotalMs: number = PRAZO_TOTAL_MS,
-): Promise<ResultadoDiagnostico> {
-  if (chave.trim().length === 0) {
-    return { ok: false, motivo: "O diagnóstico com Gemini não está disponível no momento." };
-  }
-
-  const { texto, truncado, palavras } = montarTexto(paragrafos);
-  const limite = paragrafos.reduce((maior, p) => Math.max(maior, p.index), 0);
+  consulta: Consulta,
+  interpretar: (conteudo: string) => R | { ok: false; motivo: string },
+  prazoTotalMs: number,
+): Promise<R | { ok: false; motivo: string }> {
   const fim = Date.now() + prazoTotalMs;
-
   let ultima: Falha = { motivo: MOTIVO_FORMATO, tentarProximo: false };
   for (const [tentativa, modelo] of MODELOS.entries()) {
     const restante = fim - Date.now();
     // Sem tempo para outra tentativa: devolve o motivo da anterior antes de a
     // Vercel encerrar a função no meio (o que viraria um erro sem explicação).
     if (tentativa > 0 && restante < MINIMO_NOVA_TENTATIVA_MS) return { ok: false, motivo: ultima.motivo };
-    const chamada = await chamarGemini(modelo, chave, texto, palavras, Math.max(restante, 0));
+    const chamada = await chamarGemini(modelo, chave, consulta, Math.max(restante, 0));
     if (!chamada.ok) {
       if (chamada.falha.tentarProximo) {
         ultima = chamada.falha;
@@ -385,8 +409,8 @@ export async function executarDiagnostico(
       continue;
     }
 
-    const interpretado = interpretarDiagnostico(chamada.conteudo, limite);
-    if (interpretado.ok) return { ...interpretado, truncado };
+    const interpretado = interpretar(chamada.conteudo);
+    if (interpretado.ok) return interpretado;
 
     ultima = chamada.estourou
       ? { motivo: "A resposta do Gemini foi cortada pelo limite de tamanho. Tente com um texto menor.", tentarProximo: false }
@@ -394,4 +418,121 @@ export async function executarDiagnostico(
     if (!ultima.tentarProximo) return { ok: false, motivo: ultima.motivo };
   }
   return { ok: false, motivo: ultima.motivo };
+}
+
+const MOTIVO_INDISPONIVEL = "O diagnóstico com Gemini não está disponível no momento.";
+
+/**
+ * Pede ao Gemini um diagnóstico do manuscrito inteiro. Nunca lança: qualquer
+ * problema vira { ok: false } com motivo em português (H9 / DC-03).
+ * A chave é passada pelo chamador (o servidor), nunca lida do navegador.
+ */
+export async function executarDiagnostico(
+  paragrafos: ParagrafoNumerado[],
+  chave: string,
+  prazoTotalMs: number = PRAZO_TOTAL_MS,
+): Promise<ResultadoDiagnostico> {
+  if (chave.trim().length === 0) return { ok: false, motivo: MOTIVO_INDISPONIVEL };
+
+  const { texto, truncado, palavras } = montarTexto(paragrafos);
+  const limite = paragrafos.reduce((maior, p) => Math.max(maior, p.index), 0);
+  const resultado = await consultar(
+    chave,
+    {
+      instrucao: INSTRUCAO_SISTEMA,
+      conteudo: `Extensão: ${palavras} palavras.\n\nManuscrito (parágrafos numerados):\n\n${texto}`,
+      maxTokens: 8192, // folga para a avaliação e o "trecho" de cada diagnóstico
+    },
+    (conteudo) => interpretarDiagnostico(conteudo, limite),
+    prazoTotalMs,
+  );
+  return resultado.ok ? { ...resultado, truncado } : resultado;
+}
+
+// ---------------------------------------------------------------------------
+// Conferir: o usuário mexeu no texto e quer saber se UM apontamento sobre o
+// artigo foi resolvido. Vai o texto atual e o apontamento; volta sim/não e
+// uma explicação curta. Não procura outros problemas.
+// ---------------------------------------------------------------------------
+
+/** O apontamento a conferir, como foi feito no diagnóstico. */
+export interface ApontamentoConferido {
+  paragrafo: number;
+  categoria: string;
+  descricao: string;
+  sugestao: string;
+}
+
+export type ResultadoConferencia =
+  | { ok: true; resolvido: boolean; explicacao: string }
+  | { ok: false; motivo: string };
+
+/** Limite de cada campo do apontamento enviado (o diagnóstico gera textos curtos). */
+const MAXIMO_CAMPO = 1_000;
+
+const INSTRUCAO_CONFERIR = [
+  "Você é um orientador de artigos científicos brasileiros. Antes, você apontou um problema no artigo; o autor revisou o texto.",
+  "Confira SOMENTE se esse problema foi resolvido no texto atual. Não aponte outros problemas.",
+  "Seja exigente, mas justo: considere resolvido quando o texto atual atende ao que o apontamento pedia, mesmo que de forma diferente da sugestão.",
+  'Responda SOMENTE com JSON válido, sem markdown, no formato {"resolvido": boolean, "explicacao": string}.',
+  '"explicacao" tem uma ou duas frases em português: se resolvido, o que ficou bom; se não, o que ainda falta fazer.',
+].join(" ");
+
+/** Valida o apontamento do corpo de `POST /api/gemini` (modo conferir); null se inválido. */
+export function validarApontamentoConferido(valor: unknown): ApontamentoConferido | null {
+  if (typeof valor !== "object" || valor === null) return null;
+  const a = valor as Record<string, unknown>;
+  const texto = (v: unknown, obrigatorio: boolean) =>
+    typeof v === "string" && v.length <= MAXIMO_CAMPO && (!obrigatorio || v.trim().length > 0) ? v.trim() : null;
+  const descricao = texto(a.descricao, true);
+  const categoria = texto(a.categoria, false);
+  const sugestao = texto(a.sugestao, false);
+  if (descricao === null || categoria === null || sugestao === null) return null;
+  if (typeof a.paragrafo !== "number" || !Number.isFinite(a.paragrafo) || a.paragrafo < 0) return null;
+  return { paragrafo: Math.floor(a.paragrafo), categoria, descricao, sugestao };
+}
+
+/** Interpreta a resposta da conferência. Exportada para os testes. */
+export function interpretarConferencia(conteudo: string): ResultadoConferencia {
+  let bruto: unknown;
+  try {
+    bruto = JSON.parse(conteudo);
+  } catch {
+    return { ok: false, motivo: MOTIVO_FORMATO };
+  }
+  if (typeof bruto !== "object" || bruto === null || Array.isArray(bruto)) return { ok: false, motivo: MOTIVO_FORMATO };
+  const d = bruto as { resolvido?: unknown; explicacao?: unknown };
+  if (typeof d.resolvido !== "boolean") return { ok: false, motivo: MOTIVO_FORMATO };
+  return { ok: true, resolvido: d.resolvido, explicacao: typeof d.explicacao === "string" ? d.explicacao.trim() : "" };
+}
+
+/** Confere um apontamento no texto atual. Nunca lança. */
+export async function executarConferencia(
+  paragrafos: ParagrafoNumerado[],
+  apontamento: ApontamentoConferido,
+  chave: string,
+  prazoTotalMs: number = PRAZO_TOTAL_MS,
+): Promise<ResultadoConferencia> {
+  if (chave.trim().length === 0) return { ok: false, motivo: MOTIVO_INDISPONIVEL };
+
+  const { texto, truncado, palavras } = montarTexto(paragrafos);
+  const onde = apontamento.paragrafo > 0 ? `parágrafo [${apontamento.paragrafo}] na versão anterior` : "artigo inteiro";
+  const resultado = await consultar(
+    chave,
+    {
+      instrucao: INSTRUCAO_CONFERIR,
+      conteudo: [
+        `Apontamento (${onde}) — ${apontamento.categoria || "Revisão"}: ${apontamento.descricao}`,
+        apontamento.sugestao ? `Sugestão dada: ${apontamento.sugestao}` : "",
+        `Extensão atual: ${palavras} palavras${truncado ? " (texto enviado só até o limite)" : ""}.`,
+        `Texto atual (parágrafos numerados):\n\n${texto}`,
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
+      maxTokens: 512,
+    },
+    interpretarConferencia,
+    prazoTotalMs,
+  );
+  return resultado;
 }

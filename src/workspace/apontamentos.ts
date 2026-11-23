@@ -1,19 +1,24 @@
-import type { DiagnosticoGemini } from "../ai/gemini.js";
-import { ajustarTrechos, localizarApontamento } from "./destaques.js";
+import { ehDoArtigo, type DiagnosticoGemini } from "../ai/gemini.js";
+import { ajustarTrechos, faixaAlterada, localizarApontamento } from "./destaques.js";
 import { posicoesParagrafos } from "./paragrafos.js";
 
 /**
- * Apontamentos do Gemini acompanhando a edição: cada um guarda onde está o
- * trecho no texto; mexer nesse trecho resolve o apontamento e ele sai da
- * lista. Os que falam do parágrafo ou do artigo inteiro (sem trecho achado)
- * ficam até o usuário marcar "Já resolvi" ou pedir um novo diagnóstico.
+ * Apontamentos do Gemini acompanhando a edição. Cada um guarda onde está o
+ * trecho no texto:
+ * - de linguagem (ortografia, gramática, pontuação): mexer no trecho resolve,
+ *   e ele sai da lista — como os avisos das regras;
+ * - sobre o artigo (estrutura, conteúdo, sentido): nunca sai sozinho; a
+ *   posição só acompanha o texto, para o "Localizar". Sai com "Conferir"
+ *   (o Gemini confirma) ou "Já resolvi".
  */
 
-/** Preenche `posicao` de quem ainda não tem, procurando o trecho em `texto`. */
+/** Preenche `id` e `posicao` de quem ainda não tem, procurando o trecho em `texto`. */
 export function posicionarApontamentos(diagnosticos: DiagnosticoGemini[], texto: string): DiagnosticoGemini[] {
   const posicoes = posicoesParagrafos(texto);
   const textos = posicoes.map((p) => texto.slice(p.inicio, p.fim));
-  return diagnosticos.map((d) => {
+  let proximoId = diagnosticos.reduce((maior, d) => Math.max(maior, d.id ?? 0), 0) + 1;
+  return diagnosticos.map((original) => {
+    const d = original.id === undefined ? { ...original, id: proximoId++ } : original;
     if (d.posicao || d.paragrafo <= 0) return d;
     const achado = localizarApontamento(textos, d);
     const base = achado ? posicoes[achado.paragrafo - 1] : undefined;
@@ -23,8 +28,9 @@ export function posicionarApontamentos(diagnosticos: DiagnosticoGemini[], texto:
 }
 
 /**
- * O texto mudou de `antes` para `depois`: o apontamento cujo trecho foi
- * tocado sai (resolvido); os outros acompanham o deslocamento.
+ * O texto mudou de `antes` para `depois`: o apontamento de linguagem cujo
+ * trecho foi tocado sai (resolvido); o do artigo continua, com o trecho
+ * cobrindo o que foi escrito no lugar; os outros acompanham o deslocamento.
  */
 export function acompanharApontamentos(
   diagnosticos: DiagnosticoGemini[],
@@ -32,6 +38,8 @@ export function acompanharApontamentos(
   depois: string,
 ): { diagnosticos: DiagnosticoGemini[]; resolvidos: number } {
   if (antes === depois) return { diagnosticos, resolvidos: 0 };
+  const faixa = faixaAlterada(antes, depois);
+  const deslocamento = depois.length - antes.length;
   const restantes: DiagnosticoGemini[] = [];
   for (const d of diagnosticos) {
     if (!d.posicao) {
@@ -40,6 +48,12 @@ export function acompanharApontamentos(
     }
     const [ajustada] = ajustarTrechos([d.posicao], antes, depois);
     if (ajustada) restantes.push({ ...d, posicao: ajustada });
+    else if (ehDoArtigo(d)) {
+      // Tocado, mas é sobre o artigo: o trecho passa a cobrir o texto novo.
+      const inicio = Math.min(d.posicao.inicio, faixa.inicio);
+      const fim = Math.min(depois.length, Math.max(faixa.fimDepois, d.posicao.fim + deslocamento, inicio));
+      restantes.push({ ...d, posicao: { inicio, fim } });
+    }
   }
   return { diagnosticos: restantes, resolvidos: diagnosticos.length - restantes.length };
 }

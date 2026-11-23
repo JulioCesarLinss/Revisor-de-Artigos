@@ -73,8 +73,12 @@ test.describe("Revisão", () => {
     await expect(page.locator("mark.folha-destaque")).toHaveText("dados foi coletados");
   });
 
-  test("diagnóstico do Gemini: avaliação do artigo, corrigir tira o apontamento e 'Já resolvi' tira o geral", async ({ page }) => {
+  test("diagnóstico do Gemini: erros de linguagem somem ao corrigir; os do artigo ficam com Conferir e Já resolvi", async ({ page }) => {
     const texto = ["INTRODUCAO", "Os dados foi coletados em campo ontem.", "O resultado mostra que o problmas existe."].join("\n\n");
+    // O servidor de teste não tem a chave do Gemini: a tela passa a vê-lo como ativo.
+    await page.route("**/api/gemini", (rota) =>
+      rota.request().method() === "GET" ? rota.fulfill({ json: { configurado: true } }) : rota.continue(),
+    );
     await page.evaluate((bruto) => {
       localStorage.setItem(
         "normareview.workspace",
@@ -89,9 +93,10 @@ test.describe("Revisão", () => {
             truncado: false,
             avaliacao: { nivel: "insuficiente", faltando: ["Metodologia", "Conclusão"] },
             diagnosticos: [
-              { paragrafo: 0, trecho: "", categoria: "Estrutura", descricao: "Falta a seção de metodologia.", sugestao: "Descreva como os dados foram coletados.", severidade: "alta" },
-              { paragrafo: 2, trecho: "dados foi coletados", categoria: "Gramática", descricao: "Concordância.", sugestao: "os dados foram", severidade: "alta" },
-              { paragrafo: 3, trecho: "problmas", categoria: "Ortografia", descricao: "Erro de grafia.", sugestao: "problema", severidade: "baixa" },
+              { paragrafo: 0, trecho: "", tipo: "conteudo", categoria: "Estrutura", descricao: "Falta a seção de metodologia.", sugestao: "Descreva como os dados foram coletados.", severidade: "alta" },
+              { paragrafo: 2, trecho: "dados foi coletados", tipo: "linguagem", categoria: "Gramática", descricao: "Concordância.", sugestao: "os dados foram", severidade: "alta" },
+              { paragrafo: 3, trecho: "problmas", tipo: "linguagem", categoria: "Ortografia", descricao: "Erro de grafia.", sugestao: "problema", severidade: "baixa" },
+              { paragrafo: 3, trecho: "O resultado mostra", tipo: "conteudo", categoria: "Coerência", descricao: "O resultado não se liga ao objetivo.", sugestao: "Retome o objetivo.", severidade: "media" },
             ],
           },
         }),
@@ -99,26 +104,44 @@ test.describe("Revisão", () => {
     }, texto);
     await page.goto("/revisar");
 
-    await expect(page.locator(".gemini-avaliacao")).toContainText("Avaliação do artigo: precisa de mais conteúdo");
-    await expect(page.locator(".gemini-avaliacao")).toContainText("Falta: Metodologia, Conclusão");
+    const avaliacao = page.locator(".gemini-avaliacao");
+    await expect(avaliacao).toContainText("Avaliação geral do manuscrito");
+    await expect(avaliacao).toContainText("Necessita de desenvolvimento");
+    await expect(avaliacao).toContainText("Elementos ausentes: Metodologia, Conclusão");
     const itens = page.locator(".gemini-item");
-    await expect(itens).toHaveCount(3);
-    await expect(page.locator(".resumo-item.total strong")).toHaveText("3");
+    await expect(itens).toHaveCount(4);
+    await expect(page.locator(".resumo-item.total strong")).toHaveText("4");
+
+    // Erro de linguagem: só Localizar (sem Conferir nem Já resolvi).
+    const grafia = itens.filter({ hasText: "Erro de grafia." });
+    await expect(grafia.getByRole("button", { name: "Localizar no manuscrito" })).toBeVisible();
+    await expect(grafia.getByRole("button", { name: "Conferir" })).toHaveCount(0);
+    await expect(grafia.getByRole("button", { name: "Já resolvi" })).toHaveCount(0);
 
     // Corrigir a grafia no editor tira só aquele apontamento (e do resumo).
     await editorDeTexto(page).fill(texto.replace("problmas", "problema"));
-    await expect(itens).toHaveCount(2);
-    await expect(itens.filter({ hasText: "Erro de grafia." })).toHaveCount(0);
-    await expect(page.locator(".resumo-item.total strong")).toHaveText("2");
+    await expect(itens).toHaveCount(3);
+    await expect(grafia).toHaveCount(0);
+    await expect(page.locator(".resumo-item.total strong")).toHaveText("3");
 
-    // O apontamento que continua ainda é localizado no lugar certo.
-    await itens.filter({ hasText: "Concordância." }).getByRole("button", { name: "Localizar no manuscrito" }).click();
-    await expect(page.locator("mark.folha-destaque")).toHaveText("dados foi coletados");
+    // Mexer no trecho de um apontamento sobre o artigo não o tira da lista.
+    const coerencia = itens.filter({ hasText: "O resultado não se liga ao objetivo." });
+    await editorDeTexto(page).fill(texto.replace("problmas", "problema").replace("O resultado mostra", "Como esperado, o resultado mostra"));
+    await expect(coerencia).toHaveCount(1);
+    await expect(coerencia.getByRole("button", { name: "Conferir" })).toBeVisible();
+    await expect(coerencia.getByRole("button", { name: "Já resolvi" })).toBeVisible();
+    await coerencia.getByRole("button", { name: "Localizar no manuscrito" }).click();
+    await expect(page.locator("mark.folha-destaque")).toHaveText("Como esperado, o resultado mostra");
+
+    // Conferir sem sessão do Firebase (ambiente de teste): o motivo aparece no próprio apontamento.
+    await coerencia.getByRole("button", { name: "Conferir" }).click();
+    await expect(coerencia.locator(".gemini-conferencia")).toContainText("Não foi possível conferir.");
+    await expect(coerencia).toHaveCount(1);
 
     // O apontamento do artigo inteiro sai com "Já resolvi".
     await itens.filter({ hasText: "Falta a seção de metodologia." }).getByRole("button", { name: "Já resolvi" }).click();
-    await expect(itens).toHaveCount(1);
-    await expect(page.locator(".resumo-item.total strong")).toHaveText("1");
+    await expect(itens).toHaveCount(2);
+    await expect(page.locator(".resumo-item.total strong")).toHaveText("2");
   });
 
   test("localizar destaca o trecho no manuscrito", async ({ page }) => {
