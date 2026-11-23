@@ -11,8 +11,6 @@ test.describe("Histórico", () => {
 
   test("sem revisão registrada mostra o estado vazio", async ({ page }) => {
     await expect(page.getByRole("heading", { name: "Nenhuma revisão registrada ainda" })).toBeVisible();
-    // O editor já salvou um workspace vazio ao abrir: zero alterações registradas.
-    await expect(page.getByRole("status")).toContainText("0 alteração(ões) registrada(s).");
     // Sem arquivo anexado não há original para restaurar; sem alterações, não
     // há histórico para limpar (o botão só existe quando há o que limpar).
     await expect(page.getByRole("button", { name: "Voltar ao original" })).toBeDisabled();
@@ -34,17 +32,16 @@ test.describe("Histórico", () => {
     await page.getByRole("link", { name: "Histórico" }).click();
     await expect(page).toHaveURL(/\/historico$/);
 
-    await expect(page.getByText("1 alteração(ões) registrada(s).")).toBeVisible();
     await expect(page.locator(".historico-stat").filter({ hasText: "Alterações" })).toContainText("1");
 
     const lista = page.getByRole("region", { name: "Alterações registradas" });
     await expect(lista.getByRole("listitem")).toHaveCount(1);
 
     // Filtro por origem: só sugestões de IA não há nada registrado.
-    await page.getByRole("button", { name: "Sugestões de IA" }).click();
+    await page.getByRole("button", { name: "Sugestões da IA" }).click();
     await expect(page.getByText("Nenhuma alteração com esta origem.")).toBeVisible();
 
-    await page.getByRole("button", { name: "Correções manuais", exact: true }).click();
+    await page.getByRole("button", { name: "Correções automáticas", exact: true }).click();
     await expect(lista.getByRole("listitem")).toHaveCount(1);
   });
 

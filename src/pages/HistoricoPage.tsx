@@ -8,7 +8,7 @@ import {
   restaurarOriginalWorkspace,
   type EstadoWorkspace,
 } from "../workspace/armazenamento";
-import { carregarBiblioteca } from "../workspace/artigos";
+import { carregarBiblioteca, tituloDoArtigo } from "../workspace/artigos";
 import { tituloDaRegra } from "../ui/rotulos";
 import { useAutorizacao } from "../firebase/auth";
 import { salvarArtigoNuvem } from "../firebase/persistencia";
@@ -29,8 +29,8 @@ const PERGUNTA_CONFIRMACAO: Record<Exclude<Confirmacao, null>, string> = {
 
 const FILTROS: { valor: Filtro; rotulo: string }[] = [
   { valor: "todas", rotulo: "Todas" },
-  { valor: "manual", rotulo: "Correções manuais" },
-  { valor: "ia", rotulo: "Sugestões de IA" },
+  { valor: "manual", rotulo: "Correções automáticas" },
+  { valor: "ia", rotulo: "Sugestões da IA" },
 ];
 
 /** Troca o código da regra pelo título legível, sem esconder o rastro (H6). */
@@ -105,11 +105,11 @@ export default function HistoricoPage() {
     <main className="historico-main" id="conteudo">
       <div className="historico-cabecalho">
         <div>
-          <h2>Histórico de revisões</h2>
-          <p>
-            Cada alteração com origem distinguível — correção manual ou sugestão de IA
-            aceita (DC-13).
-          </p>
+          <h2>
+            Histórico de revisões
+            {workspace && <span className="historico-artigo"> — {tituloDoArtigo(workspace)}</span>}
+          </h2>
+          <p>Correções feitas neste artigo: as aplicadas com um clique e as sugestões da IA que você aceitou.</p>
         </div>
         <div className="historico-acoes">
           <button
@@ -145,8 +145,8 @@ export default function HistoricoPage() {
       )}
 
       <p className="status-sistema" role="status" aria-live="polite">
-        {status ??
-          (workspace ? `${contagem.total} alteração(ões) registrada(s).` : "Nenhum dado salvo neste dispositivo.")}
+        {/* Só mensagens de ação: o total já aparece no primeiro cartão. */}
+        {status ?? (workspace ? "" : "Nenhum dado salvo neste dispositivo.")}
       </p>
 
       {vazio ? (
@@ -170,11 +170,11 @@ export default function HistoricoPage() {
             </div>
             <div className="historico-stat">
               <strong>{contagem.manual}</strong>
-              <span>Correções manuais</span>
+              <span>Correções automáticas</span>
             </div>
             <div className="historico-stat">
               <strong>{contagem.ia}</strong>
-              <span>Sugestões de IA aceitas</span>
+              <span>Sugestões da IA aceitas</span>
             </div>
           </div>
 
@@ -205,7 +205,7 @@ export default function HistoricoPage() {
                   <li key={h.id}>
                     <span className={`historico-origem origem-${h.origem}`}>{ROTULO_ORIGEM[h.origem]}</span>
                     <span className="historico-desc">
-                      ¶{h.paragrafo} — {descrever(h.descricao)}
+                      Parágrafo {h.paragrafo} — {descrever(h.descricao)}
                     </span>
                     <span className="historico-quando">{h.quando}</span>
                     <button

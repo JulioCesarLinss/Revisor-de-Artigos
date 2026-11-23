@@ -799,6 +799,12 @@ body {
   color: var(--ink);
 }
 
+/* Nome do artigo ao lado do título: mais leve, para não competir com ele. */
+.historico-cabecalho .historico-artigo {
+  font-weight: 500;
+  color: var(--slate-500);
+}
+
 .historico-cabecalho p {
   margin: 0;
   font-size: 13px;
@@ -2006,6 +2012,13 @@ body:has(.login-main) .app-footer {
   border: 1px dashed var(--slate-200);
   border-radius: 8px;
   padding: 6px 10px;
+}
+
+/* Sem mensagem: some da tela, mas continua na página para os leitores de tela anunciarem a próxima. */
+.status-sistema:empty {
+  padding: 0;
+  border: 0;
+  background: none;
 }
 
 .status-spinner {

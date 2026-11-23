@@ -39,6 +39,6 @@ export function registrar(
 }
 
 export const ROTULO_ORIGEM: Record<OrigemAlteracao, string> = {
-  manual: "Correção manual",
-  ia: "Sugestão IA aceita",
+  manual: "Correção automática",
+  ia: "Sugestão da IA aceita",
 };

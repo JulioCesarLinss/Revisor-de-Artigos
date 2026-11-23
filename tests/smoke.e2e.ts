@@ -98,7 +98,7 @@ test.describe("Smoke", () => {
     await test.step("histórico registra a correção", async () => {
       await page.getByRole("link", { name: "Histórico" }).click();
       await expect(page).toHaveURL(/\/historico$/);
-      await expect(page.getByText("1 alteração(ões) registrada(s).")).toBeVisible();
+      await expect(page.locator(".historico-stat").filter({ hasText: "Alterações" })).toContainText("1");
     });
 
     await test.step("sair encerra a sessão e a rota protegida volta a barrar", async () => {
