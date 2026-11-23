@@ -58,10 +58,10 @@ test.describe("Navegação", () => {
     await page.getByRole("button", { name: "Ajuda" }).click();
     const ajuda = page.getByRole("dialog");
     await expect(ajuda).toBeVisible();
-    // O texto acompanha o app: aba Artigos e só os níveis de aviso que as regras usam.
-    await expect(ajuda).toContainText("Seus artigos");
+    // O texto acompanha o app: artigos, níveis de aviso e a chave da IA informada no Perfil.
+    await expect(ajuda).toContainText("Gerenciamento de artigos");
     await expect(ajuda).toContainText("Advertência");
-    await expect(ajuda).not.toContainText("Crítico");
+    await expect(ajuda).toContainText("informada na aba Perfil");
 
     await page.keyboard.press("Escape");
     await expect(ajuda).toHaveCount(0);

@@ -303,12 +303,7 @@ export function ManuscritoPaginado({
 
   return (
     <div className="folhas-area">
-      <p className="folhas-dica">
-        Rascunho em folhas A4: o texto flui continuamente e continua na folha seguinte ao chegar ao fim.{" "}
-        <kbd className="atalho-tecla">Enter</kbd> desce uma linha · dois{" "}
-        <kbd className="atalho-tecla">Enter</kbd> novo parágrafo.
-      </p>
-
+      {/* Sem dica acima das folhas (pedido do usuário): o uso do Enter está na Ajuda. */}
       {/* Espelho oculto de medição — mesma tipografia e largura do miolo da folha. */}
       <div className="folha-medidor folha-texto" ref={medidorRef} aria-hidden="true" />
 

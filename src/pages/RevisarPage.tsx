@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { NOME_SERVICO, servicoDaChave, statusIA, sugerirReescrita } from "../ai/assistente";
 import { conferirComGemini, diagnosticarComGemini, geminiConfigurado } from "../ai/geminiCliente";
 import type { DiagnosticoGemini, ParagrafoNumerado, ResultadoDiagnostico } from "../ai/gemini";
-import { carregarConfigIA, salvarConfigIA } from "../perfil/perfil";
+import { carregarConfigIA } from "../perfil/perfil";
 import type { ConfiguracaoIA, SugestaoIA } from "../ai/types";
 import { aplicarCorrecao } from "../document/acoes";
 import { aplicarSugestao } from "../document/aplicarSugestao";
@@ -208,10 +208,9 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
     });
   }, []);
 
-  // Sprint 3 — assistência IA (opcional; DC-03). A chave salva em /perfil
-  // é carregada aqui, para não precisar ser digitada duas vezes.
-  const [configIA, setConfigIA] = useState<ConfiguracaoIA | null>(() => carregarConfigIA());
-  const [chaveInput, setChaveInput] = useState("");
+  // Sprint 3 — assistência IA (opcional; DC-03). A chave é informada só no
+  // /perfil; aqui ela é apenas lida (vale enquanto a aba estiver aberta).
+  const [configIA] = useState<ConfiguracaoIA | null>(() => carregarConfigIA());
   const [sugestaoAtiva, setSugestaoAtiva] = useState<SugestaoIA | null>(null);
   const [carregandoSugestao, setCarregandoSugestao] = useState<string | null>(null);
   const [erroIA, setErroIA] = useState<string | null>(null);
@@ -1011,49 +1010,37 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
       <aside className="inspector" aria-label="Resultado da análise">
         <Resumo analise={analise} diagnostico={diagnostico} />
 
-        {/* Sprint 3 — configuração da assistência IA (opcional) */}
+        {/* Sprint 3 — assistência IA (opcional): a chave é informada no Perfil. */}
         <div className="resumo-card">
           <InfoChaveIA
-            titulo="Assistente IA (opcional)"
+            titulo="Assistente de IA (opcional)"
+            semInfo
             recolhido={assistenteRecolhido}
             onAlternarRecolhimento={() => setAssistenteRecolhido((r) => !r)}
           />
           <div hidden={assistenteRecolhido}>
-          {estadoIA === "pronta" ? (
-            <p className="ia-status ia-pronta">
-              Assistente configurado com {configIA ? NOME_SERVICO[servicoDaChave(configIA.apiKey)] : "IA"}. Sugestões aparecem
-              como <em>assistência</em>, nunca como decisão normativa.
-            </p>
-          ) : (
-            <div className="ia-config">
-              <p className="ia-status">
-                Sem IA o fluxo continua completo: regras, relatório e correções. Cole uma chave do Gemini (grátis
-                para começar) ou da OpenAI para receber sugestões de reescrita — veja como no ⓘ.
-              </p>
-              <input
-                type="password"
-                className="ia-input"
-                placeholder="Chave do Gemini (grátis) ou da OpenAI"
-                aria-label="Chave da API (Gemini ou OpenAI)"
-                value={chaveInput}
-                onChange={(e) => setChaveInput(e.target.value)}
-              />
-              <button
-                className="btn btn-primary"
-                type="button"
-                disabled={chaveInput.trim().length === 0}
-                onClick={() => {
-                  const config = { apiKey: chaveInput.trim() };
-                  setConfigIA(config);
-                  salvarConfigIA(config); // disponível também em /perfil
-                  setChaveInput("");
-                }}
-              >
-                Ativar assistente
-              </button>
-            </div>
-          )}
-          {erroIA && renderErroIA()}
+            {estadoIA === "pronta" ? (
+              <>
+                <p className="ia-status ia-pronta">
+                  Assistente configurado com {configIA ? NOME_SERVICO[servicoDaChave(configIA.apiKey)] : "IA"}. As
+                  sugestões de reescrita têm caráter consultivo e não substituem a análise normativa.
+                </p>
+                <Link className="btn" to="/perfil" state={{ focoChave: true }}>
+                  Gerenciar no Perfil
+                </Link>
+              </>
+            ) : (
+              <>
+                <p className="ia-status">
+                  Gere sugestões de reescrita para cada aviso com uma chave de API própria (Gemini ou OpenAI). A
+                  revisão normativa funciona integralmente sem este recurso.
+                </p>
+                <Link className="btn btn-primary" to="/perfil" state={{ focoChave: true }}>
+                  Ativar assistente de IA
+                </Link>
+              </>
+            )}
+            {erroIA && renderErroIA()}
           </div>
         </div>
 

@@ -1,8 +1,8 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { entrar } from "./support/apoio";
 
 /**
- * Perfil — dados de identificação, assistente IA (BYO-key) e sessão.
+ * Perfil — dados de identificação e assistente IA (BYO-key, só informada aqui).
  * No modo local (sem Firebase) o e-mail vem da conta, então o formulário
  * recusa salvar só com o nome: é esse o caminho exercitado aqui.
  */
@@ -41,11 +41,54 @@ test.describe("Perfil", () => {
     await expect(page.getByLabel("Chave da API (Gemini ou OpenAI)")).toBeVisible();
   });
 
-  test("sair da conta pela tela de perfil volta ao login", async ({ page }) => {
-    await page.getByRole("button", { name: "Sair da conta" }).click();
-    await expect(page).toHaveURL(/\/login$/);
+  test("sem quadro de sessão: o Sair fica só no cabeçalho", async ({ page }) => {
+    await expect(page.getByRole("button", { name: "Sair da conta" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Sair", exact: true })).toBeVisible();
+  });
+
+  test("o ⓘ do assistente explica como funciona e como conseguir a chave", async ({ page }) => {
+    const info = page.getByRole("button", { name: "Como funciona e como conseguir a chave da API" });
+    await expect(info).toHaveAttribute("aria-expanded", "false");
+    await info.click();
+
+    const caixa = page.getByRole("region", { name: "Sobre a chave da API" });
+    // Duas opções: Gemini (grátis para começar) e OpenAI (paga), cada uma com o link para criar a chave.
+    await expect(caixa).toContainText("grátis para começar");
+    await expect(caixa.getByRole("link", { name: "aistudio.google.com/apikey" })).toHaveAttribute(
+      "href",
+      "https://aistudio.google.com/apikey",
+    );
+    await expect(caixa.getByRole("link", { name: "platform.openai.com/api-keys" })).toHaveAttribute(
+      "href",
+      "https://platform.openai.com/api-keys",
+    );
+
+    await info.click();
+    await expect(caixa).toHaveCount(0);
   });
 });
+
+test.describe("Assistente IA na revisão", () => {
+  test("a revisão não pede a chave: 'Ativar assistente de IA' leva ao campo do Perfil", async ({ page }) => {
+    await entrar(page);
+    // Na revisão não há campo de chave nem o ⓘ do tutorial.
+    await expect(page.getByLabel("Chave da API (Gemini ou OpenAI)")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Como funciona e como conseguir a chave da API" })).toHaveCount(0);
+
+    await page.getByRole("link", { name: "Ativar assistente de IA" }).click();
+    await expect(page).toHaveURL(/\/perfil$/);
+    await expect(page.getByLabel("Chave da API (Gemini ou OpenAI)")).toBeFocused();
+  });
+});
+
+/** Informa a chave no Perfil (o único lugar onde ela é pedida) e volta à revisão. */
+async function ativarComChave(page: Page): Promise<void> {
+  await page.getByRole("link", { name: "Ativar assistente de IA" }).click();
+  await page.getByLabel("Chave da API (Gemini ou OpenAI)").fill("AIzaChaveDeTeste");
+  await page.getByRole("button", { name: "Salvar chave" }).click();
+  await page.getByRole("navigation", { name: "Navegação do sistema" }).getByRole("link", { name: "Revisar" }).click();
+  await expect(page.getByText("Assistente configurado com Gemini")).toBeVisible();
+}
 
 test.describe("Chave da IA não fica guardada", () => {
   test.beforeEach(async ({ page }) => {
@@ -56,9 +99,7 @@ test.describe("Chave da IA não fica guardada", () => {
     // Chave antiga, de antes desta versão, guardada sem prazo: é apagada.
     await page.evaluate(() => localStorage.setItem("normareview.ia", JSON.stringify({ apiKey: "sk-antiga" })));
 
-    await page.getByLabel("Chave da API (Gemini ou OpenAI)").fill("AIzaChaveDeTeste");
-    await page.getByRole("button", { name: "Ativar assistente" }).click();
-    await expect(page.getByText("Assistente configurado com Gemini")).toBeVisible();
+    await ativarComChave(page);
 
     // Não vai para o armazenamento permanente; continua ao trocar de tela e ao recarregar.
     expect(await page.evaluate(() => localStorage.getItem("normareview.ia"))).toBeNull();
@@ -71,16 +112,14 @@ test.describe("Chave da IA não fica guardada", () => {
     await page.getByRole("button", { name: "Sair" }).click();
     expect(await page.evaluate(() => sessionStorage.getItem("normareview.ia"))).toBeNull();
     await entrar(page);
-    await expect(page.getByLabel("Chave da API (Gemini ou OpenAI)")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Ativar assistente de IA" })).toBeVisible();
   });
 
   test("fechar a aba e abrir outra exige colar a chave de novo", async ({ page, context }) => {
-    await page.getByLabel("Chave da API (Gemini ou OpenAI)").fill("AIzaChaveDeTeste");
-    await page.getByRole("button", { name: "Ativar assistente" }).click();
-    await expect(page.getByText("Assistente configurado com Gemini")).toBeVisible();
+    await ativarComChave(page);
 
     const outraAba = await context.newPage();
     await entrar(outraAba);
-    await expect(outraAba.getByLabel("Chave da API (Gemini ou OpenAI)")).toBeVisible();
+    await expect(outraAba.getByRole("link", { name: "Ativar assistente de IA" })).toBeVisible();
   });
 });

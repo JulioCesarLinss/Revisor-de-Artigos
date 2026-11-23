@@ -1,6 +1,5 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
-import { encerrarSessao } from "../sessao";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useLocation } from "react-router-dom";
 import {
   carregarConfigIA,
   carregarPerfil,
@@ -14,17 +13,17 @@ import {
 import type { ConfiguracaoIA } from "../ai/types";
 import { NOME_SERVICO, servicoDaChave } from "../ai/assistente";
 import { InfoChaveIA } from "../ui/InfoChaveIA";
-import { limparDispositivo } from "../workspace/artigos";
-import { sair as sairFirebase, useAutorizacao } from "../firebase/auth";
+import { useAutorizacao } from "../firebase/auth";
 import { configurado as firebaseConfigurado } from "../firebase/config";
 import { carregarPerfilNuvem, salvarPerfilNuvem } from "../firebase/persistencia";
 
 /**
- * Tela /perfil — dados do autor/revisor, configuração do assistente IA
- * (BYO-key, DC-03, só na aba aberta) e controle da sessão.
+ * Tela /perfil — dados do autor/revisor e configuração do assistente IA
+ * (BYO-key, DC-03, só na aba aberta). É o único lugar onde a chave é
+ * informada; a tela Revisar só leva até aqui. Sair fica no cabeçalho.
  */
 export default function PerfilPage() {
-  const navegar = useNavigate();
+  const location = useLocation();
 
   // Heurística 1 (Nielsen): toda ação dá retorno imediato e legível.
   const [status, setStatus] = useState<string | null>(null);
@@ -68,6 +67,15 @@ export default function PerfilPage() {
   const [baseUrlInput, setBaseUrlInput] = useState(configIA?.baseUrl ?? "");
   const [modeloInput, setModeloInput] = useState(configIA?.modelo ?? "");
 
+  // Vindo do "Ativar assistente de IA" da tela Revisar: leva direto ao campo da chave.
+  const campoChave = useRef<HTMLInputElement | null>(null);
+  const quadroIA = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!(location.state as { focoChave?: boolean } | null)?.focoChave) return;
+    quadroIA.current?.scrollIntoView({ block: "center" });
+    campoChave.current?.focus();
+  }, [location.state]);
+
   const salvar = (e: FormEvent) => {
     e.preventDefault();
     if (nome.trim().length === 0 || email.trim().length === 0) {
@@ -95,7 +103,7 @@ export default function PerfilPage() {
     salvarConfigIA(config);
     setConfigIA(config);
     setChaveInput("");
-    setStatus("Assistente IA configurado — a chave fica só neste dispositivo.");
+    setStatus("Assistente IA configurado — a chave vale até você fechar esta aba ou sair da conta.");
   };
 
   const desativarChave = () => {
@@ -103,17 +111,6 @@ export default function PerfilPage() {
     setConfigIA(null);
     setStatus("Assistente IA desativado. O fluxo normativo continua completo.");
   };
-
-  // Igual ao Sair do topo: nada do usuário fica no dispositivo (artigos e chave da IA).
-  const sair = () => {
-    void sairFirebase(); // Firebase Auth, quando configurado
-    encerrarSessao();
-    limparDispositivo();
-    removerConfigIA();
-    navegar("/login", { replace: true });
-  };
-
-  const emailConta = (user?.email ?? email).trim();
 
   return (
     <main className="perfil-main" id="conteudo">
@@ -181,8 +178,8 @@ export default function PerfilPage() {
 
         <div className="perfil-coluna">
           {/* Assistente IA */}
-          <section className="perfil-card" aria-label="Assistente IA">
-            <InfoChaveIA titulo="Assistente IA (opcional)" nivel="h3" />
+          <section className="perfil-card" aria-label="Assistente IA" ref={quadroIA}>
+            <InfoChaveIA titulo="Assistente de IA (opcional)" nivel="h3" />
             {configIA ? (
               <>
                 <p className="ia-status ia-pronta">
@@ -204,6 +201,7 @@ export default function PerfilPage() {
                   <span>Chave da API (Gemini ou OpenAI)</span>
                   <input
                     type="password"
+                    ref={campoChave}
                     value={chaveInput}
                     onChange={(e) => setChaveInput(e.target.value)}
                     placeholder="AIza… (Gemini) ou sk-… (OpenAI)"
@@ -241,16 +239,6 @@ export default function PerfilPage() {
             )}
           </section>
 
-          {/* Sessão */}
-          <section className="perfil-card" aria-label="Sessão">
-            <h3>Sessão</h3>
-            <p className="ia-status">
-              {emailConta ? `Você está conectado como ${emailConta}.` : "Você está conectado."}
-            </p>
-            <button className="btn perfil-btn-perigo" type="button" onClick={sair}>
-              Sair da conta
-            </button>
-          </section>
         </div>
       </div>
     </main>

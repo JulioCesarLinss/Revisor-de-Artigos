@@ -25,10 +25,13 @@ const RESPOSTA_IA = {
   ],
 };
 
-/** Configura o assistente IA pela própria tela (chave fictícia: o fetch é interceptado). */
+/** Configura o assistente IA no Perfil e volta à revisão (chave fictícia: o fetch é interceptado). */
 async function ativarAssistente(page: Page): Promise<void> {
-  await page.getByPlaceholder("Chave do Gemini (grátis) ou da OpenAI").fill("chave-de-teste");
-  await page.getByRole("button", { name: "Ativar assistente" }).click();
+  await page.getByRole("link", { name: "Ativar assistente de IA" }).click();
+  await expect(page).toHaveURL(/\/perfil$/);
+  await page.getByLabel("Chave da API (Gemini ou OpenAI)").fill("chave-de-teste");
+  await page.getByRole("button", { name: "Salvar chave" }).click();
+  await page.getByRole("navigation", { name: "Navegação do sistema" }).getByRole("link", { name: "Revisar" }).click();
   await expect(page.getByText("Assistente configurado", { exact: false })).toBeVisible();
 }
 

@@ -8,6 +8,8 @@ interface Props {
   /** Quando informado, mostra uma seta que recolhe/expande o conteúdo do quadro. */
   recolhido?: boolean;
   onAlternarRecolhimento?: () => void;
+  /** Sem o ⓘ (o tutorial da chave fica só no Perfil, onde a chave é informada). */
+  semInfo?: boolean;
 }
 
 /**
@@ -16,7 +18,7 @@ interface Props {
  * começar) ou OpenAI (paga). O app reconhece o serviço pelo formato da
  * chave (src/ai/assistente.ts): AIza… vai para o Gemini, sk-… para a OpenAI.
  */
-export function InfoChaveIA({ titulo, nivel = "h2", recolhido, onAlternarRecolhimento }: Props) {
+export function InfoChaveIA({ titulo, nivel = "h2", recolhido, onAlternarRecolhimento, semInfo = false }: Props) {
   const [aberto, setAberto] = useState(false);
   const idCaixa = useId();
   const Titulo = nivel;
@@ -25,21 +27,23 @@ export function InfoChaveIA({ titulo, nivel = "h2", recolhido, onAlternarRecolhi
     <>
       <div className="info-titulo">
         <Titulo>{titulo}</Titulo>
-        <button
-          type="button"
-          className="info-botao"
-          aria-expanded={aberto}
-          aria-controls={idCaixa}
-          aria-label="Como funciona e como conseguir a chave da API"
-          title="Como funciona e como conseguir a chave da API"
-          onClick={() => setAberto((a) => !a)}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="10" />
-            <path d="M12 16v-5" />
-            <path d="M12 8h.01" />
-          </svg>
-        </button>
+        {!semInfo && (
+          <button
+            type="button"
+            className="info-botao"
+            aria-expanded={aberto}
+            aria-controls={idCaixa}
+            aria-label="Como funciona e como conseguir a chave da API"
+            title="Como funciona e como conseguir a chave da API"
+            onClick={() => setAberto((a) => !a)}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 16v-5" />
+              <path d="M12 8h.01" />
+            </svg>
+          </button>
+        )}
         {onAlternarRecolhimento && (
           <button
             type="button"
@@ -56,15 +60,15 @@ export function InfoChaveIA({ titulo, nivel = "h2", recolhido, onAlternarRecolhi
         )}
       </div>
 
-      {aberto && (
+      {aberto && !semInfo && (
         <div className="info-caixa" id={idCaixa} role="region" aria-label="Sobre a chave da API">
           <p className="info-caixa-titulo">Como funciona</p>
           <p>
             Com uma chave, cada aviso ganha o botão <strong>Sugerir com IA</strong>: só o parágrafo daquele aviso é
             enviado, e a IA devolve uma versão reescrita, que você aceita, edita ou ignora. Por segurança, a chave{" "}
             <strong>não fica guardada</strong>: vale até você fechar esta aba ou sair da conta (aí é só colar de
-            novo) e não vai para o nosso servidor. Cole a chave de um dos serviços
-            abaixo: o app reconhece qual é.
+            novo) e não vai para o nosso servidor. Use a chave de um dos serviços abaixo: o app
+            reconhece qual é.
           </p>
 
           <div className="info-opcao">
@@ -84,7 +88,7 @@ export function InfoChaveIA({ titulo, nivel = "h2", recolhido, onAlternarRecolhi
                 <code>AIza</code>).
               </li>
               <li>
-                Cole no campo e clique em <strong>Ativar assistente</strong>.
+                Cole no campo <strong>Chave da API</strong> e clique em <strong>Salvar chave</strong>.
               </li>
             </ol>
             <p className="info-caixa-nota">
@@ -113,7 +117,7 @@ export function InfoChaveIA({ titulo, nivel = "h2", recolhido, onAlternarRecolhi
                 aparece uma vez.
               </li>
               <li>
-                Cole no campo e clique em <strong>Ativar assistente</strong>.
+                Cole no campo <strong>Chave da API</strong> e clique em <strong>Salvar chave</strong>.
               </li>
             </ol>
           </div>
@@ -121,7 +125,7 @@ export function InfoChaveIA({ titulo, nivel = "h2", recolhido, onAlternarRecolhi
           <p className="info-caixa-nota">
             Não compartilhe a chave: quem tiver ela usa a sua cota ou os seus créditos. A chave gratuita do Gemini,
             sem cartão cadastrado, não gera cobrança. Para tirá-la antes de fechar a aba, use{" "}
-            <strong>Remover chave</strong> no Perfil.
+            <strong>Remover chave</strong>.
           </p>
         </div>
       )}
