@@ -126,7 +126,17 @@ describe("workspace/armazenamento — persistência", () => {
       truncado: false,
       diagnosticos: [
         { paragrafo: 2, categoria: "Clareza", descricao: "Frase longa.", sugestao: "Quebre em duas.", severidade: "media" },
+        {
+          paragrafo: 1,
+          trecho: "um",
+          categoria: "Gramática",
+          descricao: "Erro.",
+          sugestao: "",
+          severidade: "baixa",
+          posicao: { inicio: 10, fim: 12 },
+        },
       ],
+      avaliacao: { nivel: "quase", faltando: ["Metodologia"] },
     };
     salvarWorkspace({ ...WORKSPACE, diagnostico, textoDiagnosticado: WORKSPACE.bruto }, st);
 

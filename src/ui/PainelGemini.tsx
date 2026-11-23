@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { DiagnosticoGemini, ResultadoDiagnostico } from "../ai/gemini";
+import { ROTULO_NIVEL, type DiagnosticoGemini, type ResultadoDiagnostico } from "../ai/gemini";
 
 interface Props {
   /** Verdadeiro quando o Gemini está disponível (chave no servidor). */
@@ -16,6 +16,8 @@ interface Props {
   onFocar: (diagnostico: DiagnosticoGemini) => void;
   /** Descarta o diagnóstico exibido (o manuscrito não é tocado). */
   onExcluir: () => void;
+  /** "Já resolvi": tira da lista o apontamento nesta posição. */
+  onResolver: (indice: number) => void;
 }
 
 const ROTULO_SEVERIDADE = { alta: "Alta", media: "Média", baixa: "Baixa" } as const;
@@ -36,6 +38,7 @@ export function PainelGemini({
   onPedir,
   onFocar,
   onExcluir,
+  onResolver,
 }: Props) {
   const falha = resultado !== null && !resultado.ok;
   const sucesso = resultado !== null && resultado.ok;
@@ -61,8 +64,8 @@ export function PainelGemini({
       <div id="gemini-instrucoes" hidden={!instrucoesAbertas}>
         {/* H6: legenda explica o que é e de onde vem, sem exigir memorização. */}
         <p className="resumo-legenda">
-          Obtenha uma análise complementar do seu manuscrito, com sugestões de melhoria na clareza, coerência,
-          estrutura e qualidade da escrita acadêmica.
+          Obtenha uma avaliação do seu texto como artigo: se a estrutura está completa, se falta informação, se o
+          argumento faz sentido e o que melhorar na escrita. O que você corrigir sai da lista.
         </p>
         {configurado && (
           <>
@@ -112,6 +115,19 @@ export function PainelGemini({
 
       {!carregando && sucesso && (
         <>
+          {/* Opinião da IA sobre o texto como artigo — não é aprovação normativa (DC-02). */}
+          {resultado!.avaliacao && (
+            <div className={`gemini-avaliacao nivel-${resultado!.avaliacao.nivel}`}>
+              <p className="gemini-avaliacao-nivel">
+                Avaliação do artigo: <strong>{ROTULO_NIVEL[resultado!.avaliacao.nivel]}</strong>
+              </p>
+              {resultado!.avaliacao.faltando.length > 0 && (
+                <p className="gemini-avaliacao-falta">
+                  <strong>Falta:</strong> {resultado!.avaliacao.faltando.join(", ")}
+                </p>
+              )}
+            </div>
+          )}
           {resultado!.resumo && <p className="gemini-resumo">{resultado!.resumo}</p>}
           {resultado!.truncado && (
             <p className="gemini-aviso">
@@ -120,7 +136,7 @@ export function PainelGemini({
           )}
 
           {resultado!.diagnosticos.length === 0 ? (
-            <p className="ia-status">O Gemini não apontou problemas neste texto.</p>
+            <p className="ia-status">Nenhum apontamento pendente. Peça um novo diagnóstico para conferir o texto atual.</p>
           ) : (
             <ul className="gemini-lista" role="list" aria-label="Diagnósticos do Gemini">
               {resultado!.diagnosticos.map((d, i) => (
@@ -149,14 +165,22 @@ export function PainelGemini({
                       <strong>Sugestão:</strong> {d.sugestao}
                     </p>
                   )}
-                  {/* Funciona mesmo depois de editar o texto: a busca usa o trecho no texto atual. */}
-                  {d.paragrafo > 0 && (
-                    <div className="problema-acoes">
+                  <div className="problema-acoes">
+                    {/* Funciona mesmo depois de editar o texto: a posição acompanha a edição. */}
+                    {d.paragrafo > 0 && (
                       <button className="btn" type="button" onClick={() => onFocar(d)}>
                         Localizar no manuscrito
                       </button>
-                    </div>
-                  )}
+                    )}
+                    <button
+                      className="btn"
+                      type="button"
+                      onClick={() => onResolver(i)}
+                      title="Tira este apontamento da lista; o manuscrito não muda"
+                    >
+                      Já resolvi
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>

@@ -799,12 +799,6 @@ body {
   color: var(--ink);
 }
 
-/* Nome do artigo ao lado do título: mais leve, para não competir com ele. */
-.historico-cabecalho .historico-artigo {
-  font-weight: 500;
-  color: var(--slate-500);
-}
-
 .historico-cabecalho p {
   margin: 0;
   font-size: 13px;
@@ -875,57 +869,6 @@ body {
   letter-spacing: 0.06em;
   color: var(--slate-500);
   margin: 0 0 12px;
-}
-
-.historico-secao-topo {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 8px;
-}
-
-.historico-secao-topo h3 {
-  margin: 0;
-}
-
-.historico-nota {
-  margin: 0;
-  font-size: 12.5px;
-  color: var(--slate-500);
-}
-
-/* Linha do tempo de versões */
-
-/* Filtros por origem */
-.historico-filtros {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.historico-filtro {
-  font-family: var(--font-ui);
-  font-size: 11.5px;
-  font-weight: 600;
-  border: 1px solid var(--slate-300);
-  background: #fff;
-  color: var(--slate-600);
-  border-radius: 999px;
-  padding: 4px 12px;
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
-}
-
-.historico-filtro:hover {
-  background: var(--slate-50);
-}
-
-.historico-filtro.ativo {
-  background: var(--cobalt-dark);
-  border-color: var(--cobalt-dark);
-  color: #fff;
 }
 
 /* Lista de alterações na página (variação da lista do painel) */
@@ -2143,6 +2086,36 @@ button[aria-busy="true"] {
 
 .gemini-acoes {
   margin: 8px 0 10px;
+}
+
+/* Avaliação do texto como artigo: a cor acompanha o nível. */
+.gemini-avaliacao {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border-left: 3px solid var(--amber);
+  background: var(--amber-bg);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.gemini-avaliacao.nivel-pronto {
+  border-left-color: var(--emerald);
+  background: var(--emerald-bg);
+}
+
+.gemini-avaliacao.nivel-insuficiente {
+  border-left-color: var(--crimson);
+  background: var(--crimson-bg);
+}
+
+.gemini-avaliacao p {
+  margin: 0;
+}
+
+.gemini-avaliacao .gemini-avaliacao-falta {
+  margin-top: 4px;
 }
 
 .gemini-resumo {

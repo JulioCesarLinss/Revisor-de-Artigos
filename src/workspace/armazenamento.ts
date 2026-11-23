@@ -34,7 +34,7 @@ export interface EstadoWorkspace {
    * usuário pedir um novo diagnóstico, carregar outro arquivo ou excluí-lo.
    */
   diagnostico?: ResultadoDiagnostico | null;
-  /** Texto que gerou o diagnóstico acima (base do aviso "o texto mudou"). */
+  /** Texto a que as posições dos apontamentos se referem (acompanha a edição). */
   textoDiagnosticado?: string | null;
   /** Nome do arquivo anexado: dá nome ao artigo e ao .docx exportado. */
   arquivo?: string | null;
@@ -68,7 +68,25 @@ function ehApontamento(v: unknown): boolean {
     typeof a.categoria === "string" &&
     typeof a.descricao === "string" &&
     typeof a.sugestao === "string" &&
-    ehSeveridade(a.severidade)
+    ehSeveridade(a.severidade) &&
+    (a.posicao === undefined || ehIntervalo(a.posicao))
+  );
+}
+
+function ehIntervalo(v: unknown): boolean {
+  if (typeof v !== "object" || v === null) return false;
+  const i = v as Record<string, unknown>;
+  return typeof i.inicio === "number" && typeof i.fim === "number" && i.fim >= i.inicio;
+}
+
+/** Avaliação geral do artigo (opcional: diagnósticos antigos não têm). */
+function ehAvaliacao(v: unknown): boolean {
+  if (typeof v !== "object" || v === null) return false;
+  const a = v as Record<string, unknown>;
+  return (
+    (a.nivel === "pronto" || a.nivel === "quase" || a.nivel === "insuficiente") &&
+    Array.isArray(a.faltando) &&
+    a.faltando.every((f) => typeof f === "string")
   );
 }
 
@@ -78,6 +96,7 @@ function ehDiagnostico(v: unknown): v is ResultadoDiagnostico {
   const d = v as Record<string, unknown>;
   if (d.ok === false) return typeof d.motivo === "string";
   if (d.ok !== true || typeof d.resumo !== "string" || typeof d.truncado !== "boolean") return false;
+  if (d.avaliacao !== undefined && !ehAvaliacao(d.avaliacao)) return false;
   return Array.isArray(d.diagnosticos) && d.diagnosticos.every(ehApontamento);
 }
 

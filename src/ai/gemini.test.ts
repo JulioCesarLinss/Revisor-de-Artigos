@@ -110,6 +110,28 @@ describe("ai/gemini — interpretarDiagnostico", () => {
     expect(r.resumo).toBe("Nenhum problema encontrado.");
   });
 
+  test("avaliação do artigo: nível e o que falta", () => {
+    const conteudo = JSON.stringify({
+      avaliacao: { nivel: " Insuficiente ", faltando: ["Metodologia", "  ", 3, "Conclusão"] },
+      resumo: "Faltam seções.",
+      diagnosticos: [],
+    });
+    const r = interpretarDiagnostico(conteudo, 5);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.avaliacao).toEqual({ nivel: "insuficiente", faltando: ["Metodologia", "Conclusão"] });
+  });
+
+  test("avaliação ausente ou com nível desconhecido fica de fora, sem derrubar o diagnóstico", () => {
+    for (const avaliacao of [undefined, { nivel: "otimo", faltando: [] }, "pronto"]) {
+      const r = interpretarDiagnostico(JSON.stringify({ avaliacao, resumo: "Ok.", diagnosticos: [] }), 5);
+      expect(r.ok).toBe(true);
+      if (!r.ok) continue;
+      // Sem o campo (o Firestore recusa undefined).
+      expect("avaliacao" in r).toBe(false);
+    }
+  });
+
   test("JSON inválido, lista ou objeto sem conteúdo vira erro legível", () => {
     for (const conteudo of ["{não é json", '"apenas uma string"', "[]", "{}"]) {
       const r = interpretarDiagnostico(conteudo, 5);

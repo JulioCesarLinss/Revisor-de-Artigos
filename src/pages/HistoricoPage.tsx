@@ -8,7 +8,7 @@ import {
   restaurarOriginalWorkspace,
   type EstadoWorkspace,
 } from "../workspace/armazenamento";
-import { carregarBiblioteca, tituloDoArtigo } from "../workspace/artigos";
+import { carregarBiblioteca } from "../workspace/artigos";
 import { tituloDaRegra } from "../ui/rotulos";
 import { useAutorizacao } from "../firebase/auth";
 import { salvarArtigoNuvem } from "../firebase/persistencia";
@@ -16,8 +16,6 @@ import { salvarArtigoNuvem } from "../firebase/persistencia";
 /** Aviso quando a ação valeu no dispositivo mas a cópia da conta não acompanhou. */
 const AVISO_NUVEM =
   "Não foi possível atualizar a cópia salva na sua conta. Verifique a conexão e repita a ação.";
-
-type Filtro = "todas" | "manual" | "ia";
 
 /** Ações que exigem confirmação dentro do app (especifica a pergunta). */
 type Confirmacao = "limpar" | "voltarOriginal" | null;
@@ -27,13 +25,7 @@ const PERGUNTA_CONFIRMACAO: Record<Exclude<Confirmacao, null>, string> = {
   voltarOriginal: "Restaurar o texto original do arquivo? O histórico de alterações será apagado.",
 };
 
-const FILTROS: { valor: Filtro; rotulo: string }[] = [
-  { valor: "todas", rotulo: "Todas" },
-  { valor: "manual", rotulo: "Correções automáticas" },
-  { valor: "ia", rotulo: "Sugestões da IA" },
-];
-
-/** Troca o código da regra pelo título legível, sem esconder o rastro (H6). */
+/** Registros antigos guardavam o código da regra ("sugestão aceita (R005)"): mostra o título legível. */
 function descrever(descricao: string): string {
   return descricao.replace(/\(([A-Z]\d{3})\)/, (_, id: string) => `(${tituloDaRegra(id) ?? id})`);
 }
@@ -47,17 +39,14 @@ export default function HistoricoPage() {
   const [workspace, setWorkspace] = useState<EstadoWorkspace | null>(() => carregarWorkspace());
   // O artigo aberto no editor: as ações daqui gravam nele, também na nuvem.
   const [ativoId] = useState(() => carregarBiblioteca().ativo);
-  const [filtro, setFiltro] = useState<Filtro>("todas");
   const [status, setStatus] = useState<string | null>(null);
 
   /** Confirmação em painel no app (sem pop-up do navegador). */
   const [confirmacao, setConfirmacao] = useState<Confirmacao>(null);
 
   const contagem = contarPorOrigem(workspace?.historico ?? []);
-  const alteracoes = (workspace?.historico ?? [])
-    .filter((h) => filtro === "todas" || h.origem === filtro)
-    .slice()
-    .reverse();
+  // Uma lista só, da mais recente para a mais antiga.
+  const alteracoes = (workspace?.historico ?? []).slice().reverse();
 
   /** Localizar o parágrafo no editor: /revisar restaura, analisa e destaca o parágrafo. */
   const localizar = (alvo: number) => navegar("/revisar", { state: { alvo } });
@@ -105,11 +94,7 @@ export default function HistoricoPage() {
     <main className="historico-main" id="conteudo">
       <div className="historico-cabecalho">
         <div>
-          <h2>
-            Histórico de revisões
-            {workspace && <span className="historico-artigo"> — {tituloDoArtigo(workspace)}</span>}
-          </h2>
-          <p>Correções feitas neste artigo: as aplicadas com um clique e as sugestões da IA que você aceitou.</p>
+          <h2>Histórico de revisões</h2>
         </div>
         <div className="historico-acoes">
           <button
@@ -178,48 +163,28 @@ export default function HistoricoPage() {
             </div>
           </div>
 
-          {/* Alterações com filtro */}
+          {/* Uma lista só, sem filtro por origem */}
           <section className="historico-secao" aria-label="Alterações registradas">
-            <div className="historico-secao-topo">
-              <h3>Alterações registradas</h3>
-              <div className="historico-filtros" role="group" aria-label="Filtrar por origem">
-                {FILTROS.map((f) => (
+            <h3>Alterações registradas</h3>
+            <ul className="historico-lista historico-lista-pagina">
+              {alteracoes.map((h) => (
+                <li key={h.id}>
+                  <span className={`historico-origem origem-${h.origem}`}>{ROTULO_ORIGEM[h.origem]}</span>
+                  <span className="historico-desc">
+                    Parágrafo {h.paragrafo} — {descrever(h.descricao)}
+                  </span>
+                  <span className="historico-quando">{h.quando}</span>
                   <button
-                    key={f.valor}
+                    className="btn historico-localizar"
                     type="button"
-                    className={`historico-filtro ${filtro === f.valor ? "ativo" : ""}`}
-                    aria-pressed={filtro === f.valor}
-                    onClick={() => setFiltro(f.valor)}
+                    onClick={() => localizar(h.paragrafo)}
+                    title="Ir para o parágrafo no editor (fica destacado até você clicar nele)"
                   >
-                    {f.rotulo}
+                    Localizar
                   </button>
-                ))}
-              </div>
-            </div>
-
-            {alteracoes.length === 0 ? (
-              <p className="historico-nota">Nenhuma alteração com esta origem.</p>
-            ) : (
-              <ul className="historico-lista historico-lista-pagina">
-                {alteracoes.map((h) => (
-                  <li key={h.id}>
-                    <span className={`historico-origem origem-${h.origem}`}>{ROTULO_ORIGEM[h.origem]}</span>
-                    <span className="historico-desc">
-                      Parágrafo {h.paragrafo} — {descrever(h.descricao)}
-                    </span>
-                    <span className="historico-quando">{h.quando}</span>
-                    <button
-                      className="btn historico-localizar"
-                      type="button"
-                      onClick={() => localizar(h.paragrafo)}
-                      title="Ir para o parágrafo no editor (fica destacado até você clicar nele)"
-                    >
-                      Localizar
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
+                </li>
+              ))}
+            </ul>
           </section>
         </>
       )}

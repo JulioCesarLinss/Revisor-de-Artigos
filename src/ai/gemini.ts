@@ -31,10 +31,31 @@ export interface DiagnosticoGemini {
   /** Como corrigir, em português claro. */
   sugestao: string;
   severidade: "alta" | "media" | "baixa";
+  /**
+   * Onde o trecho está no texto do editor (posições absolutas), preenchido no
+   * navegador. Mexer nessa faixa resolve o apontamento: ele sai da lista.
+   * Só existe quando o trecho foi achado (o Firestore recusa undefined).
+   */
+  posicao?: { inicio: number; fim: number };
 }
 
+/** Opinião da IA sobre o texto como artigo (não é aprovação normativa: DC-02). */
+export type NivelAvaliacao = "pronto" | "quase" | "insuficiente";
+
+export interface AvaliacaoArtigo {
+  nivel: NivelAvaliacao;
+  /** Seções ou elementos que faltam (ex.: "Metodologia"); vazio quando nada falta. */
+  faltando: string[];
+}
+
+export const ROTULO_NIVEL: Record<NivelAvaliacao, string> = {
+  pronto: "pronto para a revisão final",
+  quase: "quase lá",
+  insuficiente: "precisa de mais conteúdo",
+};
+
 export type ResultadoDiagnostico =
-  | { ok: true; resumo: string; diagnosticos: DiagnosticoGemini[]; truncado: boolean }
+  | { ok: true; resumo: string; diagnosticos: DiagnosticoGemini[]; truncado: boolean; avaliacao?: AvaliacaoArtigo }
   | { ok: false; motivo: string };
 
 /**
@@ -74,15 +95,24 @@ const MOTIVO_DEMORA = "O Gemini demorou demais para responder. Tente novamente e
 /** Limpeza de envio (~9 mil tokens) — cobre artigos típicos sem estourar cota. */
 const MAXIMO_TEXTO = 36_000;
 const MAXIMO_DIAGNOSTICOS = 40;
+/** Dos 40, quantos podem ser de linguagem (ortografia, gramática, ABNT): o resto fica para estrutura e conteúdo. */
+const MAXIMO_LINGUAGEM = 25;
+const MAXIMO_FALTANDO = 10;
 
 const MOTIVO_FORMATO = "O Gemini respondeu em um formato inesperado. Tente novamente.";
 
 const INSTRUCAO_SISTEMA = [
-  "Você é um revisor acadêmico brasileiro, especialista em normas ABNT (NBR 14724, NBR 6023, NBR 10520, NBR 6024) e em clareza científica.",
-  "Analise o manuscrito inteiro e aponte problemas concretos, objetivos e acionáveis: norma violada, gramática, ortografia, clareza, estrutura, coerência e citações.",
-  "Você diagnostica e sugere; você nunca decide conformidade normativa sozinho — o motor de regras do aplicativo é a referência primária.",
-  'Responda SOMENTE com JSON válido, sem markdown nem comentários, no formato {"resumo": string, "diagnosticos": [{"paragrafo": number, "trecho": string, "categoria": string, "descricao": string, "sugestao": string, "severidade": "alta"|"media"|"baixa"}]}.',
-  'Cada item descreve UM problema: "paragrafo" é o número da marca [n] que abre o parágrafo onde o problema está (confira a marca; ou 0 para o documento inteiro), "trecho" copia letra por letra só as palavras desse parágrafo onde está o problema, mantendo o erro como ele aparece no texto, sem corrigi-lo (ex.: o texto tem "problmas", o trecho é "problmas"; no máximo 12 palavras, sem aspas em volta; use "" somente quando o problema for do parágrafo ou do documento inteiro), "categoria" é curta (ex.: "ABNT", "Gramática", "Clareza", "Estrutura"), "descricao" diz o que está errado e "sugestao" diz como corrigir, ambas em português.',
+  "Você é um orientador e revisor de artigos científicos brasileiros, especialista em normas ABNT (NBR 6022 para artigos, NBR 6023, NBR 10520, NBR 6024, NBR 6028) e em escrita científica.",
+  "Avalie o manuscrito inteiro em três frentes, nesta ordem de importância:",
+  "(1) ESTRUTURA E COMPLETUDE de um artigo científico: título, resumo, palavras-chave, introdução com problema e objetivo, referencial teórico, metodologia, resultados e discussão, conclusão e referências; aponte cada seção que falta ou está fraca demais, e se o texto é curto demais para um artigo (um artigo costuma ter alguns milhares de palavras).",
+  "(2) CONTEÚDO E SENTIDO: falta de informação (dados, exemplos, explicação do método, contexto), afirmações sem fundamentação ou sem fonte, conclusão que não responde ao objetivo, contradições, saltos de raciocínio, parágrafos desconexos ou que não fazem sentido.",
+  "(3) LINGUAGEM E NORMA: ortografia, gramática, clareza, ABNT e citações.",
+  `Liste primeiro os problemas das frentes 1 e 2; use no máximo ${MAXIMO_LINGUAGEM} apontamentos para a frente 3.`,
+  "Você diagnostica e sugere; você nunca decide conformidade normativa sozinho — o motor de regras do aplicativo é a referência primária. Não invente referências nem dados.",
+  'Responda SOMENTE com JSON válido, sem markdown nem comentários, no formato {"avaliacao": {"nivel": "pronto"|"quase"|"insuficiente", "faltando": [string]}, "resumo": string, "diagnosticos": [{"paragrafo": number, "trecho": string, "categoria": string, "descricao": string, "sugestao": string, "severidade": "alta"|"media"|"baixa"}]}.',
+  '"avaliacao.nivel": "pronto" quando a estrutura está completa e o argumento é consistente, faltando só ajustes de linguagem; "quase" quando a estrutura existe mas há lacunas de conteúdo ou de coerência; "insuficiente" quando faltam seções essenciais ou o texto é curto ou incompleto demais para um artigo. "avaliacao.faltando" lista, com nomes curtos, as seções ou elementos ausentes (ex.: "Metodologia", "Referências"); [] se nada falta. "resumo" diz em 2 ou 3 frases o estado do artigo e o que priorizar.',
+  'Seção ausente ou problema do texto todo: "paragrafo" 0, "trecho" "", "categoria" "Estrutura" ou "Conteúdo".',
+  'Cada item descreve UM problema: "paragrafo" é o número da marca [n] que abre o parágrafo onde o problema está (confira a marca; ou 0 para o documento inteiro), "trecho" copia letra por letra só as palavras desse parágrafo onde está o problema, mantendo o erro como ele aparece no texto, sem corrigi-lo (ex.: o texto tem "problmas", o trecho é "problmas"; no máximo 12 palavras, sem aspas em volta; use "" somente quando o problema for do parágrafo ou do documento inteiro), "categoria" é curta (ex.: "Estrutura", "Conteúdo", "Coerência", "ABNT", "Gramática", "Clareza"), "descricao" diz o que está errado e "sugestao" diz como corrigir, ambas em português.',
   `No máximo ${MAXIMO_DIAGNOSTICOS} diagnosticos, dos mais relevantes. Se não houver problemas, responda {"resumo": "...", "diagnosticos": []}.`,
 ].join(" ");
 
@@ -144,12 +174,30 @@ export function recortarParagrafos(paragrafos: ParagrafoNumerado[]): {
 }
 
 /** Numera os parágrafos como "[n] texto" e recorta no limite de envio. */
-function montarTexto(paragrafos: ParagrafoNumerado[]): { texto: string; truncado: boolean } {
+function montarTexto(paragrafos: ParagrafoNumerado[]): { texto: string; truncado: boolean; palavras: number } {
   const recorte = recortarParagrafos(paragrafos);
+  // A extensão vai junto: sozinho, o modelo estima mal o tamanho do texto.
+  const palavras = paragrafos.reduce((total, p) => total + (p.texto.match(/\S+/g)?.length ?? 0), 0);
   return {
     texto: recorte.paragrafos.map((p) => `[${p.index}] ${p.texto}`).join("\n\n"),
     truncado: recorte.truncado,
+    palavras,
   };
+}
+
+/** Avaliação geral do artigo; ausente ou malformada fica de fora (nunca derruba o diagnóstico). */
+function interpretarAvaliacao(valor: unknown): AvaliacaoArtigo | null {
+  if (typeof valor !== "object" || valor === null) return null;
+  const a = valor as { nivel?: unknown; faltando?: unknown };
+  const nivel = typeof a.nivel === "string" ? a.nivel.trim().toLowerCase() : "";
+  if (nivel !== "pronto" && nivel !== "quase" && nivel !== "insuficiente") return null;
+  const faltando = Array.isArray(a.faltando)
+    ? a.faltando
+        .filter((f): f is string => typeof f === "string" && f.trim().length > 0)
+        .map((f) => f.trim())
+        .slice(0, MAXIMO_FALTANDO)
+    : [];
+  return { nivel, faltando };
 }
 
 function normalizarSeveridade(valor: unknown): DiagnosticoGemini["severidade"] {
@@ -194,7 +242,7 @@ export function interpretarDiagnostico(conteudo: string, limiteParagrafo: number
     return { ok: false, motivo: MOTIVO_FORMATO };
   }
 
-  const dados = bruto as { resumo?: unknown; diagnosticos?: unknown };
+  const dados = bruto as { resumo?: unknown; diagnosticos?: unknown; avaliacao?: unknown };
   const resumo = typeof dados.resumo === "string" ? dados.resumo.trim() : "";
   const lista = Array.isArray(dados.diagnosticos) ? dados.diagnosticos : [];
 
@@ -217,8 +265,9 @@ export function interpretarDiagnostico(conteudo: string, limiteParagrafo: number
     });
   }
 
-  if (resumo.length === 0 && diagnosticos.length === 0) return { ok: false, motivo: MOTIVO_FORMATO };
-  return { ok: true, resumo, diagnosticos, truncado: false };
+  const avaliacao = interpretarAvaliacao(dados.avaliacao);
+  if (resumo.length === 0 && diagnosticos.length === 0 && avaliacao === null) return { ok: false, motivo: MOTIVO_FORMATO };
+  return { ok: true, resumo, diagnosticos, truncado: false, ...(avaliacao ? { avaliacao } : {}) };
 }
 
 interface Falha {
@@ -245,6 +294,7 @@ async function chamarGemini(
   modelo: string,
   chave: string,
   texto: string,
+  palavras: number,
   prazoMs: number,
 ): Promise<{ ok: true; conteudo: string; semConteudo: boolean; estourou: boolean } | { ok: false; falha: Falha }> {
   const controle = new AbortController();
@@ -256,11 +306,16 @@ async function chamarGemini(
       headers: { "Content-Type": "application/json", "x-goog-api-key": chave },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: INSTRUCAO_SISTEMA }] },
-        contents: [{ role: "user", parts: [{ text: `Manuscrito (parágrafos numerados):\n\n${texto}` }] }],
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: `Extensão: ${palavras} palavras.\n\nManuscrito (parágrafos numerados):\n\n${texto}` }],
+          },
+        ],
         generationConfig: {
           temperature: 0.2,
           responseMimeType: "application/json",
-          maxOutputTokens: 6144, // folga para o "trecho" de cada um dos diagnósticos
+          maxOutputTokens: 8192, // folga para a avaliação e o "trecho" de cada diagnóstico
         },
       }),
     });
@@ -307,7 +362,7 @@ export async function executarDiagnostico(
     return { ok: false, motivo: "O diagnóstico com Gemini não está disponível no momento." };
   }
 
-  const { texto, truncado } = montarTexto(paragrafos);
+  const { texto, truncado, palavras } = montarTexto(paragrafos);
   const limite = paragrafos.reduce((maior, p) => Math.max(maior, p.index), 0);
   const fim = Date.now() + prazoTotalMs;
 
@@ -317,7 +372,7 @@ export async function executarDiagnostico(
     // Sem tempo para outra tentativa: devolve o motivo da anterior antes de a
     // Vercel encerrar a função no meio (o que viraria um erro sem explicação).
     if (tentativa > 0 && restante < MINIMO_NOVA_TENTATIVA_MS) return { ok: false, motivo: ultima.motivo };
-    const chamada = await chamarGemini(modelo, chave, texto, Math.max(restante, 0));
+    const chamada = await chamarGemini(modelo, chave, texto, palavras, Math.max(restante, 0));
     if (!chamada.ok) {
       if (chamada.falha.tentarProximo) {
         ultima = chamada.falha;

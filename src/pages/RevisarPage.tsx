@@ -18,8 +18,10 @@ import { PainelSecoes } from "../ui/PainelSecoes";
 import { PainelSugestao } from "../ui/PainelSugestao";
 import { ProblemaCard } from "../ui/ProblemaCard";
 import { Resumo } from "../ui/Resumo";
+import { tituloDaRegra } from "../ui/rotulos";
 import { registrar, type RegistroAlteracao } from "../workspace/historico";
 import { ajustarTrechos, localizarApontamento, unirTrechos } from "../workspace/destaques.js";
+import { acompanharApontamentos, posicionarApontamentos } from "../workspace/apontamentos.js";
 import {
   ajustarFormatacao,
   alternarEstilo,
@@ -279,15 +281,41 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
   // então uma falha da IA não atrasa o fluxo.
   // O diagnóstico vem do workspace salvo: ele sobrevive à troca de abas
   // (esta tela desmonta ao navegar) até um novo pedido, outro arquivo ou exclusão.
-  const [diagnostico, setDiagnostico] = useState<ResultadoDiagnostico | null>(salvo?.diagnostico ?? null);
+  // Ao abrir, cada apontamento ganha a posição do trecho no texto atual (os
+  // salvos por versões antigas não tinham), para acompanhar a edição.
+  const [diagnostico, setDiagnostico] = useState<ResultadoDiagnostico | null>(() => {
+    const d = salvo?.diagnostico ?? null;
+    return d?.ok ? { ...d, diagnosticos: posicionarApontamentos(d.diagnosticos, salvo!.bruto) } : d;
+  });
   const [analisandoGemini, setAnalisandoGemini] = useState(false);
-  // Texto que gerou o diagnóstico atual: se o manuscrito mudar, o painel avisa.
-  const [textoDiagnosticado, setTextoDiagnosticado] = useState<string | null>(salvo?.textoDiagnosticado ?? null);
+  // Texto a que as posições dos apontamentos se referem.
+  const [textoDiagnosticado, setTextoDiagnosticado] = useState<string | null>(() =>
+    salvo?.diagnostico?.ok ? salvo.bruto : (salvo?.textoDiagnosticado ?? null),
+  );
   const geminiOcupado = useRef(false);
+
+  // O texto mudou: o apontamento cujo trecho foi corrigido sai da lista (e do
+  // resumo); os outros acompanham, ainda neste render. Sem chamar o Gemini.
+  if (diagnostico?.ok && textoDiagnosticado !== null && textoDiagnosticado !== bruto) {
+    const { diagnosticos } = acompanharApontamentos(diagnostico.diagnosticos, textoDiagnosticado, bruto);
+    setDiagnostico({ ...diagnostico, diagnosticos });
+    setTextoDiagnosticado(bruto);
+  }
 
   /** Localizar um apontamento: todos os erros que a IA apontou no mesmo parágrafo. */
   const localizarDiagnostico = useCallback(
     (alvo: DiagnosticoGemini) => {
+      // Com a posição acompanhada, marca direto; os vizinhos do mesmo parágrafo também.
+      const naPosicao = alvo.posicao;
+      const doAlvo = naPosicao && posicoes.find((p) => p.inicio <= naPosicao.inicio && naPosicao.inicio <= p.fim);
+      if (naPosicao && doAlvo) {
+        const mesmos = (diagnostico?.ok ? diagnostico.diagnosticos : [alvo]).flatMap((d) =>
+          d.posicao && d.posicao.inicio >= doAlvo.inicio && d.posicao.inicio <= doAlvo.fim ? [d.posicao] : [],
+        );
+        pedidosLocalizar.current += 1;
+        setDestaque({ texto: bruto, trechos: unirTrechos([naPosicao, ...mesmos]), pedido: pedidosLocalizar.current });
+        return;
+      }
       const textos = posicoes.map((p) => bruto.slice(p.inicio, p.fim));
       const achado = localizarApontamento(textos, alvo);
       // Nada confiável no texto: marca o parágrafo que a IA citou.
@@ -304,6 +332,12 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
     [posicoes, bruto, diagnostico, marcar],
   );
 
+  /** "Já resolvi": tira um apontamento da lista (o manuscrito não é tocado). */
+  const resolverApontamento = useCallback((indice: number) => {
+    setDiagnostico((d) => (d?.ok ? { ...d, diagnosticos: d.diagnosticos.filter((_, i) => i !== indice) } : d));
+    setStatusSistema("Apontamento do Gemini marcado como resolvido.");
+  }, []);
+
   /** Exclui o diagnóstico atual (mantém o manuscrito e a análise normativa). */
   const excluirDiagnostico = useCallback(() => {
     setDiagnostico(null);
@@ -318,7 +352,13 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
     setAnalisandoGemini(true);
     try {
       const diagnosticado = await diagnosticarComGemini(paragrafos);
-      setDiagnostico(diagnosticado);
+      // As posições valem para o texto enviado; se ele mudou durante a espera,
+      // o acompanhamento acima ajusta no próximo render.
+      setDiagnostico(
+        diagnosticado.ok
+          ? { ...diagnosticado, diagnosticos: posicionarApontamentos(diagnosticado.diagnosticos, texto) }
+          : diagnosticado,
+      );
       setTextoDiagnosticado(texto);
       if (diagnosticado.ok) {
         setStatusSistema(`Diagnóstico do Gemini — ${diagnosticado.diagnosticos.length} apontamento(s).`);
@@ -582,7 +622,12 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
       setBruto(corrigido);
       setAnalise(iniciarRevisao(corrigido));
       setHistorico((h) =>
-        registrar(h, { origem: "manual", descricao: "correção rápida aplicada", paragrafo: problema.paragrafo }),
+        registrar(h, {
+          origem: "manual",
+          // Guarda só o nome do erro corrigido, não o texto.
+          descricao: tituloDaRegra(problema.regraId) ?? "correção rápida aplicada",
+          paragrafo: problema.paragrafo,
+        }),
       );
       setStatusSistema(`Correção aplicada no parágrafo ${problema.paragrafo} — análise atualizada.`);
     },
@@ -626,7 +671,7 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
       setHistorico((h) =>
         registrar(h, {
           origem: "ia",
-          descricao: sugestaoAtiva.regraId ? `sugestão aceita (${sugestaoAtiva.regraId})` : "sugestão aceita",
+          descricao: tituloDaRegra(sugestaoAtiva.regraId) ?? "trecho reescrito com a IA",
           paragrafo: sugestaoAtiva.paragrafo,
         }),
       );
@@ -920,6 +965,7 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
           onPedir={pedirGemini}
           onFocar={localizarDiagnostico}
           onExcluir={excluirDiagnostico}
+          onResolver={resolverApontamento}
         />
 
         {analise && <PainelSecoes secoes={analise.secoes} onFocarSecao={(indices) => {

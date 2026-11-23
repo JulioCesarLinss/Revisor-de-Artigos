@@ -22,7 +22,7 @@ test.describe("Histórico", () => {
     await expect(page).toHaveURL(/\/revisar$/);
   });
 
-  test("registra a correção aplicada e filtra por origem", async ({ page }) => {
+  test("registra o nome do erro corrigido numa lista só", async ({ page }) => {
     await page.goto("/revisar");
     await analisarTexto(page);
     const cartao = cartaoDaRegra(page, "Espaço em excesso antes da pontuação");
@@ -37,12 +37,10 @@ test.describe("Histórico", () => {
     const lista = page.getByRole("region", { name: "Alterações registradas" });
     await expect(lista.getByRole("listitem")).toHaveCount(1);
 
-    // Filtro por origem: só sugestões de IA não há nada registrado.
-    await page.getByRole("button", { name: "Sugestões da IA" }).click();
-    await expect(page.getByText("Nenhuma alteração com esta origem.")).toBeVisible();
-
-    await page.getByRole("button", { name: "Correções automáticas", exact: true }).click();
-    await expect(lista.getByRole("listitem")).toHaveCount(1);
+    // A linha diz qual erro foi corrigido, não o texto digitado.
+    await expect(lista.getByRole("listitem")).toContainText("Parágrafo 1 — Espaço em excesso antes da pontuação");
+    // Uma lista só: sem filtros por origem.
+    await expect(page.getByRole("group", { name: "Filtrar por origem" })).toHaveCount(0);
   });
 
   test("limpar histórico pede confirmação e esvazia a lista", async ({ page }) => {

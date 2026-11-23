@@ -73,6 +73,54 @@ test.describe("Revisão", () => {
     await expect(page.locator("mark.folha-destaque")).toHaveText("dados foi coletados");
   });
 
+  test("diagnóstico do Gemini: avaliação do artigo, corrigir tira o apontamento e 'Já resolvi' tira o geral", async ({ page }) => {
+    const texto = ["INTRODUCAO", "Os dados foi coletados em campo ontem.", "O resultado mostra que o problmas existe."].join("\n\n");
+    await page.evaluate((bruto) => {
+      localStorage.setItem(
+        "normareview.workspace",
+        JSON.stringify({
+          bruto,
+          textoOriginal: null,
+          historico: [],
+          textoDiagnosticado: bruto,
+          diagnostico: {
+            ok: true,
+            resumo: "Texto curto, sem metodologia.",
+            truncado: false,
+            avaliacao: { nivel: "insuficiente", faltando: ["Metodologia", "Conclusão"] },
+            diagnosticos: [
+              { paragrafo: 0, trecho: "", categoria: "Estrutura", descricao: "Falta a seção de metodologia.", sugestao: "Descreva como os dados foram coletados.", severidade: "alta" },
+              { paragrafo: 2, trecho: "dados foi coletados", categoria: "Gramática", descricao: "Concordância.", sugestao: "os dados foram", severidade: "alta" },
+              { paragrafo: 3, trecho: "problmas", categoria: "Ortografia", descricao: "Erro de grafia.", sugestao: "problema", severidade: "baixa" },
+            ],
+          },
+        }),
+      );
+    }, texto);
+    await page.goto("/revisar");
+
+    await expect(page.locator(".gemini-avaliacao")).toContainText("Avaliação do artigo: precisa de mais conteúdo");
+    await expect(page.locator(".gemini-avaliacao")).toContainText("Falta: Metodologia, Conclusão");
+    const itens = page.locator(".gemini-item");
+    await expect(itens).toHaveCount(3);
+    await expect(page.locator(".resumo-item.total strong")).toHaveText("3");
+
+    // Corrigir a grafia no editor tira só aquele apontamento (e do resumo).
+    await editorDeTexto(page).fill(texto.replace("problmas", "problema"));
+    await expect(itens).toHaveCount(2);
+    await expect(itens.filter({ hasText: "Erro de grafia." })).toHaveCount(0);
+    await expect(page.locator(".resumo-item.total strong")).toHaveText("2");
+
+    // O apontamento que continua ainda é localizado no lugar certo.
+    await itens.filter({ hasText: "Concordância." }).getByRole("button", { name: "Localizar no manuscrito" }).click();
+    await expect(page.locator("mark.folha-destaque")).toHaveText("dados foi coletados");
+
+    // O apontamento do artigo inteiro sai com "Já resolvi".
+    await itens.filter({ hasText: "Falta a seção de metodologia." }).getByRole("button", { name: "Já resolvi" }).click();
+    await expect(itens).toHaveCount(1);
+    await expect(page.locator(".resumo-item.total strong")).toHaveText("1");
+  });
+
   test("localizar destaca o trecho no manuscrito", async ({ page }) => {
     await analisarTexto(page);
     await cartaoDaRegra(page, "Aspas desbalanceadas")
