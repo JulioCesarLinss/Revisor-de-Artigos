@@ -759,6 +759,12 @@ body {
   background: var(--slate-100);
 }
 
+/* Corrigido digitando pelo usuário (avisos e apontamentos que sumiram). */
+.origem-edicao {
+  color: var(--emerald);
+  background: var(--emerald-bg);
+}
+
 .origem-ia {
   color: var(--cobalt-dark);
   background: var(--azul-suave);
@@ -823,7 +829,7 @@ body {
 
 .historico-stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 10px;
   margin: 14px 0;
 }

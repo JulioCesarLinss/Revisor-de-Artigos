@@ -51,7 +51,7 @@ export function armazenamentoPadrao(): Armazenamento | null {
 }
 
 function ehOrigem(v: unknown): v is OrigemAlteracao {
-  return v === "manual" || v === "ia";
+  return v === "manual" || v === "edicao" || v === "ia";
 }
 
 function ehSeveridade(v: unknown): boolean {
@@ -215,14 +215,17 @@ export function restaurarOriginalWorkspace(st?: Armazenamento): EstadoWorkspace 
 /** Contagem por origem para o resumo da tela de histórico (DC-13). */
 export function contarPorOrigem(historico: RegistroAlteracao[]): {
   manual: number;
+  edicao: number;
   ia: number;
   total: number;
 } {
   let manual = 0;
+  let edicao = 0;
   let ia = 0;
   for (const h of historico) {
     if (h.origem === "ia") ia++;
+    else if (h.origem === "edicao") edicao++;
     else manual++;
   }
-  return { manual, ia, total: manual + ia };
+  return { manual, edicao, ia, total: manual + edicao + ia };
 }

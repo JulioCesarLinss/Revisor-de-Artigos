@@ -36,8 +36,9 @@ export function acompanharApontamentos(
   diagnosticos: DiagnosticoGemini[],
   antes: string,
   depois: string,
-): { diagnosticos: DiagnosticoGemini[]; resolvidos: number } {
-  if (antes === depois) return { diagnosticos, resolvidos: 0 };
+): { diagnosticos: DiagnosticoGemini[]; resolvidos: DiagnosticoGemini[] } {
+  if (antes === depois) return { diagnosticos, resolvidos: [] };
+  const resolvidos: DiagnosticoGemini[] = [];
   const faixa = faixaAlterada(antes, depois);
   const deslocamento = depois.length - antes.length;
   const restantes: DiagnosticoGemini[] = [];
@@ -48,12 +49,22 @@ export function acompanharApontamentos(
     }
     const [ajustada] = ajustarTrechos([d.posicao], antes, depois);
     if (ajustada) restantes.push({ ...d, posicao: ajustada });
-    else if (ehDoArtigo(d)) {
+    else if (!ehDoArtigo(d)) resolvidos.push(d);
+    else {
       // Tocado, mas é sobre o artigo: o trecho passa a cobrir o texto novo.
       const inicio = Math.min(d.posicao.inicio, faixa.inicio);
       const fim = Math.min(depois.length, Math.max(faixa.fimDepois, d.posicao.fim + deslocamento, inicio));
       restantes.push({ ...d, posicao: { inicio, fim } });
     }
   }
-  return { diagnosticos: restantes, resolvidos: diagnosticos.length - restantes.length };
+  return { diagnosticos: restantes, resolvidos };
+}
+
+/** Tamanho máximo da descrição no histórico. */
+const LIMITE_DESCRICAO = 90;
+
+/** Como o apontamento resolvido aparece no histórico, ex.: "Gemini — Gramática: Concordância verbal." */
+export function descreverApontamento(d: Pick<DiagnosticoGemini, "categoria" | "descricao">, prefixo = "Gemini"): string {
+  const texto = `${prefixo} — ${d.categoria}: ${d.descricao.replace(/\s+/g, " ").trim()}`;
+  return texto.length <= LIMITE_DESCRICAO ? texto : `${texto.slice(0, LIMITE_DESCRICAO - 1).trimEnd()}…`;
 }

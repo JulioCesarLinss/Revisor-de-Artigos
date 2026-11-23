@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { DiagnosticoGemini } from "../ai/gemini";
-import { acompanharApontamentos, posicionarApontamentos } from "./apontamentos";
+import { acompanharApontamentos, descreverApontamento, posicionarApontamentos } from "./apontamentos";
 
 const TEXTO = "Introdução\n\nOs dados foi coletados ontem.\n\nO problmas está na conclusão.";
 
@@ -49,14 +49,14 @@ describe("workspace/apontamentos — acompanhar a edição", () => {
   test("corrigir um trecho tira só aquele apontamento", () => {
     const depois = TEXTO.replace("problmas", "problema");
     const r = acompanharApontamentos(lista, TEXTO, depois);
-    expect(r.resolvidos).toBe(1);
+    expect(r.resolvidos.map((d) => d.trecho)).toEqual(["problmas"]);
     expect(r.diagnosticos.map((d) => d.trecho ?? "")).toEqual(["dados foi", ""]);
   });
 
   test("editar antes de um trecho só desloca a posição dele", () => {
     const depois = TEXTO.replace("Introdução", "Introdução geral");
     const r = acompanharApontamentos(lista, TEXTO, depois);
-    expect(r.resolvidos).toBe(0);
+    expect(r.resolvidos).toEqual([]);
     const dados = r.diagnosticos[0];
     expect(depois.slice(dados.posicao!.inicio, dados.posicao!.fim)).toBe("dados foi");
   });
@@ -64,7 +64,7 @@ describe("workspace/apontamentos — acompanhar a edição", () => {
   test("apontamento sem posição (artigo inteiro) continua até ser marcado como resolvido", () => {
     const depois = TEXTO.replace("dados foi", "dados foram").replace("problmas", "problema");
     const r = acompanharApontamentos(lista, TEXTO, depois);
-    expect(r.resolvidos).toBe(2);
+    expect(r.resolvidos).toHaveLength(2);
     expect(r.diagnosticos).toHaveLength(1);
     expect(r.diagnosticos[0].categoria).toBe("Estrutura");
   });
@@ -76,12 +76,21 @@ describe("workspace/apontamentos — acompanhar a edição", () => {
     );
     const depois = TEXTO.replace("dados foi coletados", "dados foram coletados por entrevista");
     const r = acompanharApontamentos([d], TEXTO, depois);
-    expect(r.resolvidos).toBe(0);
+    expect(r.resolvidos).toEqual([]);
     const p = r.diagnosticos[0].posicao!;
     expect(depois.slice(p.inicio, p.fim)).toBe("dados foram coletados por entrevista");
   });
 
   test("texto igual não muda nada", () => {
-    expect(acompanharApontamentos(lista, TEXTO, TEXTO)).toEqual({ diagnosticos: lista, resolvidos: 0 });
+    expect(acompanharApontamentos(lista, TEXTO, TEXTO)).toEqual({ diagnosticos: lista, resolvidos: [] });
+  });
+
+  test("descrição para o histórico: origem, categoria e o erro, com limite de tamanho", () => {
+    expect(descreverApontamento({ categoria: "Gramática", descricao: "Concordância  verbal." })).toBe(
+      "Gemini — Gramática: Concordância verbal.",
+    );
+    const longa = descreverApontamento({ categoria: "Estrutura", descricao: "x".repeat(200) }, "Conferido pelo Gemini");
+    expect(longa.length).toBe(90);
+    expect(longa.endsWith("…")).toBe(true);
   });
 });

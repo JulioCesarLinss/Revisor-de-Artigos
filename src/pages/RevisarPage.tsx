@@ -21,7 +21,8 @@ import { Resumo } from "../ui/Resumo";
 import { tituloDaRegra } from "../ui/rotulos";
 import { registrar, type RegistroAlteracao } from "../workspace/historico";
 import { ajustarTrechos, localizarApontamento, unirTrechos } from "../workspace/destaques.js";
-import { acompanharApontamentos, posicionarApontamentos } from "../workspace/apontamentos.js";
+import { acompanharApontamentos, descreverApontamento, posicionarApontamentos } from "../workspace/apontamentos.js";
+import { acompanharAvisos, type AvisoAcompanhado } from "../workspace/avisos.js";
 import {
   ajustarFormatacao,
   alternarEstilo,
@@ -296,13 +297,26 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
   );
   const geminiOcupado = useRef(false);
 
-  // O texto mudou: o apontamento cujo trecho foi corrigido sai da lista (e do
-  // resumo); os outros acompanham, ainda neste render. Sem chamar o Gemini.
-  if (diagnostico?.ok && textoDiagnosticado !== null && textoDiagnosticado !== bruto) {
-    const { diagnosticos } = acompanharApontamentos(diagnostico.diagnosticos, textoDiagnosticado, bruto);
+  /** Registra no histórico apontamentos do Gemini que saíram da lista. */
+  const registrarApontamentos = useCallback((resolvidos: DiagnosticoGemini[], prefixo?: string) => {
+    if (resolvidos.length === 0) return;
+    setHistorico((h) =>
+      resolvidos.reduce(
+        (acc, d) => registrar(acc, { origem: "edicao", descricao: descreverApontamento(d, prefixo), paragrafo: d.paragrafo }),
+        h,
+      ),
+    );
+  }, []);
+
+  // O texto mudou: o apontamento de linguagem cujo trecho foi corrigido sai da
+  // lista (e do resumo) e vai para o histórico; os outros acompanham. Sem chamar o Gemini.
+  useEffect(() => {
+    if (!diagnostico?.ok || textoDiagnosticado === null || textoDiagnosticado === bruto) return;
+    const { diagnosticos, resolvidos } = acompanharApontamentos(diagnostico.diagnosticos, textoDiagnosticado, bruto);
     setDiagnostico({ ...diagnostico, diagnosticos });
     setTextoDiagnosticado(bruto);
-  }
+    registrarApontamentos(resolvidos);
+  }, [diagnostico, textoDiagnosticado, bruto, registrarApontamentos]);
 
   /** Localizar um apontamento: todos os erros que a IA apontou no mesmo parágrafo. */
   const localizarDiagnostico = useCallback(
@@ -342,13 +356,15 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
     setDiagnostico((d) => (d?.ok ? { ...d, diagnosticos: d.diagnosticos.filter((a) => a.id !== id) } : d));
   }, []);
 
-  /** "Já resolvi": o usuário tira um apontamento sobre o artigo. */
+  /** "Já resolvi": o usuário tira um apontamento sobre o artigo (e ele vai para o histórico). */
   const resolverApontamento = useCallback(
     (id: number) => {
+      const alvo = diagnostico?.ok ? diagnostico.diagnosticos.find((d) => d.id === id) : undefined;
       tirarApontamento(id);
+      if (alvo) registrarApontamentos([alvo], "Marcado como resolvido");
       setStatusSistema("Apontamento do Gemini marcado como resolvido.");
     },
-    [tirarApontamento],
+    [diagnostico, tirarApontamento, registrarApontamentos],
   );
 
   /**
@@ -377,10 +393,13 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
       setConferencias((c) => ({ ...c, [id]: resultado }));
       if (resultado.estado === "resolvido") {
         setStatusSistema("Apontamento conferido pelo Gemini: corrigido.");
-        setTimeout(() => tirarApontamento(id), TEMPO_CORRIGIDO_MS);
+        setTimeout(() => {
+          tirarApontamento(id);
+          registrarApontamentos([alvo], "Conferido pelo Gemini");
+        }, TEMPO_CORRIGIDO_MS);
       }
     },
-    [posicoes, bruto, tirarApontamento],
+    [posicoes, bruto, tirarApontamento, registrarApontamentos],
   );
 
   /** Exclui o diagnóstico atual (mantém o manuscrito e a análise normativa). */
@@ -437,13 +456,47 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
     setStatusSistema(`Análise concluída — ${resultado.resumo.total} problema(s) encontrado(s).`);
   }, [bruto]);
 
+  /**
+   * Avisos da análise acompanhados entre uma análise e outra, para o
+   * histórico saber o que o usuário corrigiu digitando. A análise que não veio
+   * da digitação (Analisar, correção rápida, Desfazer, abrir) é a nova partida.
+   */
+  const avisos = useRef<{ texto: string; lista: AvisoAcompanhado[] }>({ texto: "", lista: [] });
+  useEffect(() => {
+    if (!analise) {
+      avisos.current = { texto: "", lista: [] };
+      return;
+    }
+    if (analise.manuscrito.bruto === avisos.current.texto) return; // já acompanhada (digitação)
+    avisos.current = { texto: analise.manuscrito.bruto, lista: analise.problemas.map((problema) => ({ problema, desde: 0 })) };
+  }, [analise]);
+
   // Depois do "Analisar", os avisos acompanham o texto: pouco depois da última
-  // alteração (tecla, correção rápida, sugestão aceita), a análise é refeita e
-  // os avisos já resolvidos somem. Se a análise já é deste texto, nada a fazer.
+  // tecla a análise é refeita, os avisos já resolvidos somem e vão para o
+  // histórico como correção manual. Se a análise já é deste texto, nada a fazer.
   useEffect(() => {
     if (!acompanhando || (analise?.manuscrito.bruto ?? "") === bruto) return;
     const t = setTimeout(() => {
-      setAnalise(bruto.trim().length > 0 ? iniciarRevisao(bruto) : null);
+      if (bruto.trim().length === 0) {
+        setAnalise(null);
+        return;
+      }
+      const nova = iniciarRevisao(bruto);
+      const base = avisos.current;
+      if (base.texto.length > 0) {
+        const { atuais, resolvidos } = acompanharAvisos(base.lista, base.texto, nova.problemas, bruto, Date.now());
+        avisos.current = { texto: bruto, lista: atuais };
+        if (resolvidos.length > 0) {
+          setHistorico((h) =>
+            resolvidos.reduce(
+              (acc, p) =>
+                registrar(acc, { origem: "edicao", descricao: tituloDaRegra(p.regraId) ?? p.mensagem, paragrafo: p.paragrafo }),
+              h,
+            ),
+          );
+        }
+      }
+      setAnalise(nova);
     }, ATRASO_REANALISE_MS);
     return () => clearTimeout(t);
   }, [acompanhando, bruto, analise]);

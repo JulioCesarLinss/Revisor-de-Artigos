@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { analisarTexto, cartaoDaRegra, entrar } from "./support/apoio";
+import { analisarTexto, cartaoDaRegra, editorDeTexto, entrar, TEXTO_EXEMPLO } from "./support/apoio";
 
 /** Histórico — estado vazio, registro da correção, filtros e limpeza. */
 test.describe("Histórico", () => {
@@ -41,6 +41,24 @@ test.describe("Histórico", () => {
     await expect(lista.getByRole("listitem")).toContainText("Parágrafo 1 — Espaço em excesso antes da pontuação");
     // Uma lista só: sem filtros por origem.
     await expect(page.getByRole("group", { name: "Filtrar por origem" })).toHaveCount(0);
+  });
+
+  test("erro corrigido digitando entra como correção manual", async ({ page }) => {
+    await page.goto("/revisar");
+    await analisarTexto(page);
+    const cartao = cartaoDaRegra(page, "Espaço em excesso antes da pontuação");
+    await expect(cartao).toHaveCount(1);
+    // Avisos que somem em menos de 4 s são da própria digitação e não contam.
+    await page.waitForTimeout(4_200);
+    await editorDeTexto(page).fill(TEXTO_EXEMPLO.replace("editorial .", "editorial."));
+    await expect(cartao).toHaveCount(0);
+
+    await page.getByRole("link", { name: "Histórico" }).click();
+    await expect(page.locator(".historico-stat").filter({ hasText: "Correções manuais" })).toContainText("1");
+    const linha = page.getByRole("region", { name: "Alterações registradas" }).getByRole("listitem");
+    await expect(linha).toHaveCount(1);
+    await expect(linha).toContainText("Correção manual");
+    await expect(linha).toContainText("Parágrafo 1 — Espaço em excesso antes da pontuação");
   });
 
   test("limpar histórico pede confirmação e esvazia a lista", async ({ page }) => {

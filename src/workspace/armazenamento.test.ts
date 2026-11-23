@@ -201,10 +201,13 @@ describe("workspace/armazenamento — persistência", () => {
     expect(carregarWorkspace(st)?.bruto).toBe("Texto atual."); // nada mudou
   });
 
-  test("contarPorOrigem separa manual × IA", () => {
-    const c = contarPorOrigem(WORKSPACE.historico);
-    expect(c).toEqual({ manual: 1, ia: 1, total: 2 });
-    expect(contarPorOrigem([])).toEqual({ manual: 0, ia: 0, total: 0 });
+  test("contarPorOrigem separa correção automática, correção manual e IA", () => {
+    const c = contarPorOrigem([
+      ...WORKSPACE.historico,
+      { id: 3, origem: "edicao", descricao: "Espaço duplo entre palavras", paragrafo: 2, quando: "10:06:00" },
+    ]);
+    expect(c).toEqual({ manual: 1, edicao: 1, ia: 1, total: 3 });
+    expect(contarPorOrigem([])).toEqual({ manual: 0, edicao: 0, ia: 0, total: 0 });
   });
 });
 

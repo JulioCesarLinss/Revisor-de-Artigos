@@ -158,6 +158,10 @@ export default function HistoricoPage() {
               <span>Correções automáticas</span>
             </div>
             <div className="historico-stat">
+              <strong>{contagem.edicao}</strong>
+              <span>Correções manuais</span>
+            </div>
+            <div className="historico-stat">
               <strong>{contagem.ia}</strong>
               <span>Sugestões da IA aceitas</span>
             </div>
@@ -171,17 +175,20 @@ export default function HistoricoPage() {
                 <li key={h.id}>
                   <span className={`historico-origem origem-${h.origem}`}>{ROTULO_ORIGEM[h.origem]}</span>
                   <span className="historico-desc">
-                    Parágrafo {h.paragrafo} — {descrever(h.descricao)}
+                    {h.paragrafo > 0 ? `Parágrafo ${h.paragrafo}` : "Artigo inteiro"} — {descrever(h.descricao)}
                   </span>
                   <span className="historico-quando">{h.quando}</span>
-                  <button
-                    className="btn historico-localizar"
-                    type="button"
-                    onClick={() => localizar(h.paragrafo)}
-                    title="Ir para o parágrafo no editor (fica destacado até você clicar nele)"
-                  >
-                    Localizar
-                  </button>
+                  {/* Sobre o artigo inteiro não há parágrafo para localizar. */}
+                  {h.paragrafo > 0 && (
+                    <button
+                      className="btn historico-localizar"
+                      type="button"
+                      onClick={() => localizar(h.paragrafo)}
+                      title="Ir para o parágrafo no editor (fica destacado até você clicar nele)"
+                    >
+                      Localizar
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>

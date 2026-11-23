@@ -39,6 +39,8 @@ test.describe("Revisão", () => {
     // Diagnóstico salvo (como após um pedido real), feito sobre uma versão anterior do texto.
     const textoAntigo = "INTRODUCAO\n\nOs dados foi coletados em campo ontem.\n\nOutro paragrafo sem erro nenhum aqui.";
     const textoAtual = `${textoAntigo}\n\nParagrafo novo escrito depois do diagnostico.`;
+    // A tela grava o artigo vazio ao abrir: espera ela abrir antes de trocar o que está salvo.
+    await expect(editorDeTexto(page)).toBeVisible();
     await page.evaluate(
       ([bruto, diagnosticado]) => {
         localStorage.setItem(
@@ -79,6 +81,8 @@ test.describe("Revisão", () => {
     await page.route("**/api/gemini", (rota) =>
       rota.request().method() === "GET" ? rota.fulfill({ json: { configurado: true } }) : rota.continue(),
     );
+    // A tela grava o artigo vazio ao abrir: espera ela abrir antes de trocar o que está salvo.
+    await expect(editorDeTexto(page)).toBeVisible();
     await page.evaluate((bruto) => {
       localStorage.setItem(
         "normareview.workspace",
@@ -142,6 +146,12 @@ test.describe("Revisão", () => {
     await itens.filter({ hasText: "Falta a seção de metodologia." }).getByRole("button", { name: "Já resolvi" }).click();
     await expect(itens).toHaveCount(2);
     await expect(page.locator(".resumo-item.total strong")).toHaveText("2");
+
+    // O que saiu da lista foi para o histórico.
+    await page.getByRole("link", { name: "Histórico" }).click();
+    const lista = page.getByRole("region", { name: "Alterações registradas" });
+    await expect(lista).toContainText("Parágrafo 3 — Gemini — Ortografia: Erro de grafia.");
+    await expect(lista).toContainText("Artigo inteiro — Marcado como resolvido — Estrutura: Falta a seção de metodologia.");
   });
 
   test("localizar destaca o trecho no manuscrito", async ({ page }) => {

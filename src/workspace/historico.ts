@@ -1,14 +1,18 @@
 /**
- * Registro de alterações com rastro (DC-13): cada entrada distingue se veio de
- * correção manual/rápida (determinística) ou de sugestão aceita da IA.
+ * Registro de alterações com rastro (DC-13). Origem de cada entrada:
+ * - "manual": botão "Aplicar correção" (correção automática das regras; o
+ *   nome ficou de versões antigas e continua salvo assim);
+ * - "edicao": o usuário corrigiu digitando e o erro sumiu (aviso das regras ou
+ *   apontamento do Gemini), ou resolveu um apontamento sobre o artigo;
+ * - "ia": sugestão do assistente aceita.
  */
 
-export type OrigemAlteracao = "manual" | "ia";
+export type OrigemAlteracao = "manual" | "edicao" | "ia";
 
 export interface RegistroAlteracao {
   id: number;
   origem: OrigemAlteracao;
-  /** "Aplicar correção" (determinística) ou descrição da sugestão IA. */
+  /** O erro corrigido (nome da regra ou o apontamento do Gemini). */
   descricao: string;
   paragrafo: number;
   quando: string;
@@ -40,5 +44,6 @@ export function registrar(
 
 export const ROTULO_ORIGEM: Record<OrigemAlteracao, string> = {
   manual: "Correção automática",
+  edicao: "Correção manual",
   ia: "Sugestão da IA aceita",
 };
