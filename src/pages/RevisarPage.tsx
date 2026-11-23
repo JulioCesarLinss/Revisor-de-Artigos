@@ -2,7 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { NOME_SERVICO, servicoDaChave, statusIA, sugerirReescrita } from "../ai/assistente";
 import { conferirComGemini, diagnosticarComGemini, geminiConfigurado } from "../ai/geminiCliente";
-import type { DiagnosticoGemini, ParagrafoNumerado, ResultadoDiagnostico } from "../ai/gemini";
+import {
+  executarConferencia,
+  executarDiagnostico,
+  type ApontamentoConferido,
+  type DiagnosticoGemini,
+  type ParagrafoNumerado,
+} from "../ai/gemini";
 import { carregarConfigIA } from "../perfil/perfil";
 import type { ConfiguracaoIA, SugestaoIA } from "../ai/types";
 import { aplicarCorrecao } from "../document/acoes";
@@ -12,7 +18,9 @@ import { importarTexto } from "../document/importar.js";
 import { iniciarRevisao, type AnaliseRevisao } from "../review/orquestrar";
 import type { Intervalo, Problema } from "../rules/types";
 import { InfoChaveIA } from "../ui/InfoChaveIA";
-import { PainelGemini, type Conferencia } from "../ui/PainelGemini";
+import { PainelGemini } from "../ui/PainelGemini";
+import { ResultadoAnaliseIA } from "../ui/ResultadoAnaliseIA";
+import { analiseMaisRecente, useAnaliseIA } from "./useAnaliseIA";
 import { ManuscritoPaginado } from "../ui/ManuscritoPaginado";
 import { PainelSecoes } from "../ui/PainelSecoes";
 import { PainelSugestao } from "../ui/PainelSugestao";
@@ -20,8 +28,8 @@ import { ProblemaCard } from "../ui/ProblemaCard";
 import { Resumo } from "../ui/Resumo";
 import { tituloDaRegra } from "../ui/rotulos";
 import { registrar, type RegistroAlteracao } from "../workspace/historico";
-import { ajustarTrechos, localizarApontamento, unirTrechos } from "../workspace/destaques.js";
-import { acompanharApontamentos, descreverApontamento, posicionarApontamentos } from "../workspace/apontamentos.js";
+import { ajustarTrechos, unirTrechos } from "../workspace/destaques.js";
+import { descreverApontamento } from "../workspace/apontamentos.js";
 import { acompanharAvisos, type AvisoAcompanhado } from "../workspace/avisos.js";
 import {
   ajustarFormatacao,
@@ -54,8 +62,6 @@ import { carregarBibliotecaNuvem, salvarArtigoNuvem, salvarIndiceNuvem } from ".
 const ATRASO_REANALISE_MS = 500;
 /** Teclas digitadas com menos que isso de intervalo viram um único passo do "Desfazer". */
 const PAUSA_NOVO_PASSO_MS = 1000;
-/** Quanto tempo o "Corrigido" do Conferir fica visível antes de o apontamento sair. */
-const TEMPO_CORRIGIDO_MS = 2000;
 
 /** Texto e formatação juntos: um passo do "Desfazer", e a base de `trechos` no estado da tela. */
 interface TextoFormatado {
@@ -278,25 +284,13 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
   // Ocupado quando há análise/versão em processamento ou sugestão IA pendente.
   const processando = ocupadoCom !== null || carregandoSugestao !== null;
 
-  // Diagnóstico com Gemini (DC-03): só pelo botão próprio do painel — o texto
-  // sai para o Google apenas quando o usuário pede. A análise local roda antes,
-  // então uma falha da IA não atrasa o fluxo.
-  // O diagnóstico vem do workspace salvo: ele sobrevive à troca de abas
-  // (esta tela desmonta ao navegar) até um novo pedido, outro arquivo ou exclusão.
-  // Ao abrir, cada apontamento ganha a posição do trecho no texto atual (os
-  // salvos por versões antigas não tinham), para acompanhar a edição.
-  const [diagnostico, setDiagnostico] = useState<ResultadoDiagnostico | null>(() => {
-    const d = salvo?.diagnostico ?? null;
-    return d?.ok ? { ...d, diagnosticos: posicionarApontamentos(d.diagnosticos, salvo!.bruto) } : d;
-  });
-  const [analisandoGemini, setAnalisandoGemini] = useState(false);
-  // Texto a que as posições dos apontamentos se referem.
-  const [textoDiagnosticado, setTextoDiagnosticado] = useState<string | null>(() =>
-    salvo?.diagnostico?.ok ? salvo.bruto : (salvo?.textoDiagnosticado ?? null),
-  );
-  const geminiOcupado = useRef(false);
+  // Análise do manuscrito com IA (avaliação do artigo + apontamentos), em dois
+  // quadros com o mesmo comportamento (useAnaliseIA): o Diagnóstico com Gemini
+  // usa a chave da plataforma (servidor); o Assistente opcional, a chave do
+  // usuário, chamada direto do navegador. O texto só sai quando o usuário pede.
+  // Cada análise fica salva com o artigo e sobrevive à troca de abas.
 
-  /** Registra no histórico apontamentos do Gemini que saíram da lista. */
+  /** Registra no histórico apontamentos da IA que saíram da lista. */
   const registrarApontamentos = useCallback((resolvidos: DiagnosticoGemini[], prefixo?: string) => {
     if (resolvidos.length === 0) return;
     setHistorico((h) =>
@@ -307,144 +301,80 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
     );
   }, []);
 
-  // O texto mudou: o apontamento de linguagem cujo trecho foi corrigido sai da
-  // lista (e do resumo) e vai para o histórico; os outros acompanham. Sem chamar o Gemini.
-  useEffect(() => {
-    if (!diagnostico?.ok || textoDiagnosticado === null || textoDiagnosticado === bruto) return;
-    const { diagnosticos, resolvidos } = acompanharApontamentos(diagnostico.diagnosticos, textoDiagnosticado, bruto);
-    setDiagnostico({ ...diagnostico, diagnosticos });
-    setTextoDiagnosticado(bruto);
-    registrarApontamentos(resolvidos);
-  }, [diagnostico, textoDiagnosticado, bruto, registrarApontamentos]);
-
-  /** Localizar um apontamento: todos os erros que a IA apontou no mesmo parágrafo. */
-  const localizarDiagnostico = useCallback(
-    (alvo: DiagnosticoGemini) => {
-      // Com a posição acompanhada, marca direto; os vizinhos do mesmo parágrafo também.
-      const naPosicao = alvo.posicao;
-      const doAlvo = naPosicao && posicoes.find((p) => p.inicio <= naPosicao.inicio && naPosicao.inicio <= p.fim);
-      if (naPosicao && doAlvo) {
-        const mesmos = (diagnostico?.ok ? diagnostico.diagnosticos : [alvo]).flatMap((d) =>
-          d.posicao && d.posicao.inicio >= doAlvo.inicio && d.posicao.inicio <= doAlvo.fim ? [d.posicao] : [],
-        );
-        const trechos = unirTrechos([naPosicao, ...mesmos]);
-        // O trecho foi apagado por inteiro: marca o parágrafo onde ele estava.
-        if (trechos.length === 0) return marcar(posicoes.indexOf(doAlvo) + 1);
-        pedidosLocalizar.current += 1;
-        setDestaque({ texto: bruto, trechos, pedido: pedidosLocalizar.current });
-        return;
-      }
-      const textos = posicoes.map((p) => bruto.slice(p.inicio, p.fim));
-      const achado = localizarApontamento(textos, alvo);
-      // Nada confiável no texto: marca o parágrafo que a IA citou.
-      if (!achado) return marcar(alvo.paragrafo);
-      const apontamentos = diagnostico?.ok ? diagnostico.diagnosticos : [alvo];
-      marcar(
-        achado.paragrafo,
-        apontamentos.flatMap((d) => {
-          const local = localizarApontamento(textos, d);
-          return local?.paragrafo === achado.paragrafo ? [local.posicao] : [];
-        }),
-      );
+  /** Marca trechos em posições absolutas do texto (Localizar de um apontamento). */
+  const destacar = useCallback(
+    (trechos: Intervalo[]) => {
+      pedidosLocalizar.current += 1;
+      setDestaque({ texto: bruto, trechos, pedido: pedidosLocalizar.current });
     },
-    [posicoes, bruto, diagnostico, marcar],
+    [bruto],
   );
 
-  /** Tira um apontamento da lista pelo id (o manuscrito não é tocado). */
-  const tirarApontamento = useCallback((id: number) => {
-    setDiagnostico((d) => (d?.ok ? { ...d, diagnosticos: d.diagnosticos.filter((a) => a.id !== id) } : d));
-  }, []);
+  const avisar = useCallback((mensagem: string) => setStatusSistema(mensagem), []);
 
-  /** "Já resolvi": o usuário tira um apontamento sobre o artigo (e ele vai para o histórico). */
-  const resolverApontamento = useCallback(
-    (id: number) => {
-      const alvo = diagnostico?.ok ? diagnostico.diagnosticos.find((d) => d.id === id) : undefined;
-      tirarApontamento(id);
-      if (alvo) registrarApontamentos([alvo], "Marcado como resolvido");
-      setStatusSistema("Apontamento do Gemini marcado como resolvido.");
-    },
-    [diagnostico, tirarApontamento, registrarApontamentos],
+  const plataforma = useAnaliseIA({
+    salvo: salvo ? { diagnostico: salvo.diagnostico ?? null, texto: salvo.bruto } : null,
+    bruto,
+    posicoes,
+    marcar,
+    destacar,
+    registrar: registrarApontamentos,
+    avisar,
+    diagnosticar: diagnosticarComGemini,
+    conferir: conferirComGemini,
+    nome: "Diagnóstico do Gemini",
+  });
+
+  // Assistente opcional: a mesma análise com a chave do usuário (por enquanto, só Gemini).
+  const chaveGeminiUsuario = configIA && servicoDaChave(configIA.apiKey) === "gemini" ? configIA.apiKey.trim() : null;
+  const diagnosticarComChave = useCallback(
+    (paragrafos: ParagrafoNumerado[]) => executarDiagnostico(paragrafos, chaveGeminiUsuario ?? "", undefined, "usuario"),
+    [chaveGeminiUsuario],
   );
+  const conferirComChave = useCallback(
+    (paragrafos: ParagrafoNumerado[], apontamento: ApontamentoConferido) =>
+      executarConferencia(paragrafos, apontamento, chaveGeminiUsuario ?? "", undefined, "usuario"),
+    [chaveGeminiUsuario],
+  );
+  const assistente = useAnaliseIA({
+    salvo: salvo ? { diagnostico: salvo.diagnosticoAssistente ?? null, texto: salvo.bruto } : null,
+    bruto,
+    posicoes,
+    marcar,
+    destacar,
+    registrar: registrarApontamentos,
+    avisar,
+    diagnosticar: diagnosticarComChave,
+    conferir: conferirComChave,
+    nome: "Análise do assistente",
+  });
+
+  /** O resumo conta só a análise de IA mais recente (as duas apontariam o mesmo). */
+  const diagnosticoNoResumo = analiseMaisRecente(plataforma.diagnostico, assistente.diagnostico);
 
   /**
-   * "Conferir" de um apontamento sobre o artigo: vai o texto atual e o
-   * apontamento; o Gemini diz se foi resolvido. Resolvido: mostra
-   * "Corrigido" por um instante e tira da lista; senão, diz o que falta.
-   */
-  const [conferencias, setConferencias] = useState<Record<number, Conferencia>>({});
-  const conferirApontamento = useCallback(
-    async (alvo: DiagnosticoGemini) => {
-      const id = alvo.id;
-      if (id === undefined) return;
-      setConferencias((c) => ({ ...c, [id]: { estado: "conferindo" } }));
-      const paragrafos = posicoes.map((p) => ({ index: p.index, texto: bruto.slice(p.inicio, p.fim) }));
-      const r = await conferirComGemini(paragrafos, {
-        paragrafo: alvo.paragrafo,
-        categoria: alvo.categoria,
-        descricao: alvo.descricao,
-        sugestao: alvo.sugestao,
-      });
-      const resultado: Conferencia = !r.ok
-        ? { estado: "erro", motivo: r.motivo }
-        : r.resolvido
-          ? { estado: "resolvido", explicacao: r.explicacao }
-          : { estado: "pendente", explicacao: r.explicacao };
-      setConferencias((c) => ({ ...c, [id]: resultado }));
-      if (resultado.estado === "resolvido") {
-        setStatusSistema("Apontamento conferido pelo Gemini: corrigido.");
-        setTimeout(() => {
-          tirarApontamento(id);
-          registrarApontamentos([alvo], "Conferido pelo Gemini");
-        }, TEMPO_CORRIGIDO_MS);
-      }
-    },
-    [posicoes, bruto, tirarApontamento, registrarApontamentos],
-  );
-
-  /** Exclui o diagnóstico atual (mantém o manuscrito e a análise normativa). */
-  const excluirDiagnostico = useCallback(() => {
-    setDiagnostico(null);
-    setConferencias({});
-    setTextoDiagnosticado(null);
-    setStatusSistema("Diagnóstico do Gemini excluído.");
-  }, []);
-
-  const pedirDiagnostico = useCallback(async (paragrafos: ParagrafoNumerado[], texto: string) => {
-    if (geminiAtivo === false || geminiOcupado.current) return; // uma consulta por vez
-    geminiOcupado.current = true;
-    setDiagnostico(null);
-    setConferencias({});
-    setAnalisandoGemini(true);
-    try {
-      const diagnosticado = await diagnosticarComGemini(paragrafos);
-      // As posições valem para o texto enviado; se ele mudou durante a espera,
-      // o acompanhamento acima ajusta no próximo render.
-      setDiagnostico(
-        diagnosticado.ok
-          ? { ...diagnosticado, diagnosticos: posicionarApontamentos(diagnosticado.diagnosticos, texto) }
-          : diagnosticado,
-      );
-      setTextoDiagnosticado(texto);
-      if (diagnosticado.ok) {
-        setStatusSistema(`Diagnóstico do Gemini — ${diagnosticado.diagnosticos.length} apontamento(s).`);
-      }
-    } finally {
-      geminiOcupado.current = false;
-      setAnalisandoGemini(false);
-    }
-  }, [geminiAtivo]);
-
-  /**
-   * Botão do painel do Gemini: reanalisa pelas regras na hora, para a
+   * Botões de análise com IA: reanalisa pelas regras na hora, para a
    * numeração dos parágrafos enviada bater com o texto atual (e o
-   * "Localizar" levar ao lugar certo), e então pede o diagnóstico.
+   * "Localizar" levar ao lugar certo), e então pede a análise.
    */
+  const pedirAnalise = useCallback(
+    (alvo: typeof plataforma) => {
+      const resultado = iniciarRevisao(bruto);
+      setAnalise(resultado);
+      setAcompanhando(true);
+      void alvo.pedir(resultado.manuscrito.paragrafos, bruto);
+    },
+    [bruto],
+  );
   const pedirGemini = useCallback(() => {
-    const resultado = iniciarRevisao(bruto);
-    setAnalise(resultado);
-    setAcompanhando(true);
-    void pedirDiagnostico(resultado.manuscrito.paragrafos, bruto);
-  }, [bruto, pedirDiagnostico]);
+    if (geminiAtivo === false) return;
+    pedirAnalise(plataforma);
+  }, [geminiAtivo, pedirAnalise, plataforma]);
+  const pedirAssistente = useCallback(() => {
+    if (!chaveGeminiUsuario) return;
+    pedirAnalise(assistente);
+  }, [chaveGeminiUsuario, pedirAnalise, assistente]);
+  const analisandoIA = plataforma.carregando || assistente.carregando;
 
   /** Botão "Analisar" (ou Ctrl+Enter): verifica o texto e liga o acompanhamento. */
   const analisar = useCallback(() => {
@@ -507,12 +437,25 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
       textoOriginal,
       historico,
       formatacao: formato.trechos,
-      diagnostico,
-      textoDiagnosticado,
+      diagnostico: plataforma.diagnostico,
+      textoDiagnosticado: plataforma.textoDiagnosticado,
+      diagnosticoAssistente: assistente.diagnostico,
+      textoDiagnosticadoAssistente: assistente.textoDiagnosticado,
       arquivo: nomeArquivo,
       nome: nomeArtigo,
     }),
-    [bruto, textoOriginal, historico, formato.trechos, diagnostico, textoDiagnosticado, nomeArquivo, nomeArtigo],
+    [
+      bruto,
+      textoOriginal,
+      historico,
+      formato.trechos,
+      plataforma.diagnostico,
+      plataforma.textoDiagnosticado,
+      assistente.diagnostico,
+      assistente.textoDiagnosticado,
+      nomeArquivo,
+      nomeArtigo,
+    ],
   );
   const brutoAtual = useRef(bruto);
   brutoAtual.current = bruto;
@@ -703,9 +646,8 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
     selecao.current = { inicio: 0, fim: 0 };
     setTextoOriginal(resultado.texto); // guarda o original do upload p/ "Voltar ao original"
     setDestaque(null); // o texto novo invalida um destaque antigo
-    setDiagnostico(null); // o diagnóstico anterior pertencia ao texto anterior
-    setConferencias({});
-    setTextoDiagnosticado(null);
+    plataforma.limpar(); // as análises de IA pertenciam ao texto anterior
+    assistente.limpar();
     setAnalise(null); // avisos do texto anterior não valem para o novo
     setAcompanhando(false);
     setPilhaDesfazer([]); // o "Desfazer" não atravessa para outro arquivo
@@ -814,7 +756,7 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
     <main className="app-main" id="conteudo">
       <section className="canvas-col" aria-label="Manuscrito em revisão">
         {/* H1: a linha de status só existe quando há status a mostrar. */}
-        {(carregandoSugestao !== null || ocupadoCom !== null || analisandoGemini || statusSistema) && (
+        {(carregandoSugestao !== null || ocupadoCom !== null || analisandoIA || statusSistema) && (
           <p className="status-sistema" role="status" aria-live="polite">
             {carregandoSugestao !== null ? (
               <>
@@ -826,10 +768,10 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
                 <span className="status-spinner" aria-hidden="true" />
                 {ocupadoCom}
               </>
-            ) : analisandoGemini ? (
+            ) : analisandoIA ? (
               <>
                 <span className="status-spinner" aria-hidden="true" />
-                Diagnóstico do Gemini em andamento…
+                {assistente.carregando ? "Análise do assistente em andamento…" : "Diagnóstico do Gemini em andamento…"}
               </>
             ) : (
               statusSistema
@@ -1008,7 +950,7 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
       </section>
 
       <aside className="inspector" aria-label="Resultado da análise">
-        <Resumo analise={analise} diagnostico={diagnostico} />
+        <Resumo analise={analise} diagnostico={diagnosticoNoResumo} />
 
         {/* Sprint 3 — assistência IA (opcional): a chave é informada no Perfil. */}
         <div className="resumo-card">
@@ -1022,12 +964,53 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
             {estadoIA === "pronta" ? (
               <>
                 <p className="ia-status ia-pronta">
-                  Assistente configurado com {configIA ? NOME_SERVICO[servicoDaChave(configIA.apiKey)] : "IA"}. As
-                  sugestões de reescrita têm caráter consultivo e não substituem a análise normativa.
+                  Assistente configurado com {configIA ? NOME_SERVICO[servicoDaChave(configIA.apiKey)] : "IA"}.{" "}
+                  {chaveGeminiUsuario
+                    ? "Gera a mesma análise do diagnóstico — avaliação do artigo e apontamentos — usando a sua chave."
+                    : "A análise completa do artigo requer uma chave do Gemini; com esta chave, use o Sugerir com IA de cada aviso."}{" "}
+                  Os resultados têm caráter consultivo e não substituem a análise normativa.
                 </p>
-                <Link className="btn" to="/perfil" state={{ focoChave: true }}>
-                  Gerenciar no Perfil
-                </Link>
+                <div className="gemini-acoes">
+                  {chaveGeminiUsuario && (
+                    <button
+                      className="btn btn-primary"
+                      type="button"
+                      onClick={pedirAssistente}
+                      disabled={bruto.trim().length === 0 || processando || analisandoIA}
+                      aria-busy={assistente.carregando || undefined}
+                      title={
+                        bruto.trim().length > 0
+                          ? "Envia o manuscrito ao Gemini com a sua chave e mostra a análise aqui"
+                          : "Cole, digite ou anexe o manuscrito para gerar a análise"
+                      }
+                    >
+                      {assistente.diagnostico === null ? "Gerar análise com IA" : "Gerar nova análise"}
+                    </button>
+                  )}
+                  <Link className="btn" to="/perfil" state={{ focoChave: true }}>
+                    Gerenciar no Perfil
+                  </Link>
+                </div>
+                {assistente.carregando && (
+                  <p className="ia-status">
+                    <span className="status-spinner status-spinner-sm" aria-hidden="true" /> Analisando o manuscrito com
+                    a sua chave…
+                  </p>
+                )}
+                {!assistente.carregando && assistente.diagnostico !== null && (
+                  <ResultadoAnaliseIA
+                    resultado={assistente.diagnostico}
+                    tituloErro="Não foi possível gerar a análise"
+                    rotuloLista="Apontamentos do assistente"
+                    podeConferir
+                    onFocar={assistente.localizar}
+                    onResolver={assistente.resolver}
+                    onConferir={assistente.conferirApontamento}
+                    conferencias={assistente.conferencias}
+                    onExcluir={assistente.excluir}
+                    rotuloExcluir="Excluir análise"
+                  />
+                )}
               </>
             ) : (
               <>
@@ -1047,15 +1030,15 @@ function EditorRevisao({ mensagemInicial, aguardarAnalise, aoTrocarArtigo }: Pro
         {/* Diagnóstico do Gemini — só quando o usuário pede, no botão do painel. */}
         <PainelGemini
           configurado={geminiAtivo !== false}
-          carregando={analisandoGemini}
-          resultado={diagnostico}
-          podePedir={bruto.trim().length > 0 && !processando && !analisandoGemini}
+          carregando={plataforma.carregando}
+          resultado={plataforma.diagnostico}
+          podePedir={bruto.trim().length > 0 && !processando && !analisandoIA}
           onPedir={pedirGemini}
-          onFocar={localizarDiagnostico}
-          onExcluir={excluirDiagnostico}
-          onResolver={resolverApontamento}
-          onConferir={conferirApontamento}
-          conferencias={conferencias}
+          onFocar={plataforma.localizar}
+          onExcluir={plataforma.excluir}
+          onResolver={plataforma.resolver}
+          onConferir={plataforma.conferirApontamento}
+          conferencias={plataforma.conferencias}
         />
 
         {analise && <PainelSecoes secoes={analise.secoes} onFocarSecao={(indices) => {

@@ -142,10 +142,13 @@ export function PainelAjuda({ onFechar }: Props) {
                 <strong>Conferir</strong> ou a marcação manual por <strong>Já resolvi</strong>.
               </li>
               <li>
-                <strong>Assistente de reescrita</strong>: requer uma chave de API própria (Gemini ou OpenAI),
-                informada na aba <strong>Perfil</strong>, e habilita o botão <strong>Sugerir com IA</strong> em cada
-                aviso. A chave permanece apenas na sessão do navegador e é descartada ao fechar a aba ou sair da
-                conta.
+                <strong>Assistente de IA</strong>: utiliza uma chave de API própria, informada na aba{" "}
+                <strong>Perfil</strong>, como alternativa à IA da plataforma. Com chave do Gemini, o botão{" "}
+                <strong>Gerar análise com IA</strong> produz a mesma análise do diagnóstico, com os mesmos recursos de
+                acompanhamento; com chave do Gemini ou da OpenAI, o botão <strong>Sugerir com IA</strong> de cada
+                aviso propõe uma reescrita do parágrafo. A chave permanece apenas na sessão do navegador e é
+                descartada ao fechar a aba ou sair da conta. Quando as duas análises existem, o resumo considera
+                apenas a mais recente.
               </li>
               <li>
                 Os recursos de IA têm caráter consultivo: a conformidade normativa é determinada pelo motor de regras

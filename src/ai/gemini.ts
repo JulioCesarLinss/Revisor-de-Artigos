@@ -78,8 +78,23 @@ export const ROTULO_NIVEL: Record<NivelAvaliacao, string> = {
 };
 
 export type ResultadoDiagnostico =
-  | { ok: true; resumo: string; diagnosticos: DiagnosticoGemini[]; truncado: boolean; avaliacao?: AvaliacaoArtigo }
+  | {
+      ok: true;
+      resumo: string;
+      diagnosticos: DiagnosticoGemini[];
+      truncado: boolean;
+      avaliacao?: AvaliacaoArtigo;
+      /** Quando a análise chegou (preenchido no navegador): o resumo usa a mais recente. */
+      geradoEm?: number;
+    }
   | { ok: false; motivo: string };
+
+/**
+ * De quem é a chave usada: a do servidor (diagnóstico da plataforma) ou a do
+ * usuário (assistente opcional, chamado direto do navegador). Muda só o texto
+ * dos erros — o que conferir e onde.
+ */
+export type OrigemChave = "servidor" | "usuario";
 
 /**
  * Contagem dos apontamentos por severidade — base do resumo da análise na tela
@@ -307,12 +322,27 @@ interface Falha {
   tentarProximo: boolean;
 }
 
-function falhaHttp(status: number): Falha {
+function falhaHttp(status: number, origem: OrigemChave): Falha {
+  if (status === 400 && origem === "usuario") {
+    return { motivo: "O Gemini recusou a chave informada. Confira a chave no Perfil.", tentarProximo: false };
+  }
   if (status === 401 || status === 403) {
-    return { motivo: "Chave da API do Gemini inválida ou sem permissão. Confira a variável GEMINI_API_KEY no servidor.", tentarProximo: false };
+    return {
+      motivo:
+        origem === "usuario"
+          ? "Chave do Gemini inválida ou sem permissão. Confira a chave no Perfil."
+          : "Chave da API do Gemini inválida ou sem permissão. Confira a variável GEMINI_API_KEY no servidor.",
+      tentarProximo: false,
+    };
   }
   if (status === 429) {
-    return { motivo: "O Gemini recebeu muitas requisições neste momento. Aguarde um instante e tente de novo.", tentarProximo: false };
+    return {
+      motivo:
+        origem === "usuario"
+          ? "A cota da sua chave do Gemini foi atingida (limite por minuto ou por dia). Aguarde e tente de novo."
+          : "O Gemini recebeu muitas requisições neste momento. Aguarde um instante e tente de novo.",
+      tentarProximo: false,
+    };
   }
   if (status === 404) return { motivo: "O modelo do Gemini não está disponível.", tentarProximo: true };
   if (status >= 500) {
@@ -333,6 +363,7 @@ async function chamarGemini(
   chave: string,
   consulta: Consulta,
   prazoMs: number,
+  origem: OrigemChave,
 ): Promise<{ ok: true; conteudo: string; semConteudo: boolean; estourou: boolean } | { ok: false; falha: Falha }> {
   const controle = new AbortController();
   const timer = setTimeout(() => controle.abort(), prazoMs);
@@ -352,7 +383,7 @@ async function chamarGemini(
       }),
     });
 
-    if (!resposta.ok) return { ok: false, falha: falhaHttp(resposta.status) };
+    if (!resposta.ok) return { ok: false, falha: falhaHttp(resposta.status, origem) };
 
     const dados = (await resposta.json()) as {
       candidates?: {
@@ -388,6 +419,7 @@ async function consultar<R extends { ok: true }>(
   consulta: Consulta,
   interpretar: (conteudo: string) => R | { ok: false; motivo: string },
   prazoTotalMs: number,
+  origem: OrigemChave,
 ): Promise<R | { ok: false; motivo: string }> {
   const fim = Date.now() + prazoTotalMs;
   let ultima: Falha = { motivo: MOTIVO_FORMATO, tentarProximo: false };
@@ -396,7 +428,7 @@ async function consultar<R extends { ok: true }>(
     // Sem tempo para outra tentativa: devolve o motivo da anterior antes de a
     // Vercel encerrar a função no meio (o que viraria um erro sem explicação).
     if (tentativa > 0 && restante < MINIMO_NOVA_TENTATIVA_MS) return { ok: false, motivo: ultima.motivo };
-    const chamada = await chamarGemini(modelo, chave, consulta, Math.max(restante, 0));
+    const chamada = await chamarGemini(modelo, chave, consulta, Math.max(restante, 0), origem);
     if (!chamada.ok) {
       if (chamada.falha.tentarProximo) {
         ultima = chamada.falha;
@@ -425,12 +457,14 @@ const MOTIVO_INDISPONIVEL = "O diagnóstico com Gemini não está disponível no
 /**
  * Pede ao Gemini um diagnóstico do manuscrito inteiro. Nunca lança: qualquer
  * problema vira { ok: false } com motivo em português (H9 / DC-03).
- * A chave é passada pelo chamador (o servidor), nunca lida do navegador.
+ * A chave é passada pelo chamador: a do servidor (api/gemini) ou, no
+ * assistente opcional, a do usuário, chamada direto do navegador.
  */
 export async function executarDiagnostico(
   paragrafos: ParagrafoNumerado[],
   chave: string,
   prazoTotalMs: number = PRAZO_TOTAL_MS,
+  origem: OrigemChave = "servidor",
 ): Promise<ResultadoDiagnostico> {
   if (chave.trim().length === 0) return { ok: false, motivo: MOTIVO_INDISPONIVEL };
 
@@ -445,6 +479,7 @@ export async function executarDiagnostico(
     },
     (conteudo) => interpretarDiagnostico(conteudo, limite),
     prazoTotalMs,
+    origem,
   );
   return resultado.ok ? { ...resultado, truncado } : resultado;
 }
@@ -512,6 +547,7 @@ export async function executarConferencia(
   apontamento: ApontamentoConferido,
   chave: string,
   prazoTotalMs: number = PRAZO_TOTAL_MS,
+  origem: OrigemChave = "servidor",
 ): Promise<ResultadoConferencia> {
   if (chave.trim().length === 0) return { ok: false, motivo: MOTIVO_INDISPONIVEL };
 
@@ -533,6 +569,7 @@ export async function executarConferencia(
     },
     interpretarConferencia,
     prazoTotalMs,
+    origem,
   );
   return resultado;
 }

@@ -41,6 +41,8 @@ export function estadoVazio(): EstadoWorkspace {
     formatacao: [],
     diagnostico: null,
     textoDiagnosticado: null,
+    diagnosticoAssistente: null,
+    textoDiagnosticadoAssistente: null,
     arquivo: null,
     nome: null,
   };

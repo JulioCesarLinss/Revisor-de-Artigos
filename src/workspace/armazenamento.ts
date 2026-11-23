@@ -36,6 +36,9 @@ export interface EstadoWorkspace {
   diagnostico?: ResultadoDiagnostico | null;
   /** Texto a que as posições dos apontamentos se referem (acompanha a edição). */
   textoDiagnosticado?: string | null;
+  /** A mesma análise, feita pelo assistente opcional com a chave do usuário. */
+  diagnosticoAssistente?: ResultadoDiagnostico | null;
+  textoDiagnosticadoAssistente?: string | null;
   /** Nome do arquivo anexado: dá nome ao artigo e ao .docx exportado. */
   arquivo?: string | null;
   /** Nome dado pelo usuário na aba Artigos; vale sobre o nome automático. */
@@ -99,6 +102,7 @@ function ehDiagnostico(v: unknown): v is ResultadoDiagnostico {
   if (d.ok === false) return typeof d.motivo === "string";
   if (d.ok !== true || typeof d.resumo !== "string" || typeof d.truncado !== "boolean") return false;
   if (d.avaliacao !== undefined && !ehAvaliacao(d.avaliacao)) return false;
+  if (d.geradoEm !== undefined && typeof d.geradoEm !== "number") return false;
   return Array.isArray(d.diagnosticos) && d.diagnosticos.every(ehApontamento);
 }
 
@@ -146,6 +150,9 @@ export function validarWorkspace(dados: unknown): EstadoWorkspace | null {
     // Diagnóstico malformado é descartado (nunca derruba o manuscrito).
     diagnostico: ehDiagnostico(d.diagnostico) ? d.diagnostico : null,
     textoDiagnosticado: typeof d.textoDiagnosticado === "string" ? d.textoDiagnosticado : null,
+    diagnosticoAssistente: ehDiagnostico(d.diagnosticoAssistente) ? d.diagnosticoAssistente : null,
+    textoDiagnosticadoAssistente:
+      typeof d.textoDiagnosticadoAssistente === "string" ? d.textoDiagnosticadoAssistente : null,
     arquivo: typeof d.arquivo === "string" ? d.arquivo : null,
     nome: typeof d.nome === "string" && d.nome.trim().length > 0 ? d.nome.trim() : null,
   };

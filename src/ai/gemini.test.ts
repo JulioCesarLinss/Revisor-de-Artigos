@@ -293,6 +293,22 @@ describe("ai/gemini — executarDiagnostico (tentativas e prazo)", () => {
     expect(urls.length).toBe(2);
   });
 
+  test("com a chave do usuário, os erros dizem para conferir a chave no Perfil", async () => {
+    simular(async () => new Response("", { status: 403 }));
+    const r = await executarDiagnostico(PARAGRAFOS, "AIzaUsuario", undefined, "usuario");
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.motivo).toContain("Perfil");
+
+    simular(async () => new Response("", { status: 429 }));
+    const cota = await executarDiagnostico(PARAGRAFOS, "AIzaUsuario", undefined, "usuario");
+    if (!cota.ok) expect(cota.motivo).toContain("cota da sua chave");
+
+    // A do servidor continua apontando a variável de ambiente.
+    simular(async () => new Response("", { status: 403 }));
+    const servidor = await executarDiagnostico(PARAGRAFOS, "chave");
+    if (!servidor.ok) expect(servidor.motivo).toContain("GEMINI_API_KEY");
+  });
+
   test("chave recusada (401): não tenta outro modelo", async () => {
     const urls = simular(async () => new Response("", { status: 401 }));
     const r = await executarDiagnostico(PARAGRAFOS, "chave");

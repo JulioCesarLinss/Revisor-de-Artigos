@@ -1,12 +1,8 @@
 import { useState } from "react";
-import { ehDoArtigo, ROTULO_NIVEL, type DiagnosticoGemini, type ResultadoDiagnostico } from "../ai/gemini";
+import type { DiagnosticoGemini, ResultadoDiagnostico } from "../ai/gemini";
+import { ResultadoAnaliseIA, type Conferencia } from "./ResultadoAnaliseIA";
 
-/** Estado do "Conferir" de um apontamento sobre o artigo. */
-export type Conferencia =
-  | { estado: "conferindo" }
-  | { estado: "resolvido"; explicacao: string }
-  | { estado: "pendente"; explicacao: string }
-  | { estado: "erro"; motivo: string };
+export type { Conferencia };
 
 interface Props {
   /** Verdadeiro quando o Gemini está disponível (chave no servidor). */
@@ -31,10 +27,6 @@ interface Props {
   conferencias: Record<number, Conferencia>;
 }
 
-const ROTULO_SEVERIDADE = { alta: "Alta", media: "Média", baixa: "Baixa" } as const;
-/** Reaproveita os badges da análise normativa (mesmas cores e formas). */
-const CLASSE_SEVERIDADE = { alta: "critico", media: "advertencia", baixa: "observacao" } as const;
-
 /**
  * Diagnóstico do manuscrito com o Gemini, pedido no botão próprio do painel.
  * Segunda opinião sobre o texto inteiro: sempre abaixo da análise normativa
@@ -53,8 +45,6 @@ export function PainelGemini({
   onConferir,
   conferencias,
 }: Props) {
-  const falha = resultado !== null && !resultado.ok;
-  const sucesso = resultado !== null && resultado.ok;
   const [instrucoesAbertas, setInstrucoesAbertas] = useState(true);
 
   return (
@@ -118,139 +108,20 @@ export function PainelGemini({
         </p>
       )}
 
-      {/* H9: o quê (erro) → por quê (motivo). A recuperação é o botão acima. */}
-      {!carregando && falha && (
-        <div className="ia-erro" role="alert">
-          <strong className="ia-erro-titulo">Não foi possível consultar o Gemini</strong>
-          <span>{resultado!.motivo}</span>
-        </div>
-      )}
-
-      {!carregando && sucesso && (
-        <>
-          {/* Opinião da IA sobre o texto como artigo — não é aprovação normativa (DC-02). */}
-          {resultado!.avaliacao && (
-            <div className={`gemini-avaliacao nivel-${resultado!.avaliacao.nivel}`}>
-              <p className="gemini-avaliacao-rotulo">Avaliação geral do manuscrito</p>
-              <p className="gemini-avaliacao-nivel">{ROTULO_NIVEL[resultado!.avaliacao.nivel]}</p>
-              {resultado!.avaliacao.faltando.length > 0 && (
-                <p className="gemini-avaliacao-falta">
-                  Elementos ausentes: {resultado!.avaliacao.faltando.join(", ")}
-                </p>
-              )}
-            </div>
-          )}
-          {resultado!.resumo && <p className="gemini-resumo">{resultado!.resumo}</p>}
-          {resultado!.truncado && (
-            <p className="gemini-aviso">
-              Diagnóstico feito sobre o início do texto: o manuscrito excede o limite de envio ao Gemini.
-            </p>
-          )}
-
-          {resultado!.diagnosticos.length === 0 ? (
-            <p className="ia-status">Nenhum apontamento pendente. Peça um novo diagnóstico para conferir o texto atual.</p>
-          ) : (
-            <ul className="gemini-lista" role="list" aria-label="Diagnósticos do Gemini">
-              {resultado!.diagnosticos.map((d, i) => {
-                const doArtigo = ehDoArtigo(d);
-                const conferencia = d.id !== undefined ? conferencias[d.id] : undefined;
-                const conferindo = conferencia?.estado === "conferindo";
-                return (
-                <li key={d.id ?? `${d.paragrafo}-${i}`} className="gemini-item">
-                  <span className="gemini-topo">
-                    {/* O chip visual é o mesmo da análise normativa. */}
-                    <span className="chip-regra">{d.categoria}</span>
-                    <span className={`badge-sev ${CLASSE_SEVERIDADE[d.severidade]}`}>
-                      {ROTULO_SEVERIDADE[d.severidade]}
-                    </span>
-                  </span>
-                  <p className="gemini-desc">
-                    {d.paragrafo > 0 ? (
-                      <>
-                        <strong>Parágrafo {d.paragrafo}:</strong>{" "}
-                      </>
-                    ) : (
-                      <>
-                        <strong>Documento inteiro:</strong>{" "}
-                      </>
-                    )}
-                    {d.descricao}
-                  </p>
-                  {d.sugestao && (
-                    <p className="gemini-sugestao">
-                      <strong>Sugestão:</strong> {d.sugestao}
-                    </p>
-                  )}
-                  {/* Resultado do "Conferir": o que o Gemini achou do texto revisado. */}
-                  {conferencia && conferencia.estado !== "conferindo" && (
-                    <p className={`gemini-conferencia ${conferencia.estado}`} role="status">
-                      {conferencia.estado === "resolvido" && (
-                        <>
-                          <strong>Corrigido.</strong> {conferencia.explicacao}
-                        </>
-                      )}
-                      {conferencia.estado === "pendente" && (
-                        <>
-                          <strong>Ainda não resolvido.</strong> {conferencia.explicacao}
-                        </>
-                      )}
-                      {conferencia.estado === "erro" && (
-                        <>
-                          <strong>Não foi possível conferir.</strong> {conferencia.motivo}
-                        </>
-                      )}
-                    </p>
-                  )}
-                  <div className="problema-acoes">
-                    {/* Erros de linguagem saem sozinhos ao corrigir; os do artigo, só aqui. */}
-                    {doArtigo && configurado && d.id !== undefined && (
-                      <button
-                        className="btn btn-primary"
-                        type="button"
-                        onClick={() => onConferir(d)}
-                        disabled={conferindo || conferencia?.estado === "resolvido"}
-                        aria-busy={conferindo || undefined}
-                        title="Envia o texto atual ao Gemini para conferir só este apontamento"
-                      >
-                        {conferindo ? "Conferindo…" : "Conferir"}
-                      </button>
-                    )}
-                    {/* Funciona mesmo depois de editar o texto: a posição acompanha a edição. */}
-                    {d.paragrafo > 0 && (
-                      <button className="btn" type="button" onClick={() => onFocar(d)}>
-                        Localizar no manuscrito
-                      </button>
-                    )}
-                    {doArtigo && d.id !== undefined && (
-                      <button
-                        className="btn"
-                        type="button"
-                        onClick={() => onResolver(d.id!)}
-                        title="Tira este apontamento da lista; o manuscrito não muda"
-                      >
-                        Já resolvi
-                      </button>
-                    )}
-                  </div>
-                </li>
-                );
-              })}
-            </ul>
-          )}
-        </>
-      )}
-      {/* O resultado fica até o usuário pedir um novo, trocar de arquivo ou excluir. */}
+      {/* O mesmo resultado do Assistente opcional (ResultadoAnaliseIA). */}
       {!carregando && resultado !== null && (
-        <div className="gemini-acoes">
-          <button
-            className="btn"
-            type="button"
-            onClick={onExcluir}
-            title="Remove este diagnóstico da tela; o manuscrito e a análise normativa continuam"
-          >
-            Excluir diagnóstico
-          </button>
-        </div>
+        <ResultadoAnaliseIA
+          resultado={resultado}
+          tituloErro="Não foi possível consultar o Gemini"
+          rotuloLista="Diagnósticos do Gemini"
+          podeConferir={configurado}
+          onFocar={onFocar}
+          onResolver={onResolver}
+          onConferir={onConferir}
+          conferencias={conferencias}
+          onExcluir={onExcluir}
+          rotuloExcluir="Excluir diagnóstico"
+        />
       )}
     </div>
   );

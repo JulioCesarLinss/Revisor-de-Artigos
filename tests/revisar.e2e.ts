@@ -154,6 +154,73 @@ test.describe("Revisão", () => {
     await expect(lista).toContainText("Artigo inteiro — Marcado como resolvido — Estrutura: Falta a seção de metodologia.");
   });
 
+  test("assistente com a chave do usuário gera a mesma análise do diagnóstico; o resumo conta só a mais recente", async ({ page }) => {
+    const texto = ["INTRODUCAO", "Os dados foi coletados em campo ontem.", "Outro paragrafo sem erro nenhum aqui."].join("\n\n");
+    // Diagnóstico da plataforma já salvo (mais antigo), com 1 apontamento.
+    await expect(editorDeTexto(page)).toBeVisible();
+    await page.evaluate((bruto) => {
+      localStorage.setItem(
+        "normareview.workspace",
+        JSON.stringify({
+          bruto,
+          textoOriginal: null,
+          historico: [],
+          textoDiagnosticado: bruto,
+          diagnostico: {
+            ok: true,
+            resumo: "Diagnóstico antigo.",
+            truncado: false,
+            geradoEm: 1,
+            diagnosticos: [{ paragrafo: 2, trecho: "dados foi coletados", tipo: "linguagem", categoria: "Gramática", descricao: "Concordância.", sugestao: "os dados foram", severidade: "alta" }],
+          },
+        }),
+      );
+    }, texto);
+
+    // O Gemini (chamado direto do navegador com a chave do usuário) é simulado.
+    let pedidos = 0;
+    await page.route("**/generativelanguage.googleapis.com/**", async (rota) => {
+      pedidos += 1;
+      expect(rota.request().headers()["x-goog-api-key"]).toBe("AIzaChaveDoUsuario");
+      const conteudo = JSON.stringify({
+        avaliacao: { nivel: "insuficiente", faltando: ["Metodologia"] },
+        resumo: "Faltam seções.",
+        diagnosticos: [
+          { paragrafo: 0, trecho: "", tipo: "conteudo", categoria: "Estrutura", descricao: "Falta a metodologia.", sugestao: "Inclua a seção.", severidade: "alta" },
+          { paragrafo: 2, trecho: "dados foi coletados", tipo: "linguagem", categoria: "Gramática", descricao: "Concordância verbal.", sugestao: "os dados foram", severidade: "alta" },
+        ],
+      });
+      await rota.fulfill({ json: { candidates: [{ content: { parts: [{ text: conteudo }] } }] } });
+    });
+
+    // A chave é informada no Perfil.
+    await page.goto("/revisar");
+    await page.getByRole("link", { name: "Ativar assistente de IA" }).click();
+    await page.getByLabel("Chave da API (Gemini ou OpenAI)").fill("AIzaChaveDoUsuario");
+    await page.getByRole("button", { name: "Salvar chave" }).click();
+    await page.getByRole("navigation", { name: "Navegação do sistema" }).getByRole("link", { name: "Revisar" }).click();
+
+    // Antes: o resumo conta o diagnóstico salvo (1 apontamento).
+    await expect(page.locator(".resumo-item.total strong")).toHaveText("1");
+
+    await page.getByRole("button", { name: "Gerar análise com IA" }).click();
+    const lista = page.getByRole("list", { name: "Apontamentos do assistente" });
+    await expect(lista.getByRole("listitem")).toHaveCount(2);
+    await expect(page.locator(".gemini-avaliacao").first()).toContainText("Necessita de desenvolvimento");
+    expect(pedidos).toBe(1);
+
+    // O diagnóstico da plataforma continua no quadro dele, mas o resumo conta só a análise mais recente.
+    await expect(page.getByRole("list", { name: "Diagnósticos do Gemini" }).getByRole("listitem")).toHaveCount(1);
+    await expect(page.locator(".resumo-item.total strong")).toHaveText("2");
+
+    // Mesmo comportamento: o apontamento de linguagem sai ao corrigir; o do artigo tem Conferir e Já resolvi.
+    await editorDeTexto(page).fill(texto.replace("dados foi coletados", "dados foram coletados"));
+    await expect(lista.getByRole("listitem")).toHaveCount(1);
+    await expect(lista.getByRole("button", { name: "Conferir" })).toBeVisible();
+    await lista.getByRole("button", { name: "Já resolvi" }).click();
+    await expect(page.getByText("Nenhum apontamento pendente.").first()).toBeVisible();
+  });
+
   test("localizar destaca o trecho no manuscrito", async ({ page }) => {
     await analisarTexto(page);
     await cartaoDaRegra(page, "Aspas desbalanceadas")
