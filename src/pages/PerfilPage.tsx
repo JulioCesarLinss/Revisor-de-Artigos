@@ -14,13 +14,14 @@ import {
 import type { ConfiguracaoIA } from "../ai/types";
 import { NOME_SERVICO, servicoDaChave } from "../ai/assistente";
 import { InfoChaveIA } from "../ui/InfoChaveIA";
+import { limparDispositivo } from "../workspace/artigos";
 import { sair as sairFirebase, useAutorizacao } from "../firebase/auth";
 import { configurado as firebaseConfigurado } from "../firebase/config";
 import { carregarPerfilNuvem, salvarPerfilNuvem } from "../firebase/persistencia";
 
 /**
  * Tela /perfil — dados do autor/revisor, configuração do assistente IA
- * (BYO-key, DC-03) e controle da sessão. Persistência local no dispositivo.
+ * (BYO-key, DC-03, só na aba aberta) e controle da sessão.
  */
 export default function PerfilPage() {
   const navegar = useNavigate();
@@ -103,9 +104,12 @@ export default function PerfilPage() {
     setStatus("Assistente IA desativado. O fluxo normativo continua completo.");
   };
 
+  // Igual ao Sair do topo: nada do usuário fica no dispositivo (artigos e chave da IA).
   const sair = () => {
     void sairFirebase(); // Firebase Auth, quando configurado
     encerrarSessao();
+    limparDispositivo();
+    removerConfigIA();
     navegar("/login", { replace: true });
   };
 
@@ -193,8 +197,8 @@ export default function PerfilPage() {
             ) : (
               <>
                 <p className="ia-status">
-                  Sem IA o fluxo continua completo: regras, relatório e correções. A chave é sua (BYO-key) e fica
-                  apenas neste dispositivo.
+                  Sem IA o fluxo continua completo: regras, relatório e correções. A chave não fica guardada: vale
+                  até você fechar esta aba ou sair da conta.
                 </p>
                 <label className="perfil-campo">
                   <span>Chave da API (Gemini ou OpenAI)</span>

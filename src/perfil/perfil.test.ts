@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  apagarChaveAntiga,
   carregarConfigIA,
   carregarPerfil,
   CHAVE_CONFIG_IA,
@@ -76,6 +77,13 @@ describe("perfil/perfil — persistência local", () => {
     removerConfigIA(st);
     expect(st.mapa.has(CHAVE_CONFIG_IA)).toBe(false);
     expect(carregarConfigIA(st)).toBeNull();
+  });
+
+  test("chave salva por versões antigas (sem prazo) é apagada", () => {
+    const antigo = storageFalso();
+    antigo.setItem(CHAVE_CONFIG_IA, JSON.stringify({ apiKey: "sk-antiga" }));
+    apagarChaveAntiga(antigo);
+    expect(antigo.mapa.has(CHAVE_CONFIG_IA)).toBe(false);
   });
 
   test("chave vazia na configuração salva é tratada como não configurada", () => {

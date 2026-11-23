@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { destinoIA, servicoDaChave, sugerirReescrita } from "./assistente";
+import { destinoIA, interpretarSugestao, servicoDaChave, sugerirReescrita } from "./assistente";
 import { aplicarSugestao } from "../document/aplicarSugestao";
 import { novoHistorico, registrar } from "../workspace/historico";
 import type { SugestaoIA } from "./types";
@@ -44,17 +44,41 @@ describe("ai/assistente — serviço reconhecido pela chave", () => {
 
     expect(destinoIA({ apiKey: "AIzaSyExemplo" })).toEqual({
       servico: "gemini",
-      base: "https://generativelanguage.googleapis.com/v1beta/openai",
-      modelo: "gemini-flash-lite-latest",
+      formato: "gemini",
+      base: "https://generativelanguage.googleapis.com/v1beta",
+      modelos: ["gemini-flash-lite-latest", "gemini-flash-latest"],
     });
     expect(destinoIA({ apiKey: "sk-exemplo" }).base).toBe("https://api.openai.com/v1");
-    expect(destinoIA({ apiKey: "chave-qualquer" }).modelo).toBe("gpt-4o-mini");
+    expect(destinoIA({ apiKey: "chave-qualquer" }).modelos).toEqual(["gpt-4o-mini"]);
   });
 
-  test("endpoint e modelo do Perfil valem sobre o padrão do serviço", () => {
+  test("endpoint próprio no Perfil usa o formato da OpenAI, mesmo com chave do Google", () => {
     const destino = destinoIA({ apiKey: "AIzaSyExemplo", baseUrl: "https://meu-proxy.exemplo/v1/", modelo: "outro-modelo" });
+    expect(destino.formato).toBe("openai");
     expect(destino.base).toBe("https://meu-proxy.exemplo/v1");
-    expect(destino.modelo).toBe("outro-modelo");
+    expect(destino.modelos).toEqual(["outro-modelo"]);
+  });
+});
+
+describe("ai/assistente — leitura da resposta", () => {
+  const esperado = { textoSugerido: "Texto melhor.", explicacao: "Mais claro.", paragrafo: 3, regraId: "R001" };
+
+  test("JSON, com ou sem cercas de código", () => {
+    expect(interpretarSugestao('{"sugestao":"Texto melhor.","explicacao":"Mais claro."}', 3, "R001")).toEqual(esperado);
+    expect(
+      interpretarSugestao('```json\n{"sugestao":"Texto melhor.","explicacao":"Mais claro."}\n```', 3, "R001"),
+    ).toEqual(esperado);
+  });
+
+  test("duas linhas, tolerando acento, negrito e minúsculas", () => {
+    expect(interpretarSugestao("SUGESTAO: Texto melhor.\nEXPLICACAO: Mais claro.", 3, "R001")).toEqual(esperado);
+    expect(interpretarSugestao("**SUGESTÃO:** Texto melhor.\n**EXPLICAÇÃO:** Mais claro.", 3, "R001")).toEqual(esperado);
+    expect(interpretarSugestao("sugestão: Texto melhor.\nexplicação: Mais claro.", 3, "R001")).toEqual(esperado);
+  });
+
+  test("sem sugestão ou sem explicação não vira sugestão", () => {
+    expect(interpretarSugestao("Não sei responder.", 1)).toBeNull();
+    expect(interpretarSugestao('{"sugestao":"só isso"}', 1)).toBeNull();
   });
 });
 
@@ -64,35 +88,66 @@ describe("ai/assistente — pedido e erros", () => {
     globalThis.fetch = original;
   });
 
-  /** Troca o fetch por uma resposta fixa e guarda para onde o pedido foi. */
-  function responder(status: number, corpo: unknown): { url: string; modelo: string } {
-    const visto = { url: "", modelo: "" };
-    globalThis.fetch = (async (url: string, init: RequestInit) => {
-      visto.url = String(url);
-      visto.modelo = JSON.parse(String(init.body)).model;
-      return new Response(typeof corpo === "string" ? corpo : JSON.stringify(corpo), { status });
-    }) as unknown as typeof fetch;
-    return visto;
+  interface Pedido {
+    url: string;
+    cabecalhos: Record<string, string>;
+    corpo: { generationConfig?: { responseMimeType?: string } };
   }
 
-  test("com chave do Gemini, o pedido vai ao Gemini e a resposta vira sugestão", async () => {
-    const visto = responder(200, {
-      choices: [{ message: { content: "SUGESTAO: Texto melhor.\nEXPLICACAO: Mais claro." } }],
-    });
-    const r = await sugerirReescrita({ apiKey: "AIzaSyExemplo" }, "Texto ruim.", 2);
-    expect(visto.url).toBe("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions");
-    expect(visto.modelo).toBe("gemini-flash-lite-latest");
+  /** Troca o fetch por respostas fixas, em ordem, e guarda cada pedido feito. */
+  function responder(...respostas: [number, unknown][]): Pedido[] {
+    const vistos: Pedido[] = [];
+    globalThis.fetch = (async (url: string, init: RequestInit) => {
+      vistos.push({ url: String(url), cabecalhos: init.headers as Record<string, string>, corpo: JSON.parse(String(init.body)) });
+      const [status, corpo] = respostas[Math.min(vistos.length - 1, respostas.length - 1)];
+      return new Response(typeof corpo === "string" ? corpo : JSON.stringify(corpo), { status });
+    }) as unknown as typeof fetch;
+    return vistos;
+  }
+
+  const respostaGemini = (texto: string) => ({ candidates: [{ content: { parts: [{ text: texto }] } }] });
+
+  test("com chave do Gemini, usa a interface própria do Google e lê a sugestão em JSON", async () => {
+    const vistos = responder([200, respostaGemini('{"sugestao":"Texto melhor.","explicacao":"Mais claro."}')]);
+    const r = await sugerirReescrita({ apiKey: " AIzaSyExemplo " }, "Texto ruim.", 2);
+    expect(vistos[0].url).toBe(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent",
+    );
+    expect(vistos[0].cabecalhos["x-goog-api-key"]).toBe("AIzaSyExemplo");
+    expect(vistos[0].corpo.generationConfig?.responseMimeType).toBe("application/json");
     expect(r.ok && r.sugestao.textoSugerido).toBe("Texto melhor.");
   });
 
-  test("chave inválida do Gemini (400 'API key') vira mensagem de chave inválida", async () => {
-    responder(400, [{ error: { code: 400, message: "API key not valid. Please pass a valid API key." } }]);
+  test("modelo indisponível (404) tenta o modelo reserva", async () => {
+    const vistos = responder(
+      [404, { error: { message: "not found" } }],
+      [200, respostaGemini('{"sugestao":"Ok.","explicacao":"Ok."}')],
+    );
+    const r = await sugerirReescrita({ apiKey: "AIzaSyExemplo" }, "Texto.", 1);
+    expect(vistos.map((v) => v.url.split("/models/")[1])).toEqual([
+      "gemini-flash-lite-latest:generateContent",
+      "gemini-flash-latest:generateContent",
+    ]);
+    expect(r.ok).toBe(true);
+  });
+
+  test("com chave da OpenAI, usa chat/completions", async () => {
+    const vistos = responder([200, { choices: [{ message: { content: "SUGESTAO: Texto melhor.\nEXPLICACAO: Mais claro." } }] }]);
+    const r = await sugerirReescrita({ apiKey: "sk-exemplo" }, "Texto ruim.", 2);
+    expect(vistos[0].url).toBe("https://api.openai.com/v1/chat/completions");
+    expect(vistos[0].cabecalhos.Authorization).toBe("Bearer sk-exemplo");
+    expect(r.ok && r.sugestao.explicacao).toBe("Mais claro.");
+  });
+
+  test("chave inválida do Gemini (400 'API key') vira mensagem de chave inválida, sem tentar outro modelo", async () => {
+    const vistos = responder([400, { error: { code: 400, message: "API key not valid. Please pass a valid API key." } }]);
     const r = await sugerirReescrita({ apiKey: "AIzaInvalida" }, "Texto.", 1);
     expect(!r.ok && r.motivo).toContain("Chave da API inválida");
+    expect(vistos).toHaveLength(1);
   });
 
   test("limite do plano gratuito (429) explica que é preciso aguardar", async () => {
-    responder(429, { error: { message: "Resource exhausted" } });
+    responder([429, { error: { message: "Resource exhausted" } }]);
     const r = await sugerirReescrita({ apiKey: "AIzaSyExemplo" }, "Texto.", 1);
     expect(!r.ok && r.motivo).toContain("Limite de pedidos atingido");
   });

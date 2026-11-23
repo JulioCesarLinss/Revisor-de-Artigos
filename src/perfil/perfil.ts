@@ -5,7 +5,10 @@ import type { ConfiguracaoIA } from "../ai/types";
  * dispositivo (localStorage). Sem backend ainda, a persistência é local:
  * - dados de perfil (nome, e-mail, perfil de utilização);
  * - chave do assistente IA (BYO-key, DC-03), reaproveitada pela tela Revisar.
- * O storage é injetável para os testes; o padrão é o localStorage real.
+ *   Por segurança, a chave NÃO é guardada no dispositivo: fica no
+ *   sessionStorage, que vale só para a aba aberta (some ao fechar a aba) e é
+ *   apagada ao sair da conta.
+ * O storage é injetável para os testes; o padrão é o real de cada dado.
  */
 
 export type Armazenamento = {
@@ -88,8 +91,28 @@ export function salvarPerfil(dados: PerfilUsuario, st?: Armazenamento): void {
   }
 }
 
-export function carregarConfigIA(st?: Armazenamento): ConfiguracaoIA | null {
+/** Onde a chave da IA vive: só a aba aberta (sessionStorage). */
+function armazenamentoDaChave(): Armazenamento | null {
+  try {
+    return typeof sessionStorage !== "undefined" ? sessionStorage : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Chaves salvas antes desta versão ficavam no localStorage sem prazo: são apagadas. */
+export function apagarChaveAntiga(st?: Armazenamento): void {
   const s = st ?? armazenamentoPadrao();
+  try {
+    s?.removeItem(CHAVE_CONFIG_IA);
+  } catch {
+    /* ignora */
+  }
+}
+
+export function carregarConfigIA(st?: Armazenamento): ConfiguracaoIA | null {
+  if (!st) apagarChaveAntiga();
+  const s = st ?? armazenamentoDaChave();
   if (!s) return null;
   try {
     const cru = s.getItem(CHAVE_CONFIG_IA);
@@ -107,7 +130,8 @@ export function carregarConfigIA(st?: Armazenamento): ConfiguracaoIA | null {
 }
 
 export function salvarConfigIA(config: ConfiguracaoIA, st?: Armazenamento): void {
-  const s = st ?? armazenamentoPadrao();
+  if (!st) apagarChaveAntiga();
+  const s = st ?? armazenamentoDaChave();
   if (!s) return;
   try {
     s.setItem(CHAVE_CONFIG_IA, JSON.stringify(config));
@@ -117,7 +141,8 @@ export function salvarConfigIA(config: ConfiguracaoIA, st?: Armazenamento): void
 }
 
 export function removerConfigIA(st?: Armazenamento): void {
-  const s = st ?? armazenamentoPadrao();
+  if (!st) apagarChaveAntiga();
+  const s = st ?? armazenamentoDaChave();
   if (!s) return;
   try {
     s.removeItem(CHAVE_CONFIG_IA);

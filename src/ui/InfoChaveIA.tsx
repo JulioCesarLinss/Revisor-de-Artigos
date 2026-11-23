@@ -61,8 +61,9 @@ export function InfoChaveIA({ titulo, nivel = "h2", recolhido, onAlternarRecolhi
           <p className="info-caixa-titulo">Como funciona</p>
           <p>
             Com uma chave, cada aviso ganha o botão <strong>Sugerir com IA</strong>: só o parágrafo daquele aviso é
-            enviado, e a IA devolve uma versão reescrita, que você aceita, edita ou ignora. A chave fica{" "}
-            <strong>só neste navegador</strong> — não vai para o nosso servidor. Cole a chave de um dos serviços
+            enviado, e a IA devolve uma versão reescrita, que você aceita, edita ou ignora. Por segurança, a chave{" "}
+            <strong>não fica guardada</strong>: vale até você fechar esta aba ou sair da conta (aí é só colar de
+            novo) e não vai para o nosso servidor. Cole a chave de um dos serviços
             abaixo: o app reconhece qual é.
           </p>
 
@@ -118,7 +119,8 @@ export function InfoChaveIA({ titulo, nivel = "h2", recolhido, onAlternarRecolhi
           </div>
 
           <p className="info-caixa-nota">
-            Não compartilhe a chave: quem tiver ela usa a sua cota ou os seus créditos. Para tirá-la daqui, use{" "}
+            Não compartilhe a chave: quem tiver ela usa a sua cota ou os seus créditos. A chave gratuita do Gemini,
+            sem cartão cadastrado, não gera cobrança. Para tirá-la antes de fechar a aba, use{" "}
             <strong>Remover chave</strong> no Perfil.
           </p>
         </div>

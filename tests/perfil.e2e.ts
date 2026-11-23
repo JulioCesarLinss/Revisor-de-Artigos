@@ -46,3 +46,41 @@ test.describe("Perfil", () => {
     await expect(page).toHaveURL(/\/login$/);
   });
 });
+
+test.describe("Chave da IA não fica guardada", () => {
+  test.beforeEach(async ({ page }) => {
+    await entrar(page);
+  });
+
+  test("vale enquanto a aba está aberta e some ao sair da conta", async ({ page }) => {
+    // Chave antiga, de antes desta versão, guardada sem prazo: é apagada.
+    await page.evaluate(() => localStorage.setItem("normareview.ia", JSON.stringify({ apiKey: "sk-antiga" })));
+
+    await page.getByLabel("Chave da API (Gemini ou OpenAI)").fill("AIzaChaveDeTeste");
+    await page.getByRole("button", { name: "Ativar assistente" }).click();
+    await expect(page.getByText("Assistente configurado com Gemini")).toBeVisible();
+
+    // Não vai para o armazenamento permanente; continua ao trocar de tela e ao recarregar.
+    expect(await page.evaluate(() => localStorage.getItem("normareview.ia"))).toBeNull();
+    await page.getByRole("navigation", { name: "Navegação do sistema" }).getByRole("link", { name: "Histórico" }).click();
+    await page.getByRole("navigation", { name: "Navegação do sistema" }).getByRole("link", { name: "Revisar" }).click();
+    await page.reload();
+    await expect(page.getByText("Assistente configurado com Gemini")).toBeVisible();
+
+    // Sair apaga a chave: entrando de novo, é preciso colar outra vez.
+    await page.getByRole("button", { name: "Sair" }).click();
+    expect(await page.evaluate(() => sessionStorage.getItem("normareview.ia"))).toBeNull();
+    await entrar(page);
+    await expect(page.getByLabel("Chave da API (Gemini ou OpenAI)")).toBeVisible();
+  });
+
+  test("fechar a aba e abrir outra exige colar a chave de novo", async ({ page, context }) => {
+    await page.getByLabel("Chave da API (Gemini ou OpenAI)").fill("AIzaChaveDeTeste");
+    await page.getByRole("button", { name: "Ativar assistente" }).click();
+    await expect(page.getByText("Assistente configurado com Gemini")).toBeVisible();
+
+    const outraAba = await context.newPage();
+    await entrar(outraAba);
+    await expect(outraAba.getByLabel("Chave da API (Gemini ou OpenAI)")).toBeVisible();
+  });
+});

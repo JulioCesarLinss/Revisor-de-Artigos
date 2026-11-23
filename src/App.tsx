@@ -9,6 +9,7 @@ import PerfilPage from "./pages/PerfilPage";
 import HistoricoPage from "./pages/HistoricoPage";
 import ArtigosPage from "./pages/ArtigosPage";
 import { limparDispositivo } from "./workspace/artigos";
+import { removerConfigIA } from "./perfil/perfil";
 
 const CADEIA = [
   { para: "/revisar", rotulo: "Revisar" },
@@ -34,11 +35,12 @@ export default function App() {
   // A tela de entrada tem um cabeçalho de apresentação, sem navegação.
   const naEntrada = location.pathname === "/login";
 
-  // Sair encerra a sessão (Firebase + local), descarta o workspace e volta ao login.
+  // Sair encerra a sessão (Firebase + local), descarta os artigos e a chave da IA e volta ao login.
   const sair = () => {
     void sairFirebase();
     encerrarSessao();
     limparDispositivo();
+    removerConfigIA();
     navegar("/login", { replace: true });
   };
 
